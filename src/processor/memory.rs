@@ -14,11 +14,7 @@ pub struct Ram {
 
 impl Ram {
     pub fn new() -> Self {
-        let mut memory = Vec::with_capacity(RAM_SIZE);
-        for _ in 1..RAM_SIZE {
-            memory.push(0);
-        }
-        Self { memory }
+        Self { memory: vec![0; RAM_SIZE] }
     }
 }
 
