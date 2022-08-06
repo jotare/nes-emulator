@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.4.0
+-----
+- Add macro to easily write CPU instructions
+
 0.3.0
 -----
 - Start implementing the MOS 6502 processor

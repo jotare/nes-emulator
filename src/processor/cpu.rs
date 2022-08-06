@@ -70,22 +70,26 @@ pub struct Cpu<'a> {
 use self::AddressingMode::*;
 use self::SRFlag::*;
 
+macro_rules! instruction {
+    ($name:expr, $addressing:expr, $bytes:expr, $cycles:expr, Cpu::$fun:ident) => {
+        Instruction {
+            name: $name,
+            addressing: $addressing,
+            bytes: $bytes,
+            cycles: $cycles,
+            execute: |cpu| {
+                cpu.$fun($addressing);
+                cpu.pc += $bytes
+            },
+        }
+    };
+}
+
 fn legal_opcode_instruction_set() -> HashMap<u8, Instruction> {
     let mut instruction_set = HashMap::new();
 
-    instruction_set.insert(
-        0x29,
-        Instruction {
-            name: "AND",
-            addressing: Immediate,
-            bytes: 2,
-            cycles: 2,
-            execute: |cpu| {
-                cpu.and(Immediate);
-                cpu.pc += 2;
-            },
-        },
-    );
+    // Logical operations
+    instruction_set.insert(0x29, instruction!("AND", Immediate, 2, 2, Cpu::and));
 
     instruction_set
 }
