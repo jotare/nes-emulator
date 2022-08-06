@@ -5,6 +5,8 @@ CHANGELOG
 -----
 - Start implementing the MOS 6502 processor
 - Implement RAM
+- Add CPU skeleton
+- Implement AND instruction with immediate addressing
 
 0.2.0
 -----
