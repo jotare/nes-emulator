@@ -6,7 +6,7 @@ use super::memory::Memory;
 
 /// MOS 6502 has multiple addressing modes to fetch operands for
 /// instructions.
-pub enum Addressing {
+pub enum AddressingMode {
     Implied,     // Implied Addressing
     Accum,       // Accumulator Addressing
     Immediate,   // Immediate Addressing
@@ -27,7 +27,7 @@ pub enum Addressing {
 /// to execute it's corresponding CPU operation.
 pub struct Instruction {
     name: &'static str,
-    addressing: Addressing,
+    addressing: AddressingMode,
     bytes: u8,
     cycles: u8,
     execute: fn(&mut Cpu) -> (),
@@ -67,7 +67,7 @@ pub struct Cpu<'a> {
     // TODO: other
 }
 
-use self::Addressing::*;
+use self::AddressingMode::*;
 use self::SRFlag::*;
 
 fn legal_opcode_instruction_set() -> HashMap<u8, Instruction> {
@@ -138,7 +138,7 @@ impl<'a> Cpu<'a> {
 
     /// Fetch the operand to perform the instruction. Instructions
     /// with implied addressing doesn't return a value.
-    fn fetch(&mut self, addressing: Addressing) -> Option<u8> {
+    fn fetch(&mut self, addressing: AddressingMode) -> Option<u8> {
         match addressing {
             Implied => None,
             // Operation on the accumulator
@@ -166,8 +166,8 @@ impl<'a> Cpu<'a> {
     /// Status Register:
     /// N Z C I D V
     /// + + - -	- -
-    fn and(&mut self, addressing: Addressing) {
-        let operand = self.fetch(addressing).unwrap();
+    fn and(&mut self, addr_mode: AddressingMode) {
+        let operand = self.fetch(addr_mode).unwrap();
         self.acc &= operand;
 
         self.set_flag(Negative, (self.acc & 1 << 7) > 0);
