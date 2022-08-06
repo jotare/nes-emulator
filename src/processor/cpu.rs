@@ -90,6 +90,8 @@ fn legal_opcode_instruction_set() -> HashMap<u8, Instruction> {
 
     // Logical operations
     instruction_set.insert(0x29, instruction!("AND", Immediate, 2, 2, Cpu::and));
+    instruction_set.insert(0x49, instruction!("EOR", Immediate, 2, 2, Cpu::eor));
+    instruction_set.insert(0x09, instruction!("OR", Immediate, 2, 2, Cpu::or));
 
     instruction_set
 }
@@ -119,7 +121,7 @@ impl<'a> Cpu<'a> {
         let instruction = self
             .instruction_set
             .get(&opcode)
-            .expect(&format!("Invalid instruction '{:x}'", opcode));
+            .unwrap_or_else(|| panic!("Invalid instruction '{:x}'", opcode));
 
         (instruction.execute)(self);
     }
@@ -137,9 +139,10 @@ impl<'a> Cpu<'a> {
             self.sr &= !(flag as u8);
         }
     }
+}
 
-    // Instruction Set implementation
-
+// Instruction Set implementation
+impl<'a> Cpu<'a> {
     /// Fetch the operand to perform the instruction. Instructions
     /// with implied addressing doesn't return a value.
     fn fetch(&mut self, addressing: AddressingMode) -> Option<u8> {
@@ -162,6 +165,8 @@ impl<'a> Cpu<'a> {
         }
     }
 
+    // Logical operations
+
     /// AND - AND Memory with Accumulator
     ///
     /// Operation:
@@ -169,10 +174,42 @@ impl<'a> Cpu<'a> {
     ///
     /// Status Register:
     /// N Z C I D V
-    /// + + - -	- -
+    /// + + - - - -
     fn and(&mut self, addr_mode: AddressingMode) {
         let operand = self.fetch(addr_mode).unwrap();
         self.acc &= operand;
+
+        self.set_flag(Negative, (self.acc & 1 << 7) > 0);
+        self.set_flag(Zero, self.acc == 0);
+    }
+
+    /// EOR - Exclusive-OR Memory with Accumulator
+    ///
+    /// Operation:
+    /// A EOR M -> A
+    ///
+    /// Status Register:
+    /// N Z C I D V
+    /// + + - - - -
+    fn eor(&mut self, addr_mode: AddressingMode) {
+        let operand = self.fetch(addr_mode).unwrap();
+        self.acc ^= operand;
+
+        self.set_flag(Negative, (self.acc & 1 << 7) > 0);
+        self.set_flag(Zero, self.acc == 0);
+    }
+
+    /// ORA - OR Memory with Accumulator
+    ///
+    /// Operation:
+    /// A OR M -> A
+    ///
+    /// Status Register:
+    /// N Z C I D V
+    /// + + - - - -
+    fn or(&mut self, addr_mode: AddressingMode) {
+        let operand = self.fetch(addr_mode).unwrap();
+        self.acc |= operand;
 
         self.set_flag(Negative, (self.acc & 1 << 7) > 0);
         self.set_flag(Zero, self.acc == 0);
@@ -181,6 +218,8 @@ impl<'a> Cpu<'a> {
 
 #[cfg(test)]
 mod tests {
+    use std::cell::RefCell;
+
     use crate::processor::memory::Ram;
 
     use super::*;
@@ -207,34 +246,104 @@ mod tests {
         }
     }
 
+    struct MockRam {
+        memory: RefCell<Vec<u8>>,
+    }
+
+    impl MockRam {
+        pub fn new() -> Self {
+            Self {
+                memory: RefCell::new(Vec::new()),
+            }
+        }
+
+        /// Set mock memory to the `instruction`
+        pub fn add_instruction(&self, instruction: Vec<u8>) {
+            let mut memory = self.memory.borrow_mut();
+            for byte in instruction {
+                memory.push(byte);
+            }
+        }
+    }
+
+    impl Memory for MockRam {
+        fn read(&self, address: u16) -> u8 {
+            self.memory.borrow()[address as usize]
+        }
+
+        fn write(&mut self, address: u16, data: u8) {
+            self.memory.borrow_mut()[address as usize] = data;
+        }
+    }
+
     #[test]
     #[allow(non_snake_case)]
-    fn test_instruction_AND() {
-        let mut ram = Ram::new();
-        // Load test program
-        #[rustfmt::skip]
-            ram.load(0, &vec![
-                0x29, 0xff,         // A AND 0xff
-                0x29, 0x0f,         // A AND 0x0f
-                0x29, 0x00,         // A AND 0x00
-            ]);
+    fn test_logical_instructions() {
+        let mock_ram = MockRam::new();
+        let mut cpu = Cpu::new(&mock_ram);
+        cpu.acc = 0xAC;
 
-        let mut cpu = Cpu::new(&ram);
-        cpu.acc = 0xac;
-
+        // A AND 0xFF = A = 0xAC
+        mock_ram.add_instruction(vec![0x29, 0xFF]);
         cpu.execute();
-        assert_eq!(cpu.acc, 0xac);
+        assert_eq!(cpu.acc, 0xAC);
         assert!(!cpu.get_flag(Zero));
         assert!(cpu.get_flag(Negative));
 
+        // A AND 0x0F = 0x0C
+        mock_ram.add_instruction(vec![0x29, 0x0F]);
         cpu.execute();
-        assert_eq!(cpu.acc, 0x0c);
+        assert_eq!(cpu.acc, 0x0C);
         assert!(!cpu.get_flag(Zero));
         assert!(!cpu.get_flag(Negative));
 
+        // A AND 0x00 = 0x00
+        mock_ram.add_instruction(vec![0x29, 0x00]);
         cpu.execute();
         assert_eq!(cpu.acc, 0x00);
         assert!(cpu.get_flag(Zero));
         assert!(!cpu.get_flag(Negative));
+
+        // A ORA 0x00 = 0x00
+        mock_ram.add_instruction(vec![0x09, 0x00]);
+        cpu.execute();
+        assert_eq!(cpu.acc, 0x00);
+        assert!(cpu.get_flag(Zero));
+        assert!(!cpu.get_flag(Negative));
+
+        // A ORA 0xAB = 0xAB
+        mock_ram.add_instruction(vec![0x09, 0xAB]);
+        cpu.execute();
+        assert_eq!(cpu.acc, 0xAB);
+        assert!(!cpu.get_flag(Zero));
+        assert!(cpu.get_flag(Negative));
+
+        // A ORA 0xCC = 0xEF
+        mock_ram.add_instruction(vec![0x09, 0xCC]);
+        cpu.execute();
+        assert_eq!(cpu.acc, 0xEF);
+        assert!(!cpu.get_flag(Zero));
+        assert!(cpu.get_flag(Negative));
+
+        // A EOR 0x88 = 0x67
+        mock_ram.add_instruction(vec![0x49, 0x88]);
+        cpu.execute();
+        assert_eq!(cpu.acc, 0x67);
+        assert!(!cpu.get_flag(Zero));
+        assert!(!cpu.get_flag(Negative));
+
+        // A EOR 0x67 = 0x00
+        mock_ram.add_instruction(vec![0x49, 0x67]);
+        cpu.execute();
+        assert_eq!(cpu.acc, 0x00);
+        assert!(cpu.get_flag(Zero));
+        assert!(!cpu.get_flag(Negative));
+
+        // A EOR 0x80 = 0x80
+        mock_ram.add_instruction(vec![0x49, 0x80]);
+        cpu.execute();
+        assert_eq!(cpu.acc, 0x80);
+        assert!(!cpu.get_flag(Zero));
+        assert!(cpu.get_flag(Negative));
     }
 }

@@ -4,6 +4,7 @@ CHANGELOG
 0.4.0
 -----
 - Add macro to easily write CPU instructions
+- Implement EOR and ORA instructions with immediate addressing
 
 0.3.0
 -----
