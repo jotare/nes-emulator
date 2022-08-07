@@ -2,49 +2,7 @@
 
 use std::collections::HashMap;
 
-use super::memory::Memory;
-
-/// MOS 6502 has multiple addressing modes to fetch operands for
-/// instructions.
-pub enum AddressingMode {
-    Implied,     // Implied Addressing
-    Accum,       // Accumulator Addressing
-    Immediate,   // Immediate Addressing
-    Absolute,    // Absoulute Addressing
-    ZeroPage,    // Zero Page Addressing
-    AbsX,        // Absoulute Indexed Addressing (X)
-    AbsY,        // Absoulute Indexed Addressing (Y)
-    ZpgX,        // Zero Page Indexed Addressing (X)
-    ZpgY,        // Zero Page Indexed Addressing (Y)
-    Relative,    // Relative Addressing
-    IndX,        // Zero Page Indexed Indirect Addressing (X)
-    IndY,        // Zero Page Indexed Indirect Addressing (Y)
-    AbsIndirect, // Absolute Indirect Addressing (Jump instructions only)
-}
-
-/// An `Instruction` represents a single MOS 6502 instruction. It has
-/// a name, an addressing mode, number of bytes and a function pointer
-/// to execute it's corresponding CPU operation.
-pub struct Instruction {
-    name: &'static str,
-    addressing: AddressingMode,
-    bytes: u8,
-    cycles: u8,
-    function: fn(&mut Cpu) -> (),
-}
-
-/// Status register flags
-#[derive(Debug, Clone, Copy)]
-enum SRFlag {
-    Carry = 1 << 0,
-    Zero = 1 << 1,
-    DisableInterrupts = 1 << 2,
-    // bit 3 is for Decimal Mode, not used in the NES
-    Break = 1 << 4,
-    // bit 5 is unused and is always 1
-    Overflow = 1 << 6,
-    Negative = 1 << 7,
-}
+use crate::processor::memory::Memory;
 
 /// MOS 6502 processor emulator.
 ///
@@ -60,40 +18,8 @@ pub struct Cpu<'a> {
     sp: u8,    // Stack Pointer
     pc: u16,   // Program Counter
     sr: u8,    // Status Register
-
     memory: &'a dyn Memory,
-
     instruction_set: HashMap<u8, Instruction>,
-    // TODO: other
-}
-
-use self::AddressingMode::*;
-use self::SRFlag::*;
-
-macro_rules! instruction {
-    ($name:expr, $addressing:expr, $bytes:expr, $cycles:expr, Cpu::$fun:ident) => {
-        Instruction {
-            name: $name,
-            addressing: $addressing,
-            bytes: $bytes,
-            cycles: $cycles,
-            function: |cpu| {
-                cpu.$fun($addressing);
-                cpu.pc += $bytes
-            },
-        }
-    };
-}
-
-fn legal_opcode_instruction_set() -> HashMap<u8, Instruction> {
-    let mut instruction_set = HashMap::new();
-
-    // Logical operations
-    instruction_set.insert(0x29, instruction!("AND", Immediate, 2, 2, Cpu::and));
-    instruction_set.insert(0x49, instruction!("EOR", Immediate, 2, 2, Cpu::eor));
-    instruction_set.insert(0x09, instruction!("OR", Immediate, 2, 2, Cpu::or));
-
-    instruction_set
 }
 
 impl<'a> Cpu<'a> {
@@ -106,33 +32,89 @@ impl<'a> Cpu<'a> {
             sp: 0,
             pc: 0,
             sr: 0,
-
             memory,
-
             instruction_set: legal_opcode_instruction_set(),
         }
     }
 
-    /// Fetch from the memory address pointed by the program counter
-    /// and execute the instruction atomically.
+    /// Fetch the instruction pointed by the program counter from
+    /// memory and execute it atomically.
     pub fn execute(&mut self) {
-        let opcode = self.memory.read(self.pc);
+        let instruction = self.fetch();
+        match instruction.instruction {
+            Logical(fun) => fun(self, instruction.data.unwrap()),
+            Jump(fun) => fun(self, instruction.address),
+        }
+        self.pc += instruction.cycles as u16;
+    }
 
+    // Fetch the instruction pointer by the PC
+    fn fetch(&mut self) -> FetchedInstruction {
+        let opcode = self.memory.read(self.pc);
         let instruction = self
             .instruction_set
             .get(&opcode)
-            .unwrap_or_else(|| panic!("Invalid instruction '{:x}'", opcode));
+            .unwrap_or_else(|| panic!("Invalid instruction '0x{:x}'", opcode));
 
-        (instruction.function)(self);
+        let (addr, data) = match instruction.addressing {
+            Implied => {
+                let addr = self.pc + 1;
+                let data = None;
+                (addr, data)
+            }
+            Immediate => {
+                let addr = self.pc + 1;
+                let data = self.memory.read(self.pc + 1);
+                (addr, Some(data))
+            }
+            ZeroPage => {
+                // Effective address is 00, ADL
+                let adl = self.memory.read(self.pc + 1) as u16;
+                let addr = 0x00 << 8 | adl;
+                let data = self.memory.read(addr);
+                (addr, Some(data))
+            }
+            Absolute => {
+                // Effective address is ADH, ADL
+                let adl = self.memory.read(self.pc + 1) as u16;
+                let adh = (self.memory.read(self.pc + 2) as u16) << 8;
+                let addr = adh | adl;
+                let data = self.memory.read(addr);
+                (addr, Some(data))
+            }
+            _ => (self.pc, None),
+        };
+
+        FetchedInstruction {
+            instruction: instruction.instruction.clone(),
+            cycles: instruction.cycles,
+            address: addr,
+            data: data,
+        }
     }
+}
 
-    /// Return a status register flag.
-    fn get_flag(&self, flag: SRFlag) -> bool {
+#[derive(Debug, Clone, Copy)]
+pub enum StatusRegisterFlag {
+    Carry = 1 << 0,
+    Zero = 1 << 1,
+    DisableInterrupts = 1 << 2,
+    // bit 3 is for Decimal Mode, not used in the NES
+    Break = 1 << 4,
+    // bit 5 is unused and is always 1
+    Overflow = 1 << 6,
+    Negative = 1 << 7,
+}
+use StatusRegisterFlag::*;
+
+impl<'a> Cpu<'a> {
+    // Return a status register flag.
+    fn get_flag(&self, flag: StatusRegisterFlag) -> bool {
         (self.sr & (flag as u8)) > 0
     }
 
-    /// Set an specific status register flag.
-    fn set_flag(&mut self, flag: SRFlag, enable: bool) {
+    // Set an specific status register flag.
+    fn set_flag(&mut self, flag: StatusRegisterFlag, enable: bool) {
         if enable {
             self.sr |= flag as u8;
         } else {
@@ -141,30 +123,71 @@ impl<'a> Cpu<'a> {
     }
 }
 
-// Instruction Set implementation
-impl<'a> Cpu<'a> {
-    /// Fetch the operand to perform the instruction. Instructions
-    /// with implied addressing doesn't return a value.
-    fn fetch(&mut self, addressing: AddressingMode) -> Option<u8> {
-        match addressing {
-            Implied => None,
-            // Operation on the accumulator
-            Accum => Some(self.acc),
-            // Operand is in the second byte of the instruction
-            Immediate => Some(self.memory.read(self.pc + 1)),
-            Absolute => None,
-            ZeroPage => None,
-            AbsX => None,
-            AbsY => None,
-            ZpgX => None,
-            ZpgY => None,
-            Relative => None,
-            IndX => None,
-            IndY => None,
-            AbsIndirect => None,
-        }
-    }
+// Instruction addressing modes
+enum AddressingMode {
+    Implied,     // Implied Addressing
+    Accum,       // Accumulator Addressing
+    Immediate,   // Immediate Addressing
+    Absolute,    // Absoulute Addressing
+    ZeroPage,    // Zero Page Addressing
+    AbsX,        // Absoulute Indexed Addressing (X)
+    AbsY,        // Absoulute Indexed Addressing (Y)
+    ZpgX,        // Zero Page Indexed Addressing (X)
+    ZpgY,        // Zero Page Indexed Addressing (Y)
+    Relative,    // Relative Addressing
+    IndX,        // Zero Page Indexed Indirect Addressing (X)
+    IndY,        // Zero Page Indexed Indirect Addressing (Y)
+    AbsIndirect, // Absolute Indirect Addressing (Jump instructions only)
+}
+use AddressingMode::*;
 
+#[derive(Clone)]
+pub enum ExecutableInstruction {
+    Logical(fn(&mut Cpu, u8)),
+    Jump(fn(&mut Cpu, u16)),
+}
+use ExecutableInstruction::*;
+
+pub struct FetchedInstruction {
+    instruction: ExecutableInstruction,
+    cycles: u8,
+    address: u16,
+    data: Option<u8>,
+}
+
+/// An `Instruction` represents a single MOS 6502 instruction. It has
+/// a name, an addressing mode, number of bytes and a function pointer
+/// to execute it's corresponding CPU operation.
+pub struct Instruction {
+    name: &'static str,
+    instruction: ExecutableInstruction,
+    addressing: AddressingMode,
+    cycles: u8,
+}
+
+macro_rules! instruction {
+    ($name:expr, $instruction_type:expr, Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
+        Instruction {
+            name: $name,
+            instruction: $instruction_type(|cpu, operand| Cpu::$fun(cpu, operand)),
+            addressing: $addr_mode,
+            cycles: $cycles,
+        }
+    };
+}
+
+pub fn legal_opcode_instruction_set() -> HashMap<u8, Instruction> {
+    let mut instruction_set = HashMap::new();
+
+    // Logical operations
+    instruction_set.insert(0x29, instruction!("AND", Logical, Cpu::and, Immediate, 2));
+    instruction_set.insert(0x49, instruction!("EOR", Logical, Cpu::eor, Immediate, 2));
+    instruction_set.insert(0x09, instruction!("ORA", Logical, Cpu::ora, Immediate, 2));
+
+    instruction_set
+}
+
+impl<'a> Cpu<'a> {
     // Logical operations
 
     /// AND - AND Memory with Accumulator
@@ -175,8 +198,7 @@ impl<'a> Cpu<'a> {
     /// Status Register:
     /// N Z C I D V
     /// + + - - - -
-    fn and(&mut self, addr_mode: AddressingMode) {
-        let operand = self.fetch(addr_mode).unwrap();
+    fn and(&mut self, operand: u8) {
         self.acc &= operand;
 
         self.set_flag(Negative, (self.acc & 1 << 7) > 0);
@@ -191,8 +213,7 @@ impl<'a> Cpu<'a> {
     /// Status Register:
     /// N Z C I D V
     /// + + - - - -
-    fn eor(&mut self, addr_mode: AddressingMode) {
-        let operand = self.fetch(addr_mode).unwrap();
+    fn eor(&mut self, operand: u8) {
         self.acc ^= operand;
 
         self.set_flag(Negative, (self.acc & 1 << 7) > 0);
@@ -207,8 +228,7 @@ impl<'a> Cpu<'a> {
     /// Status Register:
     /// N Z C I D V
     /// + + - - - -
-    fn or(&mut self, addr_mode: AddressingMode) {
-        let operand = self.fetch(addr_mode).unwrap();
+    fn ora(&mut self, operand: u8) {
         self.acc |= operand;
 
         self.set_flag(Negative, (self.acc & 1 << 7) > 0);
@@ -220,6 +240,7 @@ impl<'a> Cpu<'a> {
 mod tests {
     use std::cell::RefCell;
 
+    use crate::processor::memory::Memory;
     use crate::processor::memory::Ram;
 
     use super::*;
@@ -229,12 +250,12 @@ mod tests {
         let ram = Ram::new();
         let mut cpu = Cpu::new(&ram);
         let flags = vec![
-            SRFlag::Carry,
-            SRFlag::Zero,
-            SRFlag::DisableInterrupts,
-            SRFlag::Break,
-            SRFlag::Overflow,
-            SRFlag::Negative,
+            StatusRegisterFlag::Carry,
+            StatusRegisterFlag::Zero,
+            StatusRegisterFlag::DisableInterrupts,
+            StatusRegisterFlag::Break,
+            StatusRegisterFlag::Overflow,
+            StatusRegisterFlag::Negative,
         ];
 
         for flag in flags {
