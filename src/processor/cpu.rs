@@ -30,7 +30,7 @@ pub struct Instruction {
     addressing: AddressingMode,
     bytes: u8,
     cycles: u8,
-    execute: fn(&mut Cpu) -> (),
+    function: fn(&mut Cpu) -> (),
 }
 
 /// Status register flags
@@ -77,7 +77,7 @@ macro_rules! instruction {
             addressing: $addressing,
             bytes: $bytes,
             cycles: $cycles,
-            execute: |cpu| {
+            function: |cpu| {
                 cpu.$fun($addressing);
                 cpu.pc += $bytes
             },
@@ -123,7 +123,7 @@ impl<'a> Cpu<'a> {
             .get(&opcode)
             .unwrap_or_else(|| panic!("Invalid instruction '{:x}'", opcode));
 
-        (instruction.execute)(self);
+        (instruction.function)(self);
     }
 
     /// Return a status register flag.
