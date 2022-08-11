@@ -4,6 +4,8 @@ CHANGELOG
 0.5.0
 -----
 - Convert Bus into a trait and rename struct to MainBus
+- Move CPU tests to a separate file
+- Reorder CPU module
 
 0.4.0
 -----
