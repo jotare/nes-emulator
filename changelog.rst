@@ -6,6 +6,7 @@ CHANGELOG
 - Convert Bus into a trait and rename struct to MainBus
 - Move CPU tests to a separate file
 - Reorder CPU module
+- Update Nes with new cpu-bus architecture
 
 0.4.0
 -----

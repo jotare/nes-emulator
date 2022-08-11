@@ -10,14 +10,33 @@
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
+use std::rc::Rc;
+
+use crate::processor::bus::{MainBus, AddressRange};
+use crate::processor::cpu::Cpu;
+use crate::processor::memory::Ram;
 
 pub struct Nes {
     cartidge: Option<Cartidge>,
+    bus: Rc<MainBus>,
+    cpu: Cpu,
 }
 
 impl Nes {
     pub fn new() -> Self {
-        Self { cartidge: None }
+        let ram = Box::new(Ram::new());
+        let bus = Rc::new(MainBus::new(vec![
+            (AddressRange { start: 0x0000, end: 0xFFFF }, ram),
+        ]));
+
+        let bus_ptr = Rc::clone(&bus);
+        let cpu = Cpu::new(bus_ptr);
+
+        Self {
+            bus,
+            cpu,
+            cartidge: None
+        }
     }
 
     pub fn load_cartidge(&mut self, cartidge: Cartidge) {
