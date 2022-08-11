@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.8.0
+-----
+- Add CLC, CLD, CLI, CLV, SEC, SED, SEI flag instructions
+
 0.7.0
 -----
 - Add TAX, TAY, TSX, TXA, TXS, TYA transfer instructions

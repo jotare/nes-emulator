@@ -47,6 +47,8 @@ pub enum ExecutableInstruction {
     Transfer(fn(&mut Cpu)),
     // logical
     Logical(fn(&mut Cpu, u8)),
+    // flag instructions
+    Flag(fn(&mut Cpu)),
 }
 use ExecutableInstruction::*;
 
@@ -82,6 +84,9 @@ macro_rules! instruction {
     ($name:expr, Transfer, Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
         zero_arg_instruction!($name, Transfer, Cpu::$fun, $addr_mode, $cycles)
     };
+    ($name:expr, Flag, Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
+        zero_arg_instruction!($name, Transfer, Cpu::$fun, $addr_mode, $cycles)
+    };
     ($name:expr, $instruction_type:expr, Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
         Instruction {
             name: $name,
@@ -112,6 +117,15 @@ pub fn legal_opcode_instruction_set() -> HashMap<u8, Instruction> {
     instruction_set.insert(0x49, instruction!("EOR", Logical, Cpu::eor, Immediate, 2));
     instruction_set.insert(0x09, instruction!("ORA", Logical, Cpu::ora, Immediate, 2));
 
+    // Flag instructions
+    instruction_set.insert(0x18, instruction!("CLC", Flag, Cpu::clc, Implied, 2));
+    instruction_set.insert(0xD8, instruction!("CLD", Flag, Cpu::cld, Implied, 2));
+    instruction_set.insert(0x58, instruction!("CLI", Flag, Cpu::cli, Implied, 2));
+    instruction_set.insert(0xB8, instruction!("CLV", Flag, Cpu::clv, Implied, 2));
+    instruction_set.insert(0x38, instruction!("SEC", Flag, Cpu::sec, Implied, 2));
+    instruction_set.insert(0xF8, instruction!("SED", Flag, Cpu::sed, Implied, 2));
+    instruction_set.insert(0x78, instruction!("SEI", Flag, Cpu::sei, Implied, 2));
+
     instruction_set
 }
 
@@ -119,8 +133,8 @@ pub fn legal_opcode_instruction_set() -> HashMap<u8, Instruction> {
 pub enum StatusRegisterFlag {
     Carry = 1 << 0,
     Zero = 1 << 1,
-    DisableInterrupts = 1 << 2,
-    // bit 3 is for Decimal Mode, not used in the NES
+    InterruptDisable = 1 << 2,
+    Decimal = 1 << 3,           // unused in the NES
     Break = 1 << 4,
     // bit 5 is unused and is always 1
     Overflow = 1 << 6,
@@ -153,6 +167,8 @@ impl Cpu {
             Transfer(fun) => fun(self),
             // logical
             Logical(fun) => fun(self, instruction.data.unwrap()),
+            // flag
+            Flag(fun) => fun(self),
         }
         self.pc += instruction.cycles as u16;
     }
@@ -228,7 +244,8 @@ impl Cpu {
         match flag {
             Carry => {}
             Zero => self.set_flag(Zero, value == 0),
-            DisableInterrupts => {}
+            InterruptDisable => {}
+            Decimal => {}
             Break => {}
             Overflow => {}
             Negative => self.set_flag(Negative, (value & 1 << 7) > 0),
@@ -238,6 +255,7 @@ impl Cpu {
 
 // Instruction Set
 impl Cpu {
+
     // Transfer instructions
 
     /// LDA - Load Accumulator with Memory
@@ -263,7 +281,6 @@ impl Cpu {
     /// Status Register
     /// N Z C I D V
     /// + + - - - -
-    ///
     fn ldx(&mut self, operand: u8) {
         self.x_reg = operand;
 
@@ -293,7 +310,6 @@ impl Cpu {
     /// Status Register:
     /// N Z C I D V
     /// + + - - - -
-    ///
     fn tax(&mut self) {
         self.x_reg = self.acc;
 
@@ -309,7 +325,6 @@ impl Cpu {
     /// Status Register:
     /// N Z C I D V
     /// + + - - - -
-    ///
     fn tay(&mut self) {
         self.y_reg = self.acc;
 
@@ -325,7 +340,6 @@ impl Cpu {
     /// Status Register:
     /// N Z C I D V
     /// + + - - - -
-    ///
     fn tsx(&mut self) {
         self.x_reg = self.sp;
 
@@ -341,7 +355,6 @@ impl Cpu {
     /// Status Register:
     /// N Z C I D V
     /// + + - - - -
-    ///
     fn txa(&mut self) {
         self.acc = self.x_reg;
 
@@ -357,7 +370,6 @@ impl Cpu {
     /// Status Register:
     /// N Z C I D V
     /// + + - - - -
-    ///
     fn txs(&mut self) {
         self.sp = self.x_reg;
 
@@ -373,7 +385,6 @@ impl Cpu {
     /// Status Register:
     /// N Z C I D V
     /// + + - - - -
-    ///
     fn tya(&mut self) {
         self.acc = self.y_reg;
 
@@ -425,4 +436,91 @@ impl Cpu {
         self.auto_set_flag(Negative, self.acc);
         self.auto_set_flag(Zero, self.acc);
     }
+
+    // Flag instructions
+
+    /// CLC - Clear Carry Flag
+    ///
+    /// Operation:
+    /// 0 -> C
+    ///
+    /// Status Register:
+    /// N Z C I D V
+    /// - - 0 - - -
+    fn clc(&mut self) {
+        self.set_flag(Carry, false);
+    }
+
+    /// CLD - Clear Decimal Mode
+    ///
+    /// Operation:
+    /// 0 -> D
+    ///
+    /// Status Register:
+    /// N Z C I D V
+    /// - - - - 0 -
+    fn cld(&mut self) {
+        self.set_flag(Decimal, false);
+    }
+
+    /// CLI - Clear Interrupt Disable Bit 
+    ///
+    /// Operation:
+    /// 0 -> I
+    ///
+    /// Status Register:
+    /// N Z C I D V
+    /// - - - 0 - -
+    fn cli(&mut self) {
+        self.set_flag(InterruptDisable, false);
+    }
+
+    /// CLV - Clear Overflow Flag 
+    ///
+    /// Operation:
+    /// 0 -> V
+    ///
+    /// Status Register:
+    /// N Z C I D V
+    /// - - - - - 0
+    fn clv(&mut self) {
+        self.set_flag(Overflow, false);
+    }
+
+    /// SEC - Set Carry Flag
+    ///
+    /// Operation:
+    /// 1 -> C
+    ///
+    /// Status Register:
+    /// N Z C I D V
+    /// - - 1 - - -
+    fn sec(&mut self) {
+        self.set_flag(Carry, true);
+    }
+
+    /// SED - Set Decimal Flag
+    ///
+    /// Operation:
+    /// 1 -> D
+    ///
+    /// Status Register:
+    /// N Z C I D V
+    /// - - - - 1 -
+    fn sed(&mut self) {
+        self.set_flag(Decimal, true);
+    }
+
+    /// SEI - Set Interrupt Disable Status 
+    ///
+    /// Operation:
+    /// 1 -> I
+    ///
+    /// Status Register:
+    /// N Z C I D V
+    /// - - - 1 - -
+    fn sei(&mut self) {
+        self.set_flag(InterruptDisable, true);
+    }
+
 }

@@ -270,6 +270,69 @@ fn test_ORA_instruction() {
     assert!(cpu.get_flag(Negative));
 }
 
+#[test]
+fn test_flag_instruction_CLC() {
+    let mut cpu = test_cpu();
+
+    cpu.set_flag(Carry, true);
+    cpu.clc();
+    assert!(!cpu.get_flag(Carry));
+}
+
+#[test]
+fn test_flag_instruction_CLD() {
+    let mut cpu = test_cpu();
+
+    cpu.set_flag(Decimal, true);
+    cpu.cld();
+    assert!(!cpu.get_flag(Decimal));
+}
+
+#[test]
+fn test_flag_instruction_CLI() {
+    let mut cpu = test_cpu();
+
+    cpu.set_flag(InterruptDisable, true);
+    cpu.cli();
+    assert!(!cpu.get_flag(InterruptDisable));
+}
+
+#[test]
+fn test_flag_instruction_CLV() {
+    let mut cpu = test_cpu();
+
+    cpu.set_flag(Overflow, true);
+    cpu.clv();
+    assert!(!cpu.get_flag(Overflow));
+}
+
+#[test]
+fn test_flag_instruction_SEC() {
+    let mut cpu = test_cpu();
+
+    cpu.set_flag(Carry, false);
+    cpu.sec();
+    assert!(cpu.get_flag(Carry));
+}
+
+#[test]
+fn test_flag_instruction_SED() {
+    let mut cpu = test_cpu();
+
+    cpu.set_flag(Decimal, false);
+    cpu.sed();
+    assert!(cpu.get_flag(Decimal));
+}
+
+#[test]
+fn test_flag_instruction_SEI() {
+    let mut cpu = test_cpu();
+
+    cpu.set_flag(InterruptDisable, false);
+    cpu.sei();
+    assert!(cpu.get_flag(InterruptDisable));
+}
+
 //////////////////////////////////////////////////////////////////////
 // TEST ADDRESSING MODES
 //////////////////////////////////////////////////////////////////////
@@ -304,7 +367,7 @@ fn test_status_register() {
     let flags = vec![
         StatusRegisterFlag::Carry,
         StatusRegisterFlag::Zero,
-        StatusRegisterFlag::DisableInterrupts,
+        StatusRegisterFlag::InterruptDisable,
         StatusRegisterFlag::Break,
         StatusRegisterFlag::Overflow,
         StatusRegisterFlag::Negative,
