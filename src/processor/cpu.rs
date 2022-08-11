@@ -45,6 +45,12 @@ pub enum ExecutableInstruction {
     // transfer
     Load(fn(&mut Cpu, u8)),
     Transfer(fn(&mut Cpu)),
+    // decrement
+    Decrement(fn(&mut Cpu)),
+    // increment
+    Increment(fn(&mut Cpu)),
+    // arithmetic
+    Arithmetic
     // logical
     Logical(fn(&mut Cpu, u8)),
     // flag instructions
@@ -84,6 +90,12 @@ macro_rules! instruction {
     ($name:expr, Transfer, Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
         zero_arg_instruction!($name, Transfer, Cpu::$fun, $addr_mode, $cycles)
     };
+    ($name:expr, Decrement, Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
+        zero_arg_instruction!($name, Decrement, Cpu::$fun, $addr_mode, $cycles)
+    };
+    ($name:expr, Increment, Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
+        zero_arg_instruction!($name, Increment, Cpu::$fun, $addr_mode, $cycles)
+    };
     ($name:expr, Flag, Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
         zero_arg_instruction!($name, Transfer, Cpu::$fun, $addr_mode, $cycles)
     };
@@ -111,6 +123,14 @@ pub fn legal_opcode_instruction_set() -> HashMap<u8, Instruction> {
     instruction_set.insert(0x8A, instruction!("TXA", Transfer, Cpu::txa, Implied, 2));
     instruction_set.insert(0x9A, instruction!("TXS", Transfer, Cpu::txs, Implied, 2));
     instruction_set.insert(0x98, instruction!("TYA", Transfer, Cpu::tya, Implied, 2));
+
+    // Decrements and increments
+    // instruction_set.insert(0xCA, instruction!("DEC", Decrement, Cpu::dec, Immediate, 2));
+    instruction_set.insert(0xCA, instruction!("DEX", Decrement, Cpu::dex, Immediate, 2));
+    instruction_set.insert(0x88, instruction!("DEY", Decrement, Cpu::dey, Immediate, 2));
+    // instruction_set.insert(0xCA, instruction!("INC", Increment, Cpu::inc, Immediate, 2));
+    instruction_set.insert(0xCA, instruction!("INX", Increment, Cpu::inx, Immediate, 2));
+    instruction_set.insert(0x88, instruction!("INY", Increment, Cpu::iny, Immediate, 2));
 
     // Logical operations
     instruction_set.insert(0x29, instruction!("AND", Logical, Cpu::and, Immediate, 2));
@@ -165,6 +185,9 @@ impl Cpu {
             // transfer
             Load(fun) => fun(self, instruction.data.unwrap()),
             Transfer(fun) => fun(self),
+            // decrements and increments
+            Decrement(fun) => fun(self),
+            Increment(fun) => fun(self),
             // logical
             Logical(fun) => fun(self, instruction.data.unwrap()),
             // flag
@@ -391,6 +414,74 @@ impl Cpu {
         self.auto_set_flag(Negative, self.acc);
         self.auto_set_flag(Zero, self.acc);
     }
+
+    // Decrements and increments
+
+    /// DEX - Decrment Index X by One
+    ///
+    /// Operation:
+    /// X + 1 -> X
+    ///
+    /// Status Register
+    /// N Z C I D V
+    /// + + - - - -
+    fn dex(&mut self) {
+        let (res, _) = self.x_reg.overflowing_sub(1);
+        self.x_reg = res;
+
+        self.auto_set_flag(Negative, self.x_reg);
+        self.auto_set_flag(Zero, self.x_reg);
+    }
+
+    /// DEY - Decrment Index Y by One
+    ///
+    /// Operation:
+    /// Y + 1 -> Y
+    ///
+    /// Status Register
+    /// N Z C I D V
+    /// + + - - - -
+    fn dey(&mut self) {
+        let (res, _) = self.y_reg.overflowing_sub(1);
+        self.y_reg = res;
+
+        self.auto_set_flag(Negative, self.y_reg);
+        self.auto_set_flag(Zero, self.y_reg);
+    }
+
+    /// INX - Incrment Index X by One
+    ///
+    /// Operation:
+    /// X + 1 -> X
+    ///
+    /// Status Register
+    /// N Z C I D V
+    /// + + - - - -
+    fn inx(&mut self) {
+        let (res, _) = self.x_reg.overflowing_add(1);
+        self.x_reg = res;
+
+        self.auto_set_flag(Negative, self.x_reg);
+        self.auto_set_flag(Zero, self.x_reg);
+    }
+
+    /// INY - Incrment Index Y by One
+    ///
+    /// Operation:
+    /// Y + 1 -> Y
+    ///
+    /// Status Register
+    /// N Z C I D V
+    /// + + - - - -
+    fn iny(&mut self) {
+        let (res, _) = self.y_reg.overflowing_add(1);
+        self.y_reg = res;
+
+        self.auto_set_flag(Negative, self.y_reg);
+        self.auto_set_flag(Zero, self.y_reg);
+    }
+
+    // Logic operations
 
     /// AND - AND Memory with Accumulator
     ///

@@ -46,6 +46,81 @@ fn test_cpu_with_program(program: Vec<u8>) -> Cpu {
 //////////////////////////////////////////////////////////////////////
 
 #[test]
+fn test_load_instruction_DEX() {
+    let mut cpu = test_cpu();
+
+    cpu.x_reg = 0x82;
+    cpu.dex();
+    assert_eq!(cpu.x_reg, 0x81);
+    assert!(!cpu.get_flag(Zero));
+    assert!(cpu.get_flag(Negative));
+
+    cpu.x_reg = 1;
+    cpu.dex();
+    assert_eq!(cpu.x_reg, 0);
+    assert!(cpu.get_flag(Zero));
+    assert!(!cpu.get_flag(Negative));
+
+    cpu.dex();
+    assert_eq!(cpu.x_reg, 0xFF);
+
+}
+
+#[test]
+fn test_load_instruction_DEY() {
+    let mut cpu = test_cpu();
+
+    cpu.y_reg = 0x82;
+    cpu.dey();
+    assert_eq!(cpu.y_reg, 0x81);
+    assert!(!cpu.get_flag(Zero));
+    assert!(cpu.get_flag(Negative));
+
+    cpu.y_reg = 1;
+    cpu.dey();
+    assert_eq!(cpu.y_reg, 0);
+    assert!(cpu.get_flag(Zero));
+    assert!(!cpu.get_flag(Negative));
+
+    cpu.dey();
+    assert_eq!(cpu.y_reg, 0xFF);
+}
+
+#[test]
+fn test_load_instruction_INX() {
+    let mut cpu = test_cpu();
+
+    cpu.x_reg = 0x82;
+    cpu.inx();
+    assert_eq!(cpu.x_reg, 0x83);
+    assert!(!cpu.get_flag(Zero));
+    assert!(cpu.get_flag(Negative));
+
+    cpu.x_reg = 0xFF;
+    cpu.inx();
+    assert_eq!(cpu.x_reg, 0);
+    assert!(cpu.get_flag(Zero));
+    assert!(!cpu.get_flag(Negative));
+}
+
+#[test]
+fn test_load_instruction_INY() {
+    let mut cpu = test_cpu();
+
+    cpu.y_reg = 0x82;
+    cpu.iny();
+    assert_eq!(cpu.y_reg, 0x83);
+    assert!(!cpu.get_flag(Zero));
+    assert!(cpu.get_flag(Negative));
+
+    cpu.y_reg = 0xFF;
+    cpu.iny();
+    assert_eq!(cpu.y_reg, 0);
+    assert!(cpu.get_flag(Zero));
+    assert!(!cpu.get_flag(Negative));
+}
+
+#[test]
 fn test_load_instruction_LDA() {
     let mut cpu = test_cpu();
 

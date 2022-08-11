@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.9.0
+-----
+- Add DEX, DEY, INX, INY instructions
+
 0.8.0
 -----
 - Add CLC, CLD, CLI, CLV, SEC, SED, SEI flag instructions
