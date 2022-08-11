@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.5.0
+-----
+- Convert Bus into a trait and rename struct to MainBus
+
 0.4.0
 -----
 - Add macro to easily write CPU instructions

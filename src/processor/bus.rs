@@ -7,18 +7,25 @@ pub struct AddressRange {
     pub end: u16,
 }
 
-pub struct Bus {
+pub trait Bus {
+    fn read(&self, address: u16) -> u8;
+    fn write(&self, address: u16, data: u8);
+}
+
+pub struct MainBus {
     devices: RefCell<Vec<(AddressRange, Box<dyn Memory>)>>,
 }
 
-impl Bus {
+impl MainBus {
     pub fn new(devices: Vec<(AddressRange, Box<dyn Memory>)>) -> Self {
         Self {
             devices: RefCell::new(devices),
         }
     }
+}
 
-    pub fn read(&self, address: u16) -> u8 {
+impl Bus for MainBus {
+    fn read(&self, address: u16) -> u8 {
         for (addr_range, device) in self.devices.borrow().iter() {
             if address >= addr_range.start || address < addr_range.end {
                 return device.read(address);
@@ -30,7 +37,7 @@ impl Bus {
         );
     }
 
-    pub fn write(&self, address: u16, data: u8) {
+    fn write(&self, address: u16, data: u8) {
         for (addr_range, device) in self.devices.borrow_mut().iter_mut() {
             if address >= addr_range.start || address < addr_range.end {
                 device.write(address, data);
@@ -51,7 +58,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_bus_read_without_attached_devices() {
-        let bus = Bus::new(vec![]);
+        let bus = MainBus::new(vec![]);
 
         bus.read(0x1234);
     }
@@ -59,7 +66,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_bus_write_without_attached_devices() {
-        let bus = Bus::new(vec![]);
+        let bus = MainBus::new(vec![]);
 
         bus.write(0x1234, 0xf0);
     }
