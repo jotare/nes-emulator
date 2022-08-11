@@ -42,7 +42,9 @@ use AddressingMode::*;
 
 #[derive(Clone)]
 pub enum ExecutableInstruction {
-   // logical
+    // transfer
+    Load(fn(&mut Cpu, u8)),
+    // logical
     Logical(fn(&mut Cpu, u8)),
 }
 use ExecutableInstruction::*;
@@ -77,6 +79,11 @@ macro_rules! instruction {
 
 pub fn legal_opcode_instruction_set() -> HashMap<u8, Instruction> {
     let mut instruction_set = HashMap::new();
+
+    // Transfer instructions
+    instruction_set.insert(0xA9, instruction!("LDA", Load, Cpu::lda, Immediate, 2));
+    instruction_set.insert(0xA2, instruction!("LDX", Load, Cpu::lda, Immediate, 2));
+    instruction_set.insert(0xA0, instruction!("LDY", Load, Cpu::lda, Immediate, 2));
 
     // Logical operations
     instruction_set.insert(0x29, instruction!("AND", Logical, Cpu::and, Immediate, 2));
@@ -119,7 +126,9 @@ impl Cpu {
     pub fn execute(&mut self) {
         let instruction = self.fetch();
         match instruction.instruction {
-           // logical
+            // transfer
+            Load(fun) => fun(self, instruction.data.unwrap()),
+            // logical
             Logical(fun) => fun(self, instruction.data.unwrap()),
         }
         self.pc += instruction.cycles as u16;
@@ -191,12 +200,69 @@ impl Cpu {
             self.sr &= !(flag as u8);
         }
     }
+
+    fn auto_set_flag(&mut self, flag: StatusRegisterFlag, value: u8) {
+        match flag {
+            Carry => {}
+            Zero => self.set_flag(Zero, value == 0),
+            DisableInterrupts => {}
+            Break => {}
+            Overflow => {}
+            Negative => self.set_flag(Negative, (value & 1 << 7) > 0),
+        }
+    }
 }
 
 // Instruction Set
 impl Cpu {
+    // Transfer instructions
 
-   // Logical operations
+    /// LDA - Load Accumulator with Memory
+    ///
+    /// Operation:
+    /// M -> A
+    ///
+    /// Status Register
+    /// N Z C I D V
+    /// + + - - - -
+    fn lda(&mut self, operand: u8) {
+        self.acc = operand;
+
+        self.auto_set_flag(Negative, self.acc);
+        self.auto_set_flag(Zero, self.acc);
+    }
+
+    /// Load Index X with Memory
+    ///
+    /// Operation:
+    /// M -> X
+    ///
+    /// Status Register
+    /// N Z C I D V
+    /// + + - - - -
+    ///
+    fn ldx(&mut self, operand: u8) {
+        self.x_reg = operand;
+
+        self.auto_set_flag(Negative, self.x_reg);
+        self.auto_set_flag(Zero, self.x_reg);
+    }
+
+    /// Load Index Y with Memory
+    /// Operation:
+    /// M -> Y
+    ///
+    /// Status Register
+    /// N Z C I D V
+    /// + + - - - -
+    fn ldy(&mut self, operand: u8) {
+        self.y_reg = operand;
+
+        self.auto_set_flag(Negative, self.y_reg);
+        self.auto_set_flag(Zero, self.y_reg);
+    }
+
+    // Logical operations
 
     /// AND - AND Memory with Accumulator
     ///
@@ -209,8 +275,8 @@ impl Cpu {
     fn and(&mut self, operand: u8) {
         self.acc &= operand;
 
-        self.set_flag(Negative, (self.acc & 1 << 7) > 0);
-        self.set_flag(Zero, self.acc == 0);
+        self.auto_set_flag(Negative, self.acc);
+        self.auto_set_flag(Zero, self.acc);
     }
 
     /// EOR - Exclusive-OR Memory with Accumulator
@@ -224,8 +290,8 @@ impl Cpu {
     fn eor(&mut self, operand: u8) {
         self.acc ^= operand;
 
-        self.set_flag(Negative, (self.acc & 1 << 7) > 0);
-        self.set_flag(Zero, self.acc == 0);
+        self.auto_set_flag(Negative, self.acc);
+        self.auto_set_flag(Zero, self.acc);
     }
 
     /// ORA - OR Memory with Accumulator
@@ -239,7 +305,7 @@ impl Cpu {
     fn ora(&mut self, operand: u8) {
         self.acc |= operand;
 
-        self.set_flag(Negative, (self.acc & 1 << 7) > 0);
-        self.set_flag(Zero, self.acc == 0);
+        self.auto_set_flag(Negative, self.acc);
+        self.auto_set_flag(Zero, self.acc);
     }
 }

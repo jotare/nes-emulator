@@ -45,6 +45,42 @@ fn test_cpu_with_program(program: Vec<u8>) -> Cpu {
 
 #[test]
 #[allow(non_snake_case)]
+fn test_load_instructions_LDA_LDX_LDY() {
+    let mut cpu = test_cpu();
+
+    cpu.lda(0);
+    assert_eq!(cpu.acc, 0);
+    assert!(cpu.get_flag(Zero));
+    assert!(!cpu.get_flag(Negative));
+
+    cpu.lda(0x95);
+    assert_eq!(cpu.acc, 0x95);
+    assert!(!cpu.get_flag(Zero));
+    assert!(cpu.get_flag(Negative));
+
+    cpu.ldx(0);
+    assert_eq!(cpu.x_reg, 0);
+    assert!(cpu.get_flag(Zero));
+    assert!(!cpu.get_flag(Negative));
+
+    cpu.ldx(0x95);
+    assert_eq!(cpu.x_reg, 0x95);
+    assert!(!cpu.get_flag(Zero));
+    assert!(cpu.get_flag(Negative));
+
+    cpu.ldy(0);
+    assert_eq!(cpu.y_reg, 0);
+    assert!(cpu.get_flag(Zero));
+    assert!(!cpu.get_flag(Negative));
+
+    cpu.ldy(0x95);
+    assert_eq!(cpu.y_reg, 0x95);
+    assert!(!cpu.get_flag(Zero));
+    assert!(cpu.get_flag(Negative));
+}
+
+#[test]
+#[allow(non_snake_case)]
 fn test_AND_instruction() {
     let mut cpu = test_cpu();
     cpu.acc = 0xAC;
@@ -139,6 +175,7 @@ fn test_addressing_mode_zero_page() {
     let mut cpu = test_cpu_with_program(vec![
         // 
     ]);
+    todo!("TODO test");
 }
 
 //////////////////////////////////////////////////////////////////////

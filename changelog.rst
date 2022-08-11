@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.6.0
+-----
+- Add LDA, LDX and LDY instructions
+
 0.5.0
 -----
 - Convert Bus into a trait and rename struct to MainBus
