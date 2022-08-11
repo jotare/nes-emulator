@@ -1,9 +1,13 @@
 CHANGELOG
 =========
 
+0.7.0
+-----
+- Add TAX, TAY, TSX, TXA, TXS, TYA transfer instructions
+
 0.6.0
 -----
-- Add LDA, LDX and LDY instructions
+- Add LDA, LDX and LDY load instructions
 
 0.5.0
 -----

@@ -1,3 +1,5 @@
+#![allow(non_snake_case)]
+
 use mockall::mock;
 use mockall::predicate::eq;
 
@@ -44,8 +46,7 @@ fn test_cpu_with_program(program: Vec<u8>) -> Cpu {
 //////////////////////////////////////////////////////////////////////
 
 #[test]
-#[allow(non_snake_case)]
-fn test_load_instructions_LDA_LDX_LDY() {
+fn test_load_instruction_LDA() {
     let mut cpu = test_cpu();
 
     cpu.lda(0);
@@ -57,6 +58,11 @@ fn test_load_instructions_LDA_LDX_LDY() {
     assert_eq!(cpu.acc, 0x95);
     assert!(!cpu.get_flag(Zero));
     assert!(cpu.get_flag(Negative));
+}
+
+#[test]
+fn test_load_instruction_LDX() {
+    let mut cpu = test_cpu();
 
     cpu.ldx(0);
     assert_eq!(cpu.x_reg, 0);
@@ -67,6 +73,11 @@ fn test_load_instructions_LDA_LDX_LDY() {
     assert_eq!(cpu.x_reg, 0x95);
     assert!(!cpu.get_flag(Zero));
     assert!(cpu.get_flag(Negative));
+}
+
+#[test]
+fn test_load_instruction_LDY() {
+    let mut cpu = test_cpu();
 
     cpu.ldy(0);
     assert_eq!(cpu.y_reg, 0);
@@ -80,7 +91,114 @@ fn test_load_instructions_LDA_LDX_LDY() {
 }
 
 #[test]
-#[allow(non_snake_case)]
+fn test_transfer_instruction_TAX() {
+    let mut cpu = test_cpu();
+
+    cpu.acc = 0x82;
+    assert_ne!(cpu.acc, cpu.x_reg);
+    cpu.tax();
+    assert_eq!(cpu.acc, cpu.x_reg);
+    assert!(!cpu.get_flag(Zero));
+    assert!(cpu.get_flag(Negative));
+
+    cpu.acc = 0;
+    cpu.tax();
+    assert_eq!(cpu.acc, cpu.x_reg);
+    assert!(cpu.get_flag(Zero));
+    assert!(!cpu.get_flag(Negative));
+}
+
+#[test]
+fn test_transfer_instruction_TAY() {
+    let mut cpu = test_cpu();
+
+    cpu.acc = 0x82;
+    assert_ne!(cpu.acc, cpu.y_reg);
+    cpu.tay();
+    assert_eq!(cpu.acc, cpu.y_reg);
+    assert!(!cpu.get_flag(Zero));
+    assert!(cpu.get_flag(Negative));
+
+    cpu.acc = 0;
+    cpu.tay();
+    assert_eq!(cpu.acc, cpu.y_reg);
+    assert!(cpu.get_flag(Zero));
+    assert!(!cpu.get_flag(Negative));
+}
+
+#[test]
+fn test_transfer_instruction_TSX() {
+    let mut cpu = test_cpu();
+
+    cpu.sp = 0x82;
+    assert_ne!(cpu.sp, cpu.x_reg);
+    cpu.tsx();
+    assert_eq!(cpu.sp, cpu.x_reg);
+    assert!(!cpu.get_flag(Zero));
+    assert!(cpu.get_flag(Negative));
+
+    cpu.sp = 0;
+    cpu.tsx();
+    assert_eq!(cpu.sp, cpu.x_reg);
+    assert!(cpu.get_flag(Zero));
+    assert!(!cpu.get_flag(Negative));
+}
+
+#[test]
+fn test_transfer_instruction_TXA() {
+    let mut cpu = test_cpu();
+
+    cpu.x_reg = 0x82;
+    assert_ne!(cpu.x_reg, cpu.acc);
+    cpu.txa();
+    assert_eq!(cpu.x_reg, cpu.acc);
+    assert!(!cpu.get_flag(Zero));
+    assert!(cpu.get_flag(Negative));
+
+    cpu.x_reg = 0;
+    cpu.txa();
+    assert_eq!(cpu.x_reg, cpu.acc);
+    assert!(cpu.get_flag(Zero));
+    assert!(!cpu.get_flag(Negative));
+}
+
+#[test]
+fn test_transfer_instruction_TXS() {
+    let mut cpu = test_cpu();
+
+    cpu.x_reg = 0x82;
+    assert_ne!(cpu.x_reg, cpu.sp);
+    cpu.txs();
+    assert_eq!(cpu.x_reg, cpu.sp);
+    assert!(!cpu.get_flag(Zero));
+    assert!(cpu.get_flag(Negative));
+
+    cpu.x_reg = 0;
+    cpu.txs();
+    assert_eq!(cpu.x_reg, cpu.sp);
+    assert!(cpu.get_flag(Zero));
+    assert!(!cpu.get_flag(Negative));
+}
+
+#[test]
+fn test_transfer_instruction_TYA() {
+    let mut cpu = test_cpu();
+
+    cpu.y_reg = 0x82;
+    assert_ne!(cpu.y_reg, cpu.acc);
+    cpu.tya();
+    assert_eq!(cpu.y_reg, cpu.acc);
+    assert!(!cpu.get_flag(Zero));
+    assert!(cpu.get_flag(Negative));
+
+    cpu.y_reg = 0;
+    cpu.tya();
+    assert_eq!(cpu.y_reg, cpu.acc);
+    assert!(cpu.get_flag(Zero));
+    assert!(!cpu.get_flag(Negative));
+}
+
+#[test]
 fn test_AND_instruction() {
     let mut cpu = test_cpu();
     cpu.acc = 0xAC;
@@ -105,7 +223,6 @@ fn test_AND_instruction() {
 }
 
 #[test]
-#[allow(non_snake_case)]
 fn test_EOR_instruction() {
     let mut cpu = test_cpu();
     cpu.acc = 0xEF;
@@ -130,7 +247,6 @@ fn test_EOR_instruction() {
 }
 
 #[test]
-#[allow(non_snake_case)]
 fn test_ORA_instruction() {
     let mut cpu = test_cpu();
     cpu.acc = 0x00;
@@ -173,7 +289,7 @@ fn test_addressing_mode_immediate() {
 #[test]
 fn test_addressing_mode_zero_page() {
     let mut cpu = test_cpu_with_program(vec![
-        // 
+        //
     ]);
     todo!("TODO test");
 }

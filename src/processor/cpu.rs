@@ -44,6 +44,7 @@ use AddressingMode::*;
 pub enum ExecutableInstruction {
     // transfer
     Load(fn(&mut Cpu, u8)),
+    Transfer(fn(&mut Cpu)),
     // logical
     Logical(fn(&mut Cpu, u8)),
 }
@@ -66,7 +67,21 @@ pub struct Instruction {
     cycles: u8,
 }
 
+macro_rules! zero_arg_instruction {
+    ($name:expr, $instruction_type:expr, Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
+        Instruction {
+            name: $name,
+            instruction: $instruction_type(|cpu| Cpu::$fun(cpu)),
+            addressing: $addr_mode,
+            cycles: $cycles,
+        }
+    };
+}
+
 macro_rules! instruction {
+    ($name:expr, Transfer, Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
+        zero_arg_instruction!($name, Transfer, Cpu::$fun, $addr_mode, $cycles)
+    };
     ($name:expr, $instruction_type:expr, Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
         Instruction {
             name: $name,
@@ -84,6 +99,13 @@ pub fn legal_opcode_instruction_set() -> HashMap<u8, Instruction> {
     instruction_set.insert(0xA9, instruction!("LDA", Load, Cpu::lda, Immediate, 2));
     instruction_set.insert(0xA2, instruction!("LDX", Load, Cpu::lda, Immediate, 2));
     instruction_set.insert(0xA0, instruction!("LDY", Load, Cpu::lda, Immediate, 2));
+
+    instruction_set.insert(0xAA, instruction!("TAX", Transfer, Cpu::tax, Implied, 2));
+    instruction_set.insert(0xA8, instruction!("TAY", Transfer, Cpu::tay, Implied, 2));
+    instruction_set.insert(0xBA, instruction!("TSX", Transfer, Cpu::tsx, Implied, 2));
+    instruction_set.insert(0x8A, instruction!("TXA", Transfer, Cpu::txa, Implied, 2));
+    instruction_set.insert(0x9A, instruction!("TXS", Transfer, Cpu::txs, Implied, 2));
+    instruction_set.insert(0x98, instruction!("TYA", Transfer, Cpu::tya, Implied, 2));
 
     // Logical operations
     instruction_set.insert(0x29, instruction!("AND", Logical, Cpu::and, Immediate, 2));
@@ -128,6 +150,7 @@ impl Cpu {
         match instruction.instruction {
             // transfer
             Load(fun) => fun(self, instruction.data.unwrap()),
+            Transfer(fun) => fun(self),
             // logical
             Logical(fun) => fun(self, instruction.data.unwrap()),
         }
@@ -262,7 +285,101 @@ impl Cpu {
         self.auto_set_flag(Zero, self.y_reg);
     }
 
-    // Logical operations
+    /// TAX - Transfer Accumulator to Index X
+    ///
+    /// Operation:
+    /// A -> X
+    ///
+    /// Status Register:
+    /// N Z C I D V
+    /// + + - - - -
+    ///
+    fn tax(&mut self) {
+        self.x_reg = self.acc;
+
+        self.auto_set_flag(Negative, self.x_reg);
+        self.auto_set_flag(Zero, self.x_reg);
+    }
+
+    /// TAY - Transfer Accumulator to Index Y
+    ///
+    /// Operation:
+    /// A -> Y
+    ///
+    /// Status Register:
+    /// N Z C I D V
+    /// + + - - - -
+    ///
+    fn tay(&mut self) {
+        self.y_reg = self.acc;
+
+        self.auto_set_flag(Negative, self.y_reg);
+        self.auto_set_flag(Zero, self.y_reg);
+    }
+
+    /// TSX - Transfer Stack Pointer to Index X
+    ///
+    /// Operation:
+    /// SP -> X
+    ///
+    /// Status Register:
+    /// N Z C I D V
+    /// + + - - - -
+    ///
+    fn tsx(&mut self) {
+        self.x_reg = self.sp;
+
+        self.auto_set_flag(Negative, self.x_reg);
+        self.auto_set_flag(Zero, self.x_reg);
+    }
+
+    /// TXA - Transfer Index X to Accumulator
+    ///
+    /// Operation:
+    /// X -> A
+    ///
+    /// Status Register:
+    /// N Z C I D V
+    /// + + - - - -
+    ///
+    fn txa(&mut self) {
+        self.acc = self.x_reg;
+
+        self.auto_set_flag(Negative, self.acc);
+        self.auto_set_flag(Zero, self.acc);
+    }
+
+    /// TXS - Transfer Index X to Stack Pointer
+    ///
+    /// Operation:
+    /// X -> SP
+    ///
+    /// Status Register:
+    /// N Z C I D V
+    /// + + - - - -
+    ///
+    fn txs(&mut self) {
+        self.sp = self.x_reg;
+
+        self.auto_set_flag(Negative, self.sp);
+        self.auto_set_flag(Zero, self.sp);
+    }
+
+    /// TYA - Transfer Index Y to Accumulator
+    ///
+    /// Operation:
+    /// Y -> A
+    ///
+    /// Status Register:
+    /// N Z C I D V
+    /// + + - - - -
+    ///
+    fn tya(&mut self) {
+        self.acc = self.y_reg;
+
+        self.auto_set_flag(Negative, self.acc);
+        self.auto_set_flag(Zero, self.acc);
+    }
 
     /// AND - AND Memory with Accumulator
     ///
