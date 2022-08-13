@@ -306,7 +306,7 @@ impl Cpu {
             Decimal => {}
             Break => {}
             Overflow => {}
-            Negative => self.set_flag(Negative, (value & 1 << 7) > 0),
+            Negative => self.set_flag(Negative, bv(value, 7) != 0),
         }
     }
 }
