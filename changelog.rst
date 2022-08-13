@@ -1,6 +1,15 @@
 CHANGELOG
 =========
 
+0.10.0
+------
+- Remove ExecutableInstruction and split instruction depending on
+  memory access
+- Improve internal CPU instruction execution model
+- Add STA, STX, STY store instructions
+- Add DEC, INC instructions
+- Add NOP instruction
+
 0.9.0
 -----
 - Add DEX, DEY, INX, INY instructions

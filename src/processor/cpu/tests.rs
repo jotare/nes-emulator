@@ -46,81 +46,6 @@ fn test_cpu_with_program(program: Vec<u8>) -> Cpu {
 //////////////////////////////////////////////////////////////////////
 
 #[test]
-fn test_load_instruction_DEX() {
-    let mut cpu = test_cpu();
-
-    cpu.x_reg = 0x82;
-    cpu.dex();
-    assert_eq!(cpu.x_reg, 0x81);
-    assert!(!cpu.get_flag(Zero));
-    assert!(cpu.get_flag(Negative));
-
-    cpu.x_reg = 1;
-    cpu.dex();
-    assert_eq!(cpu.x_reg, 0);
-    assert!(cpu.get_flag(Zero));
-    assert!(!cpu.get_flag(Negative));
-
-    cpu.dex();
-    assert_eq!(cpu.x_reg, 0xFF);
-
-}
-
-#[test]
-fn test_load_instruction_DEY() {
-    let mut cpu = test_cpu();
-
-    cpu.y_reg = 0x82;
-    cpu.dey();
-    assert_eq!(cpu.y_reg, 0x81);
-    assert!(!cpu.get_flag(Zero));
-    assert!(cpu.get_flag(Negative));
-
-    cpu.y_reg = 1;
-    cpu.dey();
-    assert_eq!(cpu.y_reg, 0);
-    assert!(cpu.get_flag(Zero));
-    assert!(!cpu.get_flag(Negative));
-
-    cpu.dey();
-    assert_eq!(cpu.y_reg, 0xFF);
-}
-
-#[test]
-fn test_load_instruction_INX() {
-    let mut cpu = test_cpu();
-
-    cpu.x_reg = 0x82;
-    cpu.inx();
-    assert_eq!(cpu.x_reg, 0x83);
-    assert!(!cpu.get_flag(Zero));
-    assert!(cpu.get_flag(Negative));
-
-    cpu.x_reg = 0xFF;
-    cpu.inx();
-    assert_eq!(cpu.x_reg, 0);
-    assert!(cpu.get_flag(Zero));
-    assert!(!cpu.get_flag(Negative));
-}
-
-#[test]
-fn test_load_instruction_INY() {
-    let mut cpu = test_cpu();
-
-    cpu.y_reg = 0x82;
-    cpu.iny();
-    assert_eq!(cpu.y_reg, 0x83);
-    assert!(!cpu.get_flag(Zero));
-    assert!(cpu.get_flag(Negative));
-
-    cpu.y_reg = 0xFF;
-    cpu.iny();
-    assert_eq!(cpu.y_reg, 0);
-    assert!(cpu.get_flag(Zero));
-    assert!(!cpu.get_flag(Negative));
-}
-
-#[test]
 fn test_load_instruction_LDA() {
     let mut cpu = test_cpu();
 
@@ -163,6 +88,39 @@ fn test_load_instruction_LDY() {
     assert_eq!(cpu.y_reg, 0x95);
     assert!(!cpu.get_flag(Zero));
     assert!(cpu.get_flag(Negative));
+}
+
+#[test]
+fn test_store_instruction_STA() {
+    let mut cpu = test_cpu();
+
+    cpu.acc = 0;
+    assert_eq!(cpu.sta(), 0);
+
+    cpu.acc = 0x95;
+    assert_eq!(cpu.sta(), 0x95);
+}
+
+#[test]
+fn test_store_instruction_STX() {
+    let mut cpu = test_cpu();
+
+    cpu.x_reg = 0;
+    assert_eq!(cpu.stx(), 0);
+
+    cpu.x_reg = 0x95;
+    assert_eq!(cpu.stx(), 0x95);
+}
+
+#[test]
+fn test_store_instruction_STY() {
+    let mut cpu = test_cpu();
+
+    cpu.y_reg = 0;
+    assert_eq!(cpu.sty(), 0);
+
+    cpu.y_reg = 0x95;
+    assert_eq!(cpu.sty(), 0x95);
 }
 
 #[test]
@@ -269,6 +227,110 @@ fn test_transfer_instruction_TYA() {
     cpu.y_reg = 0;
     cpu.tya();
     assert_eq!(cpu.y_reg, cpu.acc);
+    assert!(cpu.get_flag(Zero));
+    assert!(!cpu.get_flag(Negative));
+}
+
+#[test]
+fn test_decrement_instruction_DEC() {
+    let mut cpu = test_cpu();
+
+    assert_eq!(cpu.dec(0x82), 0x81);
+    assert!(!cpu.get_flag(Zero));
+    assert!(cpu.get_flag(Negative));
+
+    assert_eq!(cpu.dec(1), 0);
+    assert!(cpu.get_flag(Zero));
+    assert!(!cpu.get_flag(Negative));
+
+    cpu.dex();
+    assert_eq!(cpu.x_reg, 0xFF);
+}
+
+
+#[test]
+fn test_decrement_instruction_DEX() {
+    let mut cpu = test_cpu();
+
+    cpu.x_reg = 0x82;
+    cpu.dex();
+    assert_eq!(cpu.x_reg, 0x81);
+    assert!(!cpu.get_flag(Zero));
+    assert!(cpu.get_flag(Negative));
+
+    cpu.x_reg = 1;
+    cpu.dex();
+    assert_eq!(cpu.x_reg, 0);
+    assert!(cpu.get_flag(Zero));
+    assert!(!cpu.get_flag(Negative));
+
+    cpu.dex();
+    assert_eq!(cpu.x_reg, 0xFF);
+}
+
+#[test]
+fn test_decrement_instruction_DEY() {
+    let mut cpu = test_cpu();
+
+    cpu.y_reg = 0x82;
+    cpu.dey();
+    assert_eq!(cpu.y_reg, 0x81);
+    assert!(!cpu.get_flag(Zero));
+    assert!(cpu.get_flag(Negative));
+
+    cpu.y_reg = 1;
+    cpu.dey();
+    assert_eq!(cpu.y_reg, 0);
+    assert!(cpu.get_flag(Zero));
+    assert!(!cpu.get_flag(Negative));
+
+    cpu.dey();
+    assert_eq!(cpu.y_reg, 0xFF);
+}
+
+#[test]
+fn test_load_instruction_INC() {
+    let mut cpu = test_cpu();
+
+    assert_eq!(cpu.inc(0x82), 0x83);
+    assert!(!cpu.get_flag(Zero));
+    assert!(cpu.get_flag(Negative));
+
+    assert_eq!(cpu.inc(0xFF), 0);
+    assert!(cpu.get_flag(Zero));
+    assert!(!cpu.get_flag(Negative));
+}
+
+#[test]
+fn test_load_instruction_INX() {
+    let mut cpu = test_cpu();
+
+    cpu.x_reg = 0x82;
+    cpu.inx();
+    assert_eq!(cpu.x_reg, 0x83);
+    assert!(!cpu.get_flag(Zero));
+    assert!(cpu.get_flag(Negative));
+
+    cpu.x_reg = 0xFF;
+    cpu.inx();
+    assert_eq!(cpu.x_reg, 0);
+    assert!(cpu.get_flag(Zero));
+    assert!(!cpu.get_flag(Negative));
+}
+
+#[test]
+fn test_load_instruction_INY() {
+    let mut cpu = test_cpu();
+
+    cpu.y_reg = 0x82;
+    cpu.iny();
+    assert_eq!(cpu.y_reg, 0x83);
+    assert!(!cpu.get_flag(Zero));
+    assert!(cpu.get_flag(Negative));
+
+    cpu.y_reg = 0xFF;
+    cpu.iny();
+    assert_eq!(cpu.y_reg, 0);
     assert!(cpu.get_flag(Zero));
     assert!(!cpu.get_flag(Negative));
 }
@@ -424,13 +486,13 @@ fn test_addressing_mode_immediate() {
     assert_eq!(cpu.acc, 0x22);
 }
 
-#[test]
-fn test_addressing_mode_zero_page() {
-    let mut cpu = test_cpu_with_program(vec![
-        //
-    ]);
-    todo!("TODO test");
-}
+// TODO: test all addressing modes
+
+//////////////////////////////////////////////////////////////////////
+// TEST INSTRUCTION KINDS
+//////////////////////////////////////////////////////////////////////
+
+// TODO: test instruction kinds
 
 //////////////////////////////////////////////////////////////////////
 // TEST STATUS REGISTER

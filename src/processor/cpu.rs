@@ -23,14 +23,15 @@ pub struct Cpu {
 }
 
 // Instruction addressing modes
+#[derive(Clone)]
 enum AddressingMode {
     Implied,     // Implied Addressing
-    Accum,       // Accumulator Addressing
+    Accumulator, // Accumulator Addressing
     Immediate,   // Immediate Addressing
     Absolute,    // Absoulute Addressing
     ZeroPage,    // Zero Page Addressing
-    AbsX,        // Absoulute Indexed Addressing (X)
-    AbsY,        // Absoulute Indexed Addressing (Y)
+    AbsoluteX,   // Absoulute Indexed Addressing (X)
+    AbsoluteY,   // Absoulute Indexed Addressing (Y)
     ZpgX,        // Zero Page Indexed Addressing (X)
     ZpgY,        // Zero Page Indexed Addressing (Y)
     Relative,    // Relative Addressing
@@ -41,110 +42,116 @@ enum AddressingMode {
 use AddressingMode::*;
 
 #[derive(Clone)]
-pub enum ExecutableInstruction {
-    // transfer
-    Load(fn(&mut Cpu, u8)),
-    Transfer(fn(&mut Cpu)),
-    // decrement
-    Decrement(fn(&mut Cpu)),
-    // increment
-    Increment(fn(&mut Cpu)),
-    // arithmetic
-    Arithmetic
-    // logical
-    Logical(fn(&mut Cpu, u8)),
-    // flag instructions
-    Flag(fn(&mut Cpu)),
+pub enum InstructionKind {
+    SingleByte(fn(&mut Cpu)),
+    InternalExecOnMemoryData(fn(&mut Cpu, u8)),
+    StoreOp(fn(&mut Cpu) -> u8),
+    ReadModifyWrite(fn(&mut Cpu, u8) -> u8),
+    Misc,
 }
-use ExecutableInstruction::*;
-
-pub struct FetchedInstruction {
-    instruction: ExecutableInstruction,
-    cycles: u8,
-    address: u16,
-    data: Option<u8>,
-}
+use InstructionKind::*;
 
 /// An `Instruction` represents a single MOS 6502 instruction. It has
 /// a name, an addressing mode, number of bytes and a function pointer
 /// to execute it's corresponding CPU operation.
 pub struct Instruction {
     name: &'static str,
-    instruction: ExecutableInstruction,
+    instruction: InstructionKind,
     addressing: AddressingMode,
     cycles: u8,
 }
 
-macro_rules! zero_arg_instruction {
-    ($name:expr, $instruction_type:expr, Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
-        Instruction {
-            name: $name,
-            instruction: $instruction_type(|cpu| Cpu::$fun(cpu)),
-            addressing: $addr_mode,
-            cycles: $cycles,
-        }
-    };
-}
-
 macro_rules! instruction {
-    ($name:expr, Transfer, Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
-        zero_arg_instruction!($name, Transfer, Cpu::$fun, $addr_mode, $cycles)
-    };
-    ($name:expr, Decrement, Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
-        zero_arg_instruction!($name, Decrement, Cpu::$fun, $addr_mode, $cycles)
-    };
-    ($name:expr, Increment, Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
-        zero_arg_instruction!($name, Increment, Cpu::$fun, $addr_mode, $cycles)
-    };
-    ($name:expr, Flag, Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
-        zero_arg_instruction!($name, Transfer, Cpu::$fun, $addr_mode, $cycles)
-    };
-    ($name:expr, $instruction_type:expr, Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
+    ($name:expr, SingleByte, Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
         Instruction {
             name: $name,
-            instruction: $instruction_type(|cpu, operand| Cpu::$fun(cpu, operand)),
+            instruction: SingleByte(|cpu| Cpu::$fun(cpu)),
+            addressing: $addr_mode,
+            cycles: $cycles,
+        }
+    };
+    ($name:expr, InternalExecOnMemoryData, Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
+        Instruction {
+            name: $name,
+            instruction: InternalExecOnMemoryData(|cpu, operand| Cpu::$fun(cpu, operand)),
+            addressing: $addr_mode,
+            cycles: $cycles,
+        }
+    };
+    ($name:expr, StoreOp, Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
+        Instruction {
+            name: $name,
+            instruction: StoreOp(|cpu| Cpu::$fun(cpu)),
+            addressing: $addr_mode,
+            cycles: $cycles,
+        }
+    };
+    ($name:expr, ReadModifyWrite, Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
+        Instruction {
+            name: $name,
+            instruction: ReadModifyWrite(|cpu, operand| Cpu::$fun(cpu, operand)),
+            addressing: $addr_mode,
+            cycles: $cycles,
+        }
+    };
+    ($name:expr, Misc, Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
+        Instruction {
+            name: $name,
+            instruction: Misc,
             addressing: $addr_mode,
             cycles: $cycles,
         }
     };
 }
 
+#[rustfmt::skip]
 pub fn legal_opcode_instruction_set() -> HashMap<u8, Instruction> {
     let mut instruction_set = HashMap::new();
 
     // Transfer instructions
-    instruction_set.insert(0xA9, instruction!("LDA", Load, Cpu::lda, Immediate, 2));
-    instruction_set.insert(0xA2, instruction!("LDX", Load, Cpu::lda, Immediate, 2));
-    instruction_set.insert(0xA0, instruction!("LDY", Load, Cpu::lda, Immediate, 2));
+    instruction_set.insert(0xA9, instruction!("LDA", InternalExecOnMemoryData, Cpu::lda, Immediate, 2));
+    instruction_set.insert(0xA2, instruction!("LDX", InternalExecOnMemoryData, Cpu::ldx, Immediate, 2));
+    instruction_set.insert(0xA0, instruction!("LDY", InternalExecOnMemoryData, Cpu::ldy, Immediate, 2));
 
-    instruction_set.insert(0xAA, instruction!("TAX", Transfer, Cpu::tax, Implied, 2));
-    instruction_set.insert(0xA8, instruction!("TAY", Transfer, Cpu::tay, Implied, 2));
-    instruction_set.insert(0xBA, instruction!("TSX", Transfer, Cpu::tsx, Implied, 2));
-    instruction_set.insert(0x8A, instruction!("TXA", Transfer, Cpu::txa, Implied, 2));
-    instruction_set.insert(0x9A, instruction!("TXS", Transfer, Cpu::txs, Implied, 2));
-    instruction_set.insert(0x98, instruction!("TYA", Transfer, Cpu::tya, Implied, 2));
+    instruction_set.insert(0x85, instruction!("STA", StoreOp, Cpu::sta, ZeroPage, 2));
+    instruction_set.insert(0x86, instruction!("STX", StoreOp, Cpu::stx, ZeroPage, 2));
+    instruction_set.insert(0x84, instruction!("STY", StoreOp, Cpu::sty, ZeroPage, 2));
+
+    instruction_set.insert(0xAA, instruction!("TAX", SingleByte, Cpu::tax, Implied, 2));
+    instruction_set.insert(0xA8, instruction!("TAY", SingleByte, Cpu::tay, Implied, 2));
+    instruction_set.insert(0xBA, instruction!("TSX", SingleByte, Cpu::tsx, Implied, 2));
+    instruction_set.insert(0x8A, instruction!("TXA", SingleByte, Cpu::txa, Implied, 2));
+    instruction_set.insert(0x9A, instruction!("TXS", SingleByte, Cpu::txs, Implied, 2));
+    instruction_set.insert(0x98, instruction!("TYA", SingleByte, Cpu::tya, Implied, 2));
 
     // Decrements and increments
-    // instruction_set.insert(0xCA, instruction!("DEC", Decrement, Cpu::dec, Immediate, 2));
-    instruction_set.insert(0xCA, instruction!("DEX", Decrement, Cpu::dex, Immediate, 2));
-    instruction_set.insert(0x88, instruction!("DEY", Decrement, Cpu::dey, Immediate, 2));
-    // instruction_set.insert(0xCA, instruction!("INC", Increment, Cpu::inc, Immediate, 2));
-    instruction_set.insert(0xCA, instruction!("INX", Increment, Cpu::inx, Immediate, 2));
-    instruction_set.insert(0x88, instruction!("INY", Increment, Cpu::iny, Immediate, 2));
+    instruction_set.insert(0xC6, instruction!("DEC", ReadModifyWrite, Cpu::dec, ZeroPage, 2));
+    instruction_set.insert(0xCA, instruction!("DEX", SingleByte, Cpu::dex, Immediate, 2));
+    instruction_set.insert(0x88, instruction!("DEY", SingleByte, Cpu::dey, Immediate, 2));
+    instruction_set.insert(0xE6, instruction!("INC", ReadModifyWrite, Cpu::inc, ZeroPage, 2));
+    instruction_set.insert(0xCA, instruction!("INX", SingleByte, Cpu::inx, Immediate, 2));
+    instruction_set.insert(0x88, instruction!("INY", SingleByte, Cpu::iny, Immediate, 2));
 
     // Logical operations
-    instruction_set.insert(0x29, instruction!("AND", Logical, Cpu::and, Immediate, 2));
-    instruction_set.insert(0x49, instruction!("EOR", Logical, Cpu::eor, Immediate, 2));
-    instruction_set.insert(0x09, instruction!("ORA", Logical, Cpu::ora, Immediate, 2));
+    instruction_set.insert(0x29, instruction!("AND", InternalExecOnMemoryData, Cpu::and, Immediate, 2));
+    instruction_set.insert(0x49, instruction!("EOR", InternalExecOnMemoryData, Cpu::eor, Immediate, 2));
+    instruction_set.insert(0x09, instruction!("ORA", InternalExecOnMemoryData, Cpu::ora, Immediate, 2));
+
+    // Shift instructions
+    // instruction_set.insert(0x0A, instruction!("ASL", SingleByte, Cpu::asl, Accumulator, 2));
+    // instruction_set.insert(0x0A, instruction!("ASL", SingleByte, Cpu::asl, Accumulator, 2));
 
     // Flag instructions
-    instruction_set.insert(0x18, instruction!("CLC", Flag, Cpu::clc, Implied, 2));
-    instruction_set.insert(0xD8, instruction!("CLD", Flag, Cpu::cld, Implied, 2));
-    instruction_set.insert(0x58, instruction!("CLI", Flag, Cpu::cli, Implied, 2));
-    instruction_set.insert(0xB8, instruction!("CLV", Flag, Cpu::clv, Implied, 2));
-    instruction_set.insert(0x38, instruction!("SEC", Flag, Cpu::sec, Implied, 2));
-    instruction_set.insert(0xF8, instruction!("SED", Flag, Cpu::sed, Implied, 2));
-    instruction_set.insert(0x78, instruction!("SEI", Flag, Cpu::sei, Implied, 2));
+    instruction_set.insert(0x18, instruction!("CLC", SingleByte, Cpu::clc, Implied, 2));
+    instruction_set.insert(0xD8, instruction!("CLD", SingleByte, Cpu::cld, Implied, 2));
+    instruction_set.insert(0x58, instruction!("CLI", SingleByte, Cpu::cli, Implied, 2));
+    instruction_set.insert(0xB8, instruction!("CLV", SingleByte, Cpu::clv, Implied, 2));
+    instruction_set.insert(0x38, instruction!("SEC", SingleByte, Cpu::sec, Implied, 2));
+    instruction_set.insert(0xF8, instruction!("SED", SingleByte, Cpu::sed, Implied, 2));
+    instruction_set.insert(0x78, instruction!("SEI", SingleByte, Cpu::sei, Implied, 2));
+
+    // other
+    instruction_set.insert(0xEA, instruction!("NOP", SingleByte, Cpu::nop, Implied, 2));
 
     instruction_set
 }
@@ -154,7 +161,7 @@ pub enum StatusRegisterFlag {
     Carry = 1 << 0,
     Zero = 1 << 1,
     InterruptDisable = 1 << 2,
-    Decimal = 1 << 3,           // unused in the NES
+    Decimal = 1 << 3, // unused in the NES
     Break = 1 << 4,
     // bit 5 is unused and is always 1
     Overflow = 1 << 6,
@@ -180,20 +187,38 @@ impl Cpu {
     /// Fetch the instruction pointed by the program counter from
     /// memory and execute it atomically.
     pub fn execute(&mut self) {
-        let instruction = self.fetch();
-        match instruction.instruction {
-            // transfer
-            Load(fun) => fun(self, instruction.data.unwrap()),
-            Transfer(fun) => fun(self),
-            // decrements and increments
-            Decrement(fun) => fun(self),
-            Increment(fun) => fun(self),
-            // logical
-            Logical(fun) => fun(self, instruction.data.unwrap()),
-            // flag
-            Flag(fun) => fun(self),
+        let opcode = self.memory_read(self.pc);
+        let instruction = self
+            .instruction_set
+            .get(&opcode)
+            .unwrap_or_else(|| panic!("Invalid instruction '0x{:x}'", opcode));
+
+        let addressing = instruction.addressing.clone();
+        let cycles = instruction.cycles;
+        let instruction = instruction.instruction.clone();
+
+        match instruction {
+            SingleByte(fun) => {
+                // both address and data will be discarted
+                fun(self);
+            }
+            InternalExecOnMemoryData(fun) => {
+                let (_, data) = self.load(addressing);
+                fun(self, data);
+            }
+            StoreOp(fun) => {
+                let data = fun(self);
+                self.store(data, addressing);
+            }
+            ReadModifyWrite(fun) => {
+                let (_, data) = self.load(addressing.clone());
+                let result = fun(self, data);
+                self.store(result, addressing);
+            }
+            Misc => {}
         }
-        self.pc += instruction.cycles as u16;
+
+        self.pc += cycles as u16;
     }
 
     fn memory_read(&self, address: u16) -> u8 {
@@ -204,31 +229,30 @@ impl Cpu {
         self.bus.write(address, data);
     }
 
-    // Fetch the instruction pointer by the PC
-    fn fetch(&mut self) -> FetchedInstruction {
+    fn load(&mut self, addr_mode: AddressingMode) -> (u16, u8) {
         let opcode = self.memory_read(self.pc);
-        let instruction = self
-            .instruction_set
-            .get(&opcode)
-            .unwrap_or_else(|| panic!("Invalid instruction '0x{:x}'", opcode));
-
-        let (addr, data) = match instruction.addressing {
+        let (addr, data) = match addr_mode {
             Implied => {
                 let addr = self.pc + 1;
-                let data = None;
+                let data = opcode; // discarted
+                (addr, data)
+            }
+            Accumulator => {
+                let addr = self.pc + 1;
+                let data = self.acc;
                 (addr, data)
             }
             Immediate => {
                 let addr = self.pc + 1;
                 let data = self.memory_read(self.pc + 1);
-                (addr, Some(data))
+                (addr, data)
             }
             ZeroPage => {
                 // Effective address is 00, ADL
                 let adl = self.memory_read(self.pc + 1) as u16;
                 let addr = adl;
                 let data = self.memory_read(addr);
-                (addr, Some(data))
+                (addr, data)
             }
             Absolute => {
                 // Effective address is ADH, ADL
@@ -236,16 +260,27 @@ impl Cpu {
                 let adh = (self.memory_read(self.pc + 2) as u16) << 8;
                 let addr = adh | adl;
                 let data = self.memory_read(addr);
-                (addr, Some(data))
+                (addr, data)
             }
-            _ => (self.pc, None),
+            _ => todo!(),
         };
+        (addr, data)
+    }
 
-        FetchedInstruction {
-            instruction: instruction.instruction.clone(),
-            cycles: instruction.cycles,
-            address: addr,
-            data,
+    fn store(&mut self, data: u8, addr_mode: AddressingMode) {
+        match addr_mode {
+            ZeroPage => {
+                let adl = self.memory_read(self.pc + 1) as u16;
+                let addr = adl;
+                self.memory_write(addr, data);
+            }
+            Absolute => {
+                let adl = self.memory_read(self.pc + 1) as u16;
+                let adh = (self.memory_read(self.pc + 2) as u16) << 8;
+                let addr = adh | adl;
+                self.memory_write(addr, data);
+            }
+            _ => todo!(),
         }
     }
 
@@ -278,7 +313,6 @@ impl Cpu {
 
 // Instruction Set
 impl Cpu {
-
     // Transfer instructions
 
     /// LDA - Load Accumulator with Memory
@@ -296,7 +330,7 @@ impl Cpu {
         self.auto_set_flag(Zero, self.acc);
     }
 
-    /// Load Index X with Memory
+    /// LDX - Load Index X with Memory
     ///
     /// Operation:
     /// M -> X
@@ -311,7 +345,8 @@ impl Cpu {
         self.auto_set_flag(Zero, self.x_reg);
     }
 
-    /// Load Index Y with Memory
+    /// LDY - Load Index Y with Memory
+    ///
     /// Operation:
     /// M -> Y
     ///
@@ -323,6 +358,41 @@ impl Cpu {
 
         self.auto_set_flag(Negative, self.y_reg);
         self.auto_set_flag(Zero, self.y_reg);
+    }
+
+    /// STA - Store Accumulator in Memory
+    ///
+    /// Operation:
+    /// A -> M
+    ///
+    /// Status Register
+    /// N Z C I D V
+    /// - - - - - -
+    fn sta(&mut self) -> u8 {
+        self.acc
+    }
+
+    /// STX - Store Index X in Memory
+    ///
+    /// Operation:
+    /// X -> M
+    ///
+    /// Status Register
+    /// N Z C I D V
+    /// - - - - - -
+    fn stx(&mut self) -> u8 {
+        self.x_reg
+    }
+
+    /// STY - Store Index Y in Memory
+    /// Operation:
+    /// Y -> M
+    ///
+    /// Status Register
+    /// N Z C I D V
+    /// - - - - - -
+    fn sty(&mut self) -> u8 {
+        self.y_reg
     }
 
     /// TAX - Transfer Accumulator to Index X
@@ -417,10 +487,27 @@ impl Cpu {
 
     // Decrements and increments
 
+    /// DEC - Decrment Memory by One
+    ///
+    /// Operation:
+    /// M - 1 -> M
+    ///
+    /// Status Register
+    /// N Z C I D V
+    /// + + - - - -
+    fn dec(&mut self, operand: u8) -> u8 {
+        let (res, _) = operand.overflowing_sub(1);
+
+        self.auto_set_flag(Negative, res);
+        self.auto_set_flag(Zero, res);
+
+        res
+    }
+
     /// DEX - Decrment Index X by One
     ///
     /// Operation:
-    /// X + 1 -> X
+    /// X - 1 -> X
     ///
     /// Status Register
     /// N Z C I D V
@@ -436,7 +523,7 @@ impl Cpu {
     /// DEY - Decrment Index Y by One
     ///
     /// Operation:
-    /// Y + 1 -> Y
+    /// Y - 1 -> Y
     ///
     /// Status Register
     /// N Z C I D V
@@ -447,6 +534,23 @@ impl Cpu {
 
         self.auto_set_flag(Negative, self.y_reg);
         self.auto_set_flag(Zero, self.y_reg);
+    }
+
+    /// INC - Increment Memory by One
+    ///
+    /// Operation:
+    /// M + 1 -> M
+    ///
+    /// Status Register
+    /// N Z C I D V
+    /// + + - - - -
+    fn inc(&mut self, operand: u8) -> u8 {
+        let (res, _) = operand.overflowing_add(1);
+
+        self.auto_set_flag(Negative, res);
+        self.auto_set_flag(Zero, res);
+
+        res
     }
 
     /// INX - Incrment Index X by One
@@ -554,7 +658,7 @@ impl Cpu {
         self.set_flag(Decimal, false);
     }
 
-    /// CLI - Clear Interrupt Disable Bit 
+    /// CLI - Clear Interrupt Disable Bit
     ///
     /// Operation:
     /// 0 -> I
@@ -566,7 +670,7 @@ impl Cpu {
         self.set_flag(InterruptDisable, false);
     }
 
-    /// CLV - Clear Overflow Flag 
+    /// CLV - Clear Overflow Flag
     ///
     /// Operation:
     /// 0 -> V
@@ -602,7 +706,7 @@ impl Cpu {
         self.set_flag(Decimal, true);
     }
 
-    /// SEI - Set Interrupt Disable Status 
+    /// SEI - Set Interrupt Disable Status
     ///
     /// Operation:
     /// 1 -> I
@@ -614,4 +718,13 @@ impl Cpu {
         self.set_flag(InterruptDisable, true);
     }
 
+    /// NOP - No Operation
+    ///
+    /// Operation:
+    /// ---
+    ///
+    /// Status Register:
+    /// N Z C I D V
+    /// - - - - - -
+    fn nop(&mut self) {}
 }
