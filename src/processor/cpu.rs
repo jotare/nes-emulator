@@ -1,8 +1,11 @@
 #[cfg(test)]
 mod tests;
 
+use std::collections::HashMap;
+use std::rc::Rc;
+
 use super::bus::Bus;
-use std::{collections::HashMap, rc::Rc};
+use super::utils::bv;
 
 /// MOS 6502 processor emulator.
 ///
@@ -131,6 +134,10 @@ pub fn legal_opcode_instruction_set() -> HashMap<u8, Instruction> {
     instruction_set.insert(0xE6, instruction!("INC", ReadModifyWrite, Cpu::inc, ZeroPage, 2));
     instruction_set.insert(0xCA, instruction!("INX", SingleByte, Cpu::inx, Immediate, 2));
     instruction_set.insert(0x88, instruction!("INY", SingleByte, Cpu::iny, Immediate, 2));
+
+    // Arithmetic operations
+    instruction_set.insert(0x69, instruction!("ADC", InternalExecOnMemoryData, Cpu::adc, Immediate, 2));
+    instruction_set.insert(0xE9, instruction!("SBC", InternalExecOnMemoryData, Cpu::sbc, Immediate, 2));
 
     // Logical operations
     instruction_set.insert(0x29, instruction!("AND", InternalExecOnMemoryData, Cpu::and, Immediate, 2));
@@ -300,13 +307,9 @@ impl Cpu {
 
     fn auto_set_flag(&mut self, flag: StatusRegisterFlag, value: u8) {
         match flag {
-            Carry => {}
             Zero => self.set_flag(Zero, value == 0),
-            InterruptDisable => {}
-            Decimal => {}
-            Break => {}
-            Overflow => {}
             Negative => self.set_flag(Negative, bv(value, 7) != 0),
+            _ => panic!("Auto set flag {:?} not implemented", flag),
         }
     }
 }
@@ -583,6 +586,51 @@ impl Cpu {
 
         self.auto_set_flag(Negative, self.y_reg);
         self.auto_set_flag(Zero, self.y_reg);
+    }
+
+    // Arithmetic operations
+
+    /// ADC - Add Memory to Accumulator with Carry
+    ///
+    /// Operation:
+    /// A + M + C -> A, C
+    ///
+    /// Status Register:
+    /// N Z C I D V
+    /// + + + - - +
+    fn adc(&mut self, operand: u8) {
+        let carry = if self.flag(Carry) { 1 } else { 0 };
+
+        let res = self.acc as u16 + operand as u16 + carry;
+        let carry = (res & (1 << 8)) != 0;
+        let res = res as u8;
+        let overflow = bv(self.acc, 7) == bv(operand, 7) && bv(operand, 7) != bv(res, 7);
+
+        self.acc = res;
+        self.auto_set_flag(Negative, self.acc);
+        self.auto_set_flag(Zero, self.acc);
+        self.set_flag(Carry, carry);
+        self.set_flag(Overflow, overflow);
+    }
+
+    /// SBC - Substract Memory from Accumulator with Borrow
+    ///
+    /// Operation:
+    /// A - M - ^C -> A
+    ///
+    /// Status Register:
+    /// N Z C I D V
+    /// + + + - - +
+    fn sbc(&mut self, operand: u8) {
+        let carry = if self.flag(Carry) { 1 } else { 0 };
+        let (res, carry) = self.acc.overflowing_sub(operand + carry);
+        let overflow = bv(self.acc, 7) == bv(operand, 7) && bv(operand, 7) != bv(res, 7);
+
+        self.acc = res;
+        self.auto_set_flag(Negative, self.acc);
+        self.auto_set_flag(Zero, self.acc);
+        self.set_flag(Carry, carry);
+        self.set_flag(Overflow, overflow);
     }
 
     // Logic operations

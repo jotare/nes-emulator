@@ -336,6 +336,93 @@ fn test_load_instruction_INY() {
 }
 
 #[test]
+fn test_arithmetic_instruction_ADC() {
+    let mut cpu = test_cpu();
+
+    cpu.acc = 5;
+    cpu.set_flag(Carry, false);
+    cpu.adc(2);
+    assert_eq!(cpu.acc, 7);
+    assert!(!cpu.flag(Negative));
+    assert!(!cpu.flag(Zero));
+    assert!(!cpu.flag(Carry));
+    assert!(!cpu.flag(Overflow));
+
+    cpu.acc = 5;
+    cpu.set_flag(Carry, true);
+    cpu.adc(2);
+    assert_eq!(cpu.acc, 8);
+    assert!(!cpu.flag(Negative));
+    assert!(!cpu.flag(Zero));
+    assert!(!cpu.flag(Carry));
+    assert!(!cpu.flag(Overflow));
+
+    cpu.acc = 0xFF;
+    cpu.set_flag(Carry, false);
+    cpu.adc(1);
+    assert_eq!(cpu.acc, 0);
+    assert!(!cpu.flag(Negative));
+    assert!(cpu.flag(Zero));
+    assert!(cpu.flag(Carry));
+    assert!(!cpu.flag(Overflow));
+
+    cpu.acc = 0xFF;
+    cpu.set_flag(Carry, true);
+    cpu.adc(0xFF);
+    assert_eq!(cpu.acc, 0xFF);
+    assert!(cpu.flag(Negative));
+    assert!(!cpu.flag(Zero));
+    assert!(cpu.flag(Carry));
+    assert!(!cpu.flag(Overflow));
+
+    cpu.acc = 0x80;
+    cpu.set_flag(Carry, false);
+    cpu.adc(0x80);
+    assert!(cpu.flag(Overflow));
+}
+
+#[test]
+fn test_arithmetic_instruction_SBC() {
+    let mut cpu = test_cpu();
+
+    cpu.acc = 5;
+    cpu.set_flag(Carry, false);
+    cpu.sbc(2);
+    assert_eq!(cpu.acc, 3);
+    assert!(!cpu.flag(Negative));
+    assert!(!cpu.flag(Zero));
+    assert!(!cpu.flag(Carry));
+    assert!(!cpu.flag(Overflow));
+
+    cpu.acc = 5;
+    cpu.set_flag(Carry, true);
+    cpu.sbc(4);
+    assert_eq!(cpu.acc, 0);
+    assert!(!cpu.flag(Negative));
+    assert!(cpu.flag(Zero));
+    assert!(!cpu.flag(Carry));
+    assert!(!cpu.flag(Overflow));
+
+    cpu.acc = 0;
+    cpu.set_flag(Carry, false);
+    cpu.sbc(1);
+    assert_eq!(cpu.acc, 0xFF);
+    assert!(cpu.flag(Negative));
+    assert!(!cpu.flag(Zero));
+    assert!(cpu.flag(Carry));
+    assert!(cpu.flag(Overflow));
+
+    cpu.acc = 0;
+    cpu.set_flag(Carry, true);
+    cpu.sbc(1);
+    assert_eq!(cpu.acc, 0xFE);
+    assert!(cpu.flag(Negative));
+    assert!(!cpu.flag(Zero));
+    assert!(cpu.flag(Carry));
+    assert!(cpu.flag(Overflow));
+}
+
+#[test]
 fn test_AND_instruction() {
     let mut cpu = test_cpu();
     cpu.acc = 0xAC;

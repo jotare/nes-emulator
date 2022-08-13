@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.11.0
+------
+- Add ADC and SBC arithmetic instructions
+
 0.10.0
 ------
 - Remove ExecutableInstruction and split instruction depending on
