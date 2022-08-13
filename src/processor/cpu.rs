@@ -286,7 +286,7 @@ impl Cpu {
 
     // Status Register
 
-    fn get_flag(&self, flag: StatusRegisterFlag) -> bool {
+    fn flag(&self, flag: StatusRegisterFlag) -> bool {
         (self.sr & (flag as u8)) > 0
     }
 

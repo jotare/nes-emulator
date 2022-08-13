@@ -51,13 +51,13 @@ fn test_load_instruction_LDA() {
 
     cpu.lda(0);
     assert_eq!(cpu.acc, 0);
-    assert!(cpu.get_flag(Zero));
-    assert!(!cpu.get_flag(Negative));
+    assert!(cpu.flag(Zero));
+    assert!(!cpu.flag(Negative));
 
     cpu.lda(0x95);
     assert_eq!(cpu.acc, 0x95);
-    assert!(!cpu.get_flag(Zero));
-    assert!(cpu.get_flag(Negative));
+    assert!(!cpu.flag(Zero));
+    assert!(cpu.flag(Negative));
 }
 
 #[test]
@@ -66,13 +66,13 @@ fn test_load_instruction_LDX() {
 
     cpu.ldx(0);
     assert_eq!(cpu.x_reg, 0);
-    assert!(cpu.get_flag(Zero));
-    assert!(!cpu.get_flag(Negative));
+    assert!(cpu.flag(Zero));
+    assert!(!cpu.flag(Negative));
 
     cpu.ldx(0x95);
     assert_eq!(cpu.x_reg, 0x95);
-    assert!(!cpu.get_flag(Zero));
-    assert!(cpu.get_flag(Negative));
+    assert!(!cpu.flag(Zero));
+    assert!(cpu.flag(Negative));
 }
 
 #[test]
@@ -81,13 +81,13 @@ fn test_load_instruction_LDY() {
 
     cpu.ldy(0);
     assert_eq!(cpu.y_reg, 0);
-    assert!(cpu.get_flag(Zero));
-    assert!(!cpu.get_flag(Negative));
+    assert!(cpu.flag(Zero));
+    assert!(!cpu.flag(Negative));
 
     cpu.ldy(0x95);
     assert_eq!(cpu.y_reg, 0x95);
-    assert!(!cpu.get_flag(Zero));
-    assert!(cpu.get_flag(Negative));
+    assert!(!cpu.flag(Zero));
+    assert!(cpu.flag(Negative));
 }
 
 #[test]
@@ -131,14 +131,14 @@ fn test_transfer_instruction_TAX() {
     assert_ne!(cpu.acc, cpu.x_reg);
     cpu.tax();
     assert_eq!(cpu.acc, cpu.x_reg);
-    assert!(!cpu.get_flag(Zero));
-    assert!(cpu.get_flag(Negative));
+    assert!(!cpu.flag(Zero));
+    assert!(cpu.flag(Negative));
 
     cpu.acc = 0;
     cpu.tax();
     assert_eq!(cpu.acc, cpu.x_reg);
-    assert!(cpu.get_flag(Zero));
-    assert!(!cpu.get_flag(Negative));
+    assert!(cpu.flag(Zero));
+    assert!(!cpu.flag(Negative));
 }
 
 #[test]
@@ -149,14 +149,14 @@ fn test_transfer_instruction_TAY() {
     assert_ne!(cpu.acc, cpu.y_reg);
     cpu.tay();
     assert_eq!(cpu.acc, cpu.y_reg);
-    assert!(!cpu.get_flag(Zero));
-    assert!(cpu.get_flag(Negative));
+    assert!(!cpu.flag(Zero));
+    assert!(cpu.flag(Negative));
 
     cpu.acc = 0;
     cpu.tay();
     assert_eq!(cpu.acc, cpu.y_reg);
-    assert!(cpu.get_flag(Zero));
-    assert!(!cpu.get_flag(Negative));
+    assert!(cpu.flag(Zero));
+    assert!(!cpu.flag(Negative));
 }
 
 #[test]
@@ -167,14 +167,14 @@ fn test_transfer_instruction_TSX() {
     assert_ne!(cpu.sp, cpu.x_reg);
     cpu.tsx();
     assert_eq!(cpu.sp, cpu.x_reg);
-    assert!(!cpu.get_flag(Zero));
-    assert!(cpu.get_flag(Negative));
+    assert!(!cpu.flag(Zero));
+    assert!(cpu.flag(Negative));
 
     cpu.sp = 0;
     cpu.tsx();
     assert_eq!(cpu.sp, cpu.x_reg);
-    assert!(cpu.get_flag(Zero));
-    assert!(!cpu.get_flag(Negative));
+    assert!(cpu.flag(Zero));
+    assert!(!cpu.flag(Negative));
 }
 
 #[test]
@@ -185,14 +185,14 @@ fn test_transfer_instruction_TXA() {
     assert_ne!(cpu.x_reg, cpu.acc);
     cpu.txa();
     assert_eq!(cpu.x_reg, cpu.acc);
-    assert!(!cpu.get_flag(Zero));
-    assert!(cpu.get_flag(Negative));
+    assert!(!cpu.flag(Zero));
+    assert!(cpu.flag(Negative));
 
     cpu.x_reg = 0;
     cpu.txa();
     assert_eq!(cpu.x_reg, cpu.acc);
-    assert!(cpu.get_flag(Zero));
-    assert!(!cpu.get_flag(Negative));
+    assert!(cpu.flag(Zero));
+    assert!(!cpu.flag(Negative));
 }
 
 #[test]
@@ -203,14 +203,14 @@ fn test_transfer_instruction_TXS() {
     assert_ne!(cpu.x_reg, cpu.sp);
     cpu.txs();
     assert_eq!(cpu.x_reg, cpu.sp);
-    assert!(!cpu.get_flag(Zero));
-    assert!(cpu.get_flag(Negative));
+    assert!(!cpu.flag(Zero));
+    assert!(cpu.flag(Negative));
 
     cpu.x_reg = 0;
     cpu.txs();
     assert_eq!(cpu.x_reg, cpu.sp);
-    assert!(cpu.get_flag(Zero));
-    assert!(!cpu.get_flag(Negative));
+    assert!(cpu.flag(Zero));
+    assert!(!cpu.flag(Negative));
 }
 
 #[test]
@@ -221,14 +221,14 @@ fn test_transfer_instruction_TYA() {
     assert_ne!(cpu.y_reg, cpu.acc);
     cpu.tya();
     assert_eq!(cpu.y_reg, cpu.acc);
-    assert!(!cpu.get_flag(Zero));
-    assert!(cpu.get_flag(Negative));
+    assert!(!cpu.flag(Zero));
+    assert!(cpu.flag(Negative));
 
     cpu.y_reg = 0;
     cpu.tya();
     assert_eq!(cpu.y_reg, cpu.acc);
-    assert!(cpu.get_flag(Zero));
-    assert!(!cpu.get_flag(Negative));
+    assert!(cpu.flag(Zero));
+    assert!(!cpu.flag(Negative));
 }
 
 #[test]
@@ -236,12 +236,12 @@ fn test_decrement_instruction_DEC() {
     let mut cpu = test_cpu();
 
     assert_eq!(cpu.dec(0x82), 0x81);
-    assert!(!cpu.get_flag(Zero));
-    assert!(cpu.get_flag(Negative));
+    assert!(!cpu.flag(Zero));
+    assert!(cpu.flag(Negative));
 
     assert_eq!(cpu.dec(1), 0);
-    assert!(cpu.get_flag(Zero));
-    assert!(!cpu.get_flag(Negative));
+    assert!(cpu.flag(Zero));
+    assert!(!cpu.flag(Negative));
 
     cpu.dex();
     assert_eq!(cpu.x_reg, 0xFF);
@@ -255,14 +255,14 @@ fn test_decrement_instruction_DEX() {
     cpu.x_reg = 0x82;
     cpu.dex();
     assert_eq!(cpu.x_reg, 0x81);
-    assert!(!cpu.get_flag(Zero));
-    assert!(cpu.get_flag(Negative));
+    assert!(!cpu.flag(Zero));
+    assert!(cpu.flag(Negative));
 
     cpu.x_reg = 1;
     cpu.dex();
     assert_eq!(cpu.x_reg, 0);
-    assert!(cpu.get_flag(Zero));
-    assert!(!cpu.get_flag(Negative));
+    assert!(cpu.flag(Zero));
+    assert!(!cpu.flag(Negative));
 
     cpu.dex();
     assert_eq!(cpu.x_reg, 0xFF);
@@ -275,14 +275,14 @@ fn test_decrement_instruction_DEY() {
     cpu.y_reg = 0x82;
     cpu.dey();
     assert_eq!(cpu.y_reg, 0x81);
-    assert!(!cpu.get_flag(Zero));
-    assert!(cpu.get_flag(Negative));
+    assert!(!cpu.flag(Zero));
+    assert!(cpu.flag(Negative));
 
     cpu.y_reg = 1;
     cpu.dey();
     assert_eq!(cpu.y_reg, 0);
-    assert!(cpu.get_flag(Zero));
-    assert!(!cpu.get_flag(Negative));
+    assert!(cpu.flag(Zero));
+    assert!(!cpu.flag(Negative));
 
     cpu.dey();
     assert_eq!(cpu.y_reg, 0xFF);
@@ -293,12 +293,12 @@ fn test_load_instruction_INC() {
     let mut cpu = test_cpu();
 
     assert_eq!(cpu.inc(0x82), 0x83);
-    assert!(!cpu.get_flag(Zero));
-    assert!(cpu.get_flag(Negative));
+    assert!(!cpu.flag(Zero));
+    assert!(cpu.flag(Negative));
 
     assert_eq!(cpu.inc(0xFF), 0);
-    assert!(cpu.get_flag(Zero));
-    assert!(!cpu.get_flag(Negative));
+    assert!(cpu.flag(Zero));
+    assert!(!cpu.flag(Negative));
 }
 
 #[test]
@@ -308,14 +308,14 @@ fn test_load_instruction_INX() {
     cpu.x_reg = 0x82;
     cpu.inx();
     assert_eq!(cpu.x_reg, 0x83);
-    assert!(!cpu.get_flag(Zero));
-    assert!(cpu.get_flag(Negative));
+    assert!(!cpu.flag(Zero));
+    assert!(cpu.flag(Negative));
 
     cpu.x_reg = 0xFF;
     cpu.inx();
     assert_eq!(cpu.x_reg, 0);
-    assert!(cpu.get_flag(Zero));
-    assert!(!cpu.get_flag(Negative));
+    assert!(cpu.flag(Zero));
+    assert!(!cpu.flag(Negative));
 }
 
 #[test]
@@ -325,14 +325,14 @@ fn test_load_instruction_INY() {
     cpu.y_reg = 0x82;
     cpu.iny();
     assert_eq!(cpu.y_reg, 0x83);
-    assert!(!cpu.get_flag(Zero));
-    assert!(cpu.get_flag(Negative));
+    assert!(!cpu.flag(Zero));
+    assert!(cpu.flag(Negative));
 
     cpu.y_reg = 0xFF;
     cpu.iny();
     assert_eq!(cpu.y_reg, 0);
-    assert!(cpu.get_flag(Zero));
-    assert!(!cpu.get_flag(Negative));
+    assert!(cpu.flag(Zero));
+    assert!(!cpu.flag(Negative));
 }
 
 #[test]
@@ -343,20 +343,20 @@ fn test_AND_instruction() {
     // A AND 0xFF = A = 0xAC
     cpu.and(0xFF);
     assert_eq!(cpu.acc, 0xAC);
-    assert!(!cpu.get_flag(Zero));
-    assert!(cpu.get_flag(Negative));
+    assert!(!cpu.flag(Zero));
+    assert!(cpu.flag(Negative));
 
     // A AND 0x0F = 0x0C
     cpu.and(0x0F);
     assert_eq!(cpu.acc, 0x0C);
-    assert!(!cpu.get_flag(Zero));
-    assert!(!cpu.get_flag(Negative));
+    assert!(!cpu.flag(Zero));
+    assert!(!cpu.flag(Negative));
 
     // A AND 0x00 = 0x00
     cpu.and(0x00);
     assert_eq!(cpu.acc, 0x00);
-    assert!(cpu.get_flag(Zero));
-    assert!(!cpu.get_flag(Negative));
+    assert!(cpu.flag(Zero));
+    assert!(!cpu.flag(Negative));
 }
 
 #[test]
@@ -367,20 +367,20 @@ fn test_EOR_instruction() {
     // A EOR 0x88 = 0x67
     cpu.eor(0x88);
     assert_eq!(cpu.acc, 0x67);
-    assert!(!cpu.get_flag(Zero));
-    assert!(!cpu.get_flag(Negative));
+    assert!(!cpu.flag(Zero));
+    assert!(!cpu.flag(Negative));
 
     // A EOR 0x67 = 0x00
     cpu.eor(0x67);
     assert_eq!(cpu.acc, 0x00);
-    assert!(cpu.get_flag(Zero));
-    assert!(!cpu.get_flag(Negative));
+    assert!(cpu.flag(Zero));
+    assert!(!cpu.flag(Negative));
 
     // A EOR 0x80 = 0x80
     cpu.eor(0x80);
     assert_eq!(cpu.acc, 0x80);
-    assert!(!cpu.get_flag(Zero));
-    assert!(cpu.get_flag(Negative));
+    assert!(!cpu.flag(Zero));
+    assert!(cpu.flag(Negative));
 }
 
 #[test]
@@ -391,20 +391,20 @@ fn test_ORA_instruction() {
     // A ORA 0x00 = 0x00
     cpu.ora(0x00);
     assert_eq!(cpu.acc, 0x00);
-    assert!(cpu.get_flag(Zero));
-    assert!(!cpu.get_flag(Negative));
+    assert!(cpu.flag(Zero));
+    assert!(!cpu.flag(Negative));
 
     // A ORA 0xAB = 0xAB
     cpu.ora(0xAB);
     assert_eq!(cpu.acc, 0xAB);
-    assert!(!cpu.get_flag(Zero));
-    assert!(cpu.get_flag(Negative));
+    assert!(!cpu.flag(Zero));
+    assert!(cpu.flag(Negative));
 
     // A ORA 0xCC = 0xEF
     cpu.ora(0xCC);
     assert_eq!(cpu.acc, 0xEF);
-    assert!(!cpu.get_flag(Zero));
-    assert!(cpu.get_flag(Negative));
+    assert!(!cpu.flag(Zero));
+    assert!(cpu.flag(Negative));
 }
 
 #[test]
@@ -413,7 +413,7 @@ fn test_flag_instruction_CLC() {
 
     cpu.set_flag(Carry, true);
     cpu.clc();
-    assert!(!cpu.get_flag(Carry));
+    assert!(!cpu.flag(Carry));
 }
 
 #[test]
@@ -422,7 +422,7 @@ fn test_flag_instruction_CLD() {
 
     cpu.set_flag(Decimal, true);
     cpu.cld();
-    assert!(!cpu.get_flag(Decimal));
+    assert!(!cpu.flag(Decimal));
 }
 
 #[test]
@@ -431,7 +431,7 @@ fn test_flag_instruction_CLI() {
 
     cpu.set_flag(InterruptDisable, true);
     cpu.cli();
-    assert!(!cpu.get_flag(InterruptDisable));
+    assert!(!cpu.flag(InterruptDisable));
 }
 
 #[test]
@@ -440,7 +440,7 @@ fn test_flag_instruction_CLV() {
 
     cpu.set_flag(Overflow, true);
     cpu.clv();
-    assert!(!cpu.get_flag(Overflow));
+    assert!(!cpu.flag(Overflow));
 }
 
 #[test]
@@ -449,7 +449,7 @@ fn test_flag_instruction_SEC() {
 
     cpu.set_flag(Carry, false);
     cpu.sec();
-    assert!(cpu.get_flag(Carry));
+    assert!(cpu.flag(Carry));
 }
 
 #[test]
@@ -458,7 +458,7 @@ fn test_flag_instruction_SED() {
 
     cpu.set_flag(Decimal, false);
     cpu.sed();
-    assert!(cpu.get_flag(Decimal));
+    assert!(cpu.flag(Decimal));
 }
 
 #[test]
@@ -467,7 +467,7 @@ fn test_flag_instruction_SEI() {
 
     cpu.set_flag(InterruptDisable, false);
     cpu.sei();
-    assert!(cpu.get_flag(InterruptDisable));
+    assert!(cpu.flag(InterruptDisable));
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -511,10 +511,10 @@ fn test_status_register() {
     ];
 
     for flag in flags {
-        assert!(!cpu.get_flag(flag));
+        assert!(!cpu.flag(flag));
         cpu.set_flag(flag, true);
-        assert!(cpu.get_flag(flag));
+        assert!(cpu.flag(flag));
         cpu.set_flag(flag, false);
-        assert!(!cpu.get_flag(flag));
+        assert!(!cpu.flag(flag));
     }
 }
