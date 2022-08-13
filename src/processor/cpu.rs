@@ -144,9 +144,11 @@ pub fn legal_opcode_instruction_set() -> HashMap<u8, Instruction> {
     instruction_set.insert(0x49, instruction!("EOR", InternalExecOnMemoryData, Cpu::eor, Immediate, 2));
     instruction_set.insert(0x09, instruction!("ORA", InternalExecOnMemoryData, Cpu::ora, Immediate, 2));
 
-    // Shift instructions
+    // Shift and rotation instructions
     instruction_set.insert(0x0A, instruction!("ASL", SingleByte, Cpu::asl, Accumulator, 2));
     instruction_set.insert(0x4A, instruction!("LSR", SingleByte, Cpu::lsr, Accumulator, 2));
+    instruction_set.insert(0x2A, instruction!("ROL", SingleByte, Cpu::rol, Accumulator, 2));
+    instruction_set.insert(0x6A, instruction!("ROR", SingleByte, Cpu::ror, Accumulator, 2));
 
     // Flag instructions
     instruction_set.insert(0x18, instruction!("CLC", SingleByte, Cpu::clc, Implied, 2));
@@ -712,6 +714,40 @@ impl Cpu {
         self.auto_set_flag(Negative, self.acc);
         self.auto_set_flag(Zero, self.acc);
         self.set_flag(Carry, carry);
+    }
+
+    /// ROL - Rotate One Bit Left (Memory or Accumulator)
+    ///
+    /// Operation:
+    /// C <- [76543210] <- C
+    ///
+    /// Status Register:
+    /// N Z C I D V
+    /// + + + - - -
+    fn rol(&mut self) {
+        let new_carry = bv(self.acc, 7) != 0;
+        let curr_carry = if self.flag(Carry) { 1 } else { 0 };
+        self.acc = self.acc << 1 | curr_carry;
+        self.auto_set_flag(Negative, self.acc);
+        self.auto_set_flag(Zero, self.acc);
+        self.set_flag(Carry, new_carry);
+    }
+
+    /// ROR - Rotate One Bit Right (Memory or Accumulator)
+    ///
+    /// Operation:
+    /// C -> [76543210] -> C
+    ///
+    /// Status Register:
+    /// N Z C I D V
+    /// + + + - - -
+    fn ror(&mut self) {
+        let new_carry = bv(self.acc, 0) != 0;
+        let curr_carry = if self.flag(Carry) { 1 } else { 0 };
+        self.acc = self.acc >> 1 | (curr_carry << 7);
+        self.auto_set_flag(Negative, self.acc);
+        self.auto_set_flag(Zero, self.acc);
+        self.set_flag(Carry, new_carry);
     }
 
     // Flag instructions

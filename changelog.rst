@@ -5,6 +5,7 @@ CHANGELOG
 ------
 - Add ADC and SBC arithmetic instructions
 - Add ASL and LSR shift instructions
+- Add ROR and ROL rotate instructions
 
 0.10.0
 ------

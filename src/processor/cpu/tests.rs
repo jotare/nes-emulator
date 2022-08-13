@@ -539,6 +539,64 @@ fn test_shift_instruction_LSR() {
 }
 
 #[test]
+fn test_rotate_instruction_ROL() {
+    let mut cpu = test_cpu();
+
+    cpu.acc = 0b1111_0000;
+    cpu.set_flag(Carry, true);
+    cpu.rol();
+    assert_eq!(cpu.acc, 0b1110_0001);
+    assert!(!cpu.flag(Zero));
+    assert!(cpu.flag(Negative));
+    assert!(cpu.flag(Carry));
+
+    cpu.acc = 0b1000_0000;
+    cpu.set_flag(Carry, false);
+    cpu.rol();
+    assert_eq!(cpu.acc, 0);
+    assert!(cpu.flag(Zero));
+    assert!(!cpu.flag(Negative));
+    assert!(cpu.flag(Carry));
+
+    cpu.acc = 0b0000_1000;
+    cpu.set_flag(Carry, false);
+    cpu.rol();
+    assert_eq!(cpu.acc, 0b0001_0000);
+    assert!(!cpu.flag(Zero));
+    assert!(!cpu.flag(Negative));
+    assert!(!cpu.flag(Carry));
+}
+
+#[test]
+fn test_rotate_instruction_ROR() {
+    let mut cpu = test_cpu();
+
+    cpu.acc = 0b0000_1111;
+    cpu.set_flag(Carry, true);
+    cpu.ror();
+    assert_eq!(cpu.acc, 0b1000_0111);
+    assert!(!cpu.flag(Zero));
+    assert!(cpu.flag(Negative));
+    assert!(cpu.flag(Carry));
+
+    cpu.acc = 0b0000_0001;
+    cpu.set_flag(Carry, false);
+    cpu.ror();
+    assert_eq!(cpu.acc, 0);
+    assert!(cpu.flag(Zero));
+    assert!(!cpu.flag(Negative));
+    assert!(cpu.flag(Carry));
+
+    cpu.acc = 0b0001_0000;
+    cpu.set_flag(Carry, false);
+    cpu.ror();
+    assert_eq!(cpu.acc, 0b0000_1000);
+    assert!(!cpu.flag(Zero));
+    assert!(!cpu.flag(Negative));
+    assert!(!cpu.flag(Carry));
+}
+
+#[test]
 fn test_flag_instruction_CLC() {
     let mut cpu = test_cpu();
 
