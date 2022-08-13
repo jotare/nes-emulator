@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.12.0
+------
+- Add CMP, CPX and CPY comparaison instructions
+
 0.11.0
 ------
 - Add ADC and SBC arithmetic instructions

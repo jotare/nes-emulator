@@ -159,7 +159,12 @@ pub fn legal_opcode_instruction_set() -> HashMap<u8, Instruction> {
     instruction_set.insert(0xF8, instruction!("SED", SingleByte, Cpu::sed, Implied, 2));
     instruction_set.insert(0x78, instruction!("SEI", SingleByte, Cpu::sei, Implied, 2));
 
-    // other
+    // Comparaisons
+    instruction_set.insert(0xC9, instruction!("CMP", InternalExecOnMemoryData, Cpu::cmp, Immediate, 2));
+    instruction_set.insert(0xE0, instruction!("CPX", InternalExecOnMemoryData, Cpu::cpx, Immediate, 2));
+    instruction_set.insert(0xC0, instruction!("CPY", InternalExecOnMemoryData, Cpu::cpy, Immediate, 2));
+
+    // Other
     instruction_set.insert(0xEA, instruction!("NOP", SingleByte, Cpu::nop, Implied, 2));
 
     instruction_set

@@ -659,6 +659,74 @@ fn test_flag_instruction_SEI() {
     assert!(cpu.flag(InterruptDisable));
 }
 
+#[test]
+fn test_comparaison_instruction_CMP() {
+    let mut cpu = test_cpu();
+
+    cpu.acc = 10;
+    cpu.cmp(5);
+    assert!(!cpu.flag(Zero));
+    assert!(!cpu.flag(Negative));
+    assert!(cpu.flag(Carry));
+
+    cpu.acc = 5;
+    cpu.cmp(5);
+    assert!(cpu.flag(Zero));
+    assert!(!cpu.flag(Negative));
+    assert!(cpu.flag(Carry));
+
+    cpu.acc = 0x80;
+    cpu.cmp(0xA0);
+    assert!(!cpu.flag(Zero));
+    assert!(cpu.flag(Negative));
+    assert!(!cpu.flag(Carry));
+}
+
+#[test]
+fn test_comparaison_instruction_CPX() {
+    let mut cpu = test_cpu();
+    cpu.x_reg = 10;
+    cpu.cpx(5);
+    assert!(!cpu.flag(Zero));
+    assert!(!cpu.flag(Negative));
+    assert!(cpu.flag(Carry));
+
+    cpu.x_reg = 5;
+    cpu.cpx(5);
+    assert!(cpu.flag(Zero));
+    assert!(!cpu.flag(Negative));
+    assert!(cpu.flag(Carry));
+
+    cpu.x_reg = 0x80;
+    cpu.cpx(0xA0);
+    assert!(!cpu.flag(Zero));
+    assert!(cpu.flag(Negative));
+    assert!(!cpu.flag(Carry));
+}
+
+#[test]
+fn test_comparaison_instruction_CPY() {
+    let mut cpu = test_cpu();
+
+    cpu.y_reg = 10;
+    cpu.cpy(5);
+    assert!(!cpu.flag(Zero));
+    assert!(!cpu.flag(Negative));
+    assert!(cpu.flag(Carry));
+
+    cpu.y_reg = 5;
+    cpu.cpy(5);
+    assert!(cpu.flag(Zero));
+    assert!(!cpu.flag(Negative));
+    assert!(cpu.flag(Carry));
+
+    cpu.y_reg = 0x80;
+    cpu.cpy(0xA0);
+    assert!(!cpu.flag(Zero));
+    assert!(cpu.flag(Negative));
+    assert!(!cpu.flag(Carry));
+}
+
 //////////////////////////////////////////////////////////////////////
 // TEST ADDRESSING MODES
 //////////////////////////////////////////////////////////////////////
