@@ -247,7 +247,6 @@ fn test_decrement_instruction_DEC() {
     assert_eq!(cpu.x_reg, 0xFF);
 }
 
-
 #[test]
 fn test_decrement_instruction_DEX() {
     let mut cpu = test_cpu();
@@ -423,7 +422,7 @@ fn test_arithmetic_instruction_SBC() {
 }
 
 #[test]
-fn test_AND_instruction() {
+fn test_logical_instruction_AND() {
     let mut cpu = test_cpu();
     cpu.acc = 0xAC;
 
@@ -447,7 +446,7 @@ fn test_AND_instruction() {
 }
 
 #[test]
-fn test_EOR_instruction() {
+fn test_logical_instruction_EOR() {
     let mut cpu = test_cpu();
     cpu.acc = 0xEF;
 
@@ -471,7 +470,7 @@ fn test_EOR_instruction() {
 }
 
 #[test]
-fn test_ORA_instruction() {
+fn test_logical_instruction_ORA() {
     let mut cpu = test_cpu();
     cpu.acc = 0x00;
 
@@ -492,6 +491,51 @@ fn test_ORA_instruction() {
     assert_eq!(cpu.acc, 0xEF);
     assert!(!cpu.flag(Zero));
     assert!(cpu.flag(Negative));
+}
+
+#[test]
+fn test_shift_instruction_ASL() {
+    let mut cpu = test_cpu();
+
+    cpu.acc = 2;
+    cpu.asl();
+    assert_eq!(cpu.acc, 4);
+    assert!(!cpu.flag(Zero));
+    assert!(!cpu.flag(Negative));
+    assert!(!cpu.flag(Carry));
+
+    cpu.acc = 0x40;
+    cpu.asl();
+    assert_eq!(cpu.acc, 0x80);
+    assert!(!cpu.flag(Zero));
+    assert!(cpu.flag(Negative));
+    assert!(!cpu.flag(Carry));
+
+    cpu.acc = 0x80;
+    cpu.asl();
+    assert_eq!(cpu.acc, 0);
+    assert!(cpu.flag(Zero));
+    assert!(!cpu.flag(Negative));
+    assert!(cpu.flag(Carry));
+}
+
+#[test]
+fn test_shift_instruction_LSR() {
+    let mut cpu = test_cpu();
+
+    cpu.acc = 1;
+    cpu.lsr();
+    assert_eq!(cpu.acc, 0);
+    assert!(cpu.flag(Zero));
+    assert!(!cpu.flag(Negative));
+    assert!(cpu.flag(Carry));
+
+    cpu.acc = 0x40;
+    cpu.lsr();
+    assert_eq!(cpu.acc, 0x20);
+    assert!(!cpu.flag(Zero));
+    assert!(!cpu.flag(Negative));
+    assert!(!cpu.flag(Carry));
 }
 
 #[test]

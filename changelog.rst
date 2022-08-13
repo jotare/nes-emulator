@@ -4,6 +4,7 @@ CHANGELOG
 0.11.0
 ------
 - Add ADC and SBC arithmetic instructions
+- Add ASL and LSR shift instructions
 
 0.10.0
 ------

@@ -145,8 +145,8 @@ pub fn legal_opcode_instruction_set() -> HashMap<u8, Instruction> {
     instruction_set.insert(0x09, instruction!("ORA", InternalExecOnMemoryData, Cpu::ora, Immediate, 2));
 
     // Shift instructions
-    // instruction_set.insert(0x0A, instruction!("ASL", SingleByte, Cpu::asl, Accumulator, 2));
-    // instruction_set.insert(0x0A, instruction!("ASL", SingleByte, Cpu::asl, Accumulator, 2));
+    instruction_set.insert(0x0A, instruction!("ASL", SingleByte, Cpu::asl, Accumulator, 2));
+    instruction_set.insert(0x4A, instruction!("LSR", SingleByte, Cpu::lsr, Accumulator, 2));
 
     // Flag instructions
     instruction_set.insert(0x18, instruction!("CLC", SingleByte, Cpu::clc, Implied, 2));
@@ -678,6 +678,40 @@ impl Cpu {
 
         self.auto_set_flag(Negative, self.acc);
         self.auto_set_flag(Zero, self.acc);
+    }
+
+    // Shift & Rotate instructions
+
+    /// ASL - Shift Left One Bit (Memory or Accumulator)
+    ///
+    /// Operation:
+    /// C <- [76543210] <- 0
+    ///
+    /// Status Register:
+    /// N Z C I D V
+    /// + + + - - -
+    fn asl(&mut self) {
+        let carry = bv(self.acc, 7) != 0;
+        self.acc <<= 1;
+        self.auto_set_flag(Negative, self.acc);
+        self.auto_set_flag(Zero, self.acc);
+        self.set_flag(Carry, carry);
+    }
+
+    /// LSR - Shift One Bit Right (Memory or Accumulator)
+    ///
+    /// Operation:
+    /// 0 -> [76543210] -> C
+    ///
+    /// Status Register:
+    /// N Z C I D V
+    /// 0 + + - - -
+    fn lsr(&mut self) {
+        let carry = bv(self.acc, 0) != 0;
+        self.acc >>= 1;
+        self.auto_set_flag(Negative, self.acc);
+        self.auto_set_flag(Zero, self.acc);
+        self.set_flag(Carry, carry);
     }
 
     // Flag instructions
