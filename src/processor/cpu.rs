@@ -884,6 +884,53 @@ impl Cpu {
         self.set_flag(InterruptDisable, true);
     }
 
+    // Comparaisons
+
+    fn generic_cmp(&mut self, a: u8, b: u8) {
+        let (res, _) = a.overflowing_sub(b);
+        self.auto_set_flag(Negative, res);
+        self.auto_set_flag(Zero, res);
+        self.set_flag(Carry, a >= b);
+    }
+
+    /// CMP - Compare Memory with Accumulator
+    ///
+    /// Operation:
+    /// A - M
+    ///
+    /// Status Register:
+    /// N Z C I D V
+    /// + + + - - -
+    fn cmp(&mut self, operand: u8) {
+        self.generic_cmp(self.acc, operand);
+    }
+
+    /// CPX - Compare Memory and Index X
+    ///
+    /// Operation:
+    /// X - M
+    ///
+    /// Status Register:
+    /// N Z C I D V
+    /// + + + - - -
+    fn cpx(&mut self, operand: u8) {
+        self.generic_cmp(self.x_reg, operand);
+    }
+
+    /// CPY - Compare Memory and Index Y
+    ///
+    /// Operation:
+    /// Y - M
+    ///
+    /// Status Register:
+    /// N Z C I D V
+    /// + + + - - -
+    fn cpy(&mut self, operand: u8) {
+        self.generic_cmp(self.y_reg, operand);
+    }
+
+    // Other
+
     /// NOP - No Operation
     ///
     /// Operation:
