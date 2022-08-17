@@ -35,11 +35,11 @@ enum AddressingMode {
     ZeroPage,    // Zero Page Addressing
     AbsoluteX,   // Absoulute Indexed Addressing (X)
     AbsoluteY,   // Absoulute Indexed Addressing (Y)
-    ZpgX,        // Zero Page Indexed Addressing (X)
-    ZpgY,        // Zero Page Indexed Addressing (Y)
+    ZeroPageX,   // Zero Page Indexed Addressing (X)
+    ZeroPageY,   // Zero Page Indexed Addressing (Y)
     Relative,    // Relative Addressing
-    IndX,        // Zero Page Indexed Indirect Addressing (X)
-    IndY,        // Zero Page Indexed Indirect Addressing (Y)
+    IndirectX,   // Zero Page Indexed Indirect Addressing (X)
+    IndirectY,   // Zero Page Indexed Indirect Addressing (Y)
     AbsIndirect, // Absolute Indirect Addressing (Jump instructions only)
 }
 use AddressingMode::*;
@@ -276,26 +276,69 @@ impl Cpu {
                 let data = self.memory_read(addr);
                 (addr, data)
             }
+            IndirectX => {
+                // page zero base address
+                let bal = self.memory_read(self.pc + 1) as u16;
+                let adl = self.memory_read(bal + (self.x_reg as u16)) as u16;
+                let adh = self.memory_read(bal + (self.x_reg as u16) + 1) as u16;
+                let addr = (adh << 8) | adl;
+                let data = self.memory_read(addr);
+                (addr, data)
+            }
+            // TODO: AbsoluteX, AbsoluteY
+            ZeroPageX => {
+                let bal = self.memory_read(self.pc + 1) as u16;
+                let addr = bal + self.x_reg as u16;
+                let data = self.memory_read(addr);
+                (addr, data)
+            }
+            ZeroPageY => {
+                let bal = self.memory_read(self.pc + 1) as u16;
+                let addr = bal + self.y_reg as u16;
+                let data = self.memory_read(addr);
+                (addr, data)
+            }
+            // TODO: IndirectY
             _ => todo!(),
         };
         (addr, data)
     }
 
     fn store(&mut self, data: u8, addr_mode: AddressingMode) {
-        match addr_mode {
+        let addr = match addr_mode {
             ZeroPage => {
                 let adl = self.memory_read(self.pc + 1) as u16;
                 let addr = adl;
-                self.memory_write(addr, data);
+                addr
             }
             Absolute => {
                 let adl = self.memory_read(self.pc + 1) as u16;
                 let adh = (self.memory_read(self.pc + 2) as u16) << 8;
                 let addr = adh | adl;
-                self.memory_write(addr, data);
+                addr
             }
+            IndirectX => {
+                let bal = self.memory_read(self.pc + 1) as u16;
+                let adl = self.memory_read(bal + (self.x_reg as u16)) as u16;
+                let adh = self.memory_read(bal + (self.x_reg as u16) + 1) as u16;
+                let addr = (adh << 8) | adl;
+                addr
+            }
+            // TODO: AbsoluteX, AbsoluteY
+            ZeroPageX => {
+                let bal = self.memory_read(self.pc + 1) as u16;
+                let addr = (bal + (self.x_reg as u16)) & 0x00FF;
+                addr
+            }
+            ZeroPageY => {
+                let bal = self.memory_read(self.pc + 1) as u16;
+                let addr = (bal + (self.y_reg as u16)) & 0x00FF;
+                addr
+            }
+            // TODO: IndirectY
             _ => todo!(),
-        }
+        };
+        self.memory_write(addr, data);
     }
 
     // Status Register
