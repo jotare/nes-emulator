@@ -26,7 +26,7 @@ pub struct Cpu {
 }
 
 // Instruction addressing modes
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum AddressingMode {
     Implied,     // Implied Addressing
     Accumulator, // Accumulator Addressing
@@ -37,10 +37,8 @@ enum AddressingMode {
     AbsoluteY,   // Absoulute Indexed Addressing (Y)
     ZeroPageX,   // Zero Page Indexed Addressing (X)
     ZeroPageY,   // Zero Page Indexed Addressing (Y)
-    Relative,    // Relative Addressing
     IndirectX,   // Zero Page Indexed Indirect Addressing (X)
     IndirectY,   // Zero Page Indexed Indirect Addressing (Y)
-    AbsIndirect, // Absolute Indirect Addressing (Jump instructions only)
 }
 use AddressingMode::*;
 
@@ -285,7 +283,20 @@ impl Cpu {
                 let data = self.memory_read(addr);
                 (addr, data)
             }
-            // TODO: AbsoluteX, AbsoluteY
+            AbsoluteX => {
+                let bal = self.memory_read(self.pc + 1) as u16;
+                let bah = self.memory_read(self.pc + 2) as u16;
+                let addr = ((bah << 8) | bal) + self.x_reg as u16;
+                let data = self.memory_read(addr);
+                (addr, data)
+            }
+            AbsoluteY => {
+                let bal = self.memory_read(self.pc + 1) as u16;
+                let bah = self.memory_read(self.pc + 2) as u16;
+                let addr = ((bah << 8) | bal) + self.y_reg as u16;
+                let data = self.memory_read(addr);
+                (addr, data)
+            }
             ZeroPageX => {
                 let bal = self.memory_read(self.pc + 1) as u16;
                 let addr = bal + self.x_reg as u16;
@@ -298,8 +309,14 @@ impl Cpu {
                 let data = self.memory_read(addr);
                 (addr, data)
             }
-            // TODO: IndirectY
-            _ => todo!(),
+            IndirectY => {
+                let ial = self.memory_read(self.pc + 1) as u16;
+                let bal = self.memory_read(ial) as u16;
+                let bah = self.memory_read(ial + 1) as u16;
+                let addr = ((bah << 8) | bal) + self.y_reg as u16;
+                let data = self.memory_read(addr);
+                (addr, data)
+            }
         };
         (addr, data)
     }
@@ -324,7 +341,8 @@ impl Cpu {
                 let addr = (adh << 8) | adl;
                 addr
             }
-            // TODO: AbsoluteX, AbsoluteY
+            AbsoluteX => { todo!(); }
+            AbsoluteY => { todo!(); }
             ZeroPageX => {
                 let bal = self.memory_read(self.pc + 1) as u16;
                 let addr = (bal + (self.x_reg as u16)) & 0x00FF;
@@ -335,8 +353,10 @@ impl Cpu {
                 let addr = (bal + (self.y_reg as u16)) & 0x00FF;
                 addr
             }
-            // TODO: IndirectY
-            _ => todo!(),
+            IndirectY => { todo!(); }
+            _ => {
+                panic!("Invalid store addressing mode: {:?}", addr_mode);
+            }
         };
         self.memory_write(addr, data);
     }
