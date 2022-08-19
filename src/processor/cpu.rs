@@ -184,16 +184,27 @@ use StatusRegisterFlag::*;
 impl Cpu {
     /// Create a new CPU and connect it to a `Memory`.
     pub fn new(bus: Rc<dyn Bus>) -> Self {
-        Self {
+        let mut new = Self {
             acc: 0,
             x_reg: 0,
             y_reg: 0,
-            sp: 0,
+            sp: 0xFF, // 256 byte stack between 0x0100 - 0x01FF. Stack Pointer 0x00 - 0xFF
             pc: 0,
             sr: 0,
             bus,
             instruction_set: legal_opcode_instruction_set(),
-        }
+        };
+        new.reset();
+        new
+    }
+
+    pub fn reset(&mut self) {
+        self.acc = 0;
+        self.x_reg = 0;
+        self.y_reg = 0;
+        self.sp = 0xFF;
+        self.pc = 0;
+        self.sr = 0;
     }
 
     /// Fetch the instruction pointed by the program counter from
