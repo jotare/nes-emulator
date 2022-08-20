@@ -1,6 +1,11 @@
 CHANGELOG
 =========
 
+0.13.0
+------
+- Add more addressing modes to load and store operations (wo/ tests)
+- Add reset to CPU
+
 0.12.0
 ------
 - Add CMP, CPX and CPY comparaison instructions
