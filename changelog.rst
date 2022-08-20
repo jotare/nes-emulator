@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.14.0
+------
+- Add branch instructions (wo/ tests)
+
 0.13.0
 ------
 - Add more addressing modes to load and store operations (wo/ tests)

@@ -161,6 +161,16 @@ pub fn legal_opcode_instruction_set() -> HashMap<u8, Instruction> {
     instruction_set.insert(0xC9, instruction!("CMP", InternalExecOnMemoryData, Cpu::cmp, Immediate, 2));
     instruction_set.insert(0xE0, instruction!("CPX", InternalExecOnMemoryData, Cpu::cpx, Immediate, 2));
     instruction_set.insert(0xC0, instruction!("CPY", InternalExecOnMemoryData, Cpu::cpy, Immediate, 2));
+    // Conditional branch instructions
+    instruction_set.insert(0x90, instruction!("BCC", Misc, Cpu::bcc, Relative, 2));
+    instruction_set.insert(0xB0, instruction!("BCS", Misc, Cpu::bcs, Relative, 2));
+    instruction_set.insert(0xF0, instruction!("BEQ", Misc, Cpu::beq, Relative, 2));
+    instruction_set.insert(0x30, instruction!("BMI", Misc, Cpu::bmi, Relative, 2));
+    instruction_set.insert(0xD0, instruction!("BNE", Misc, Cpu::bne, Relative, 2));
+    instruction_set.insert(0x10, instruction!("BPL", Misc, Cpu::bpl, Relative, 2));
+    instruction_set.insert(0x50, instruction!("BVC", Misc, Cpu::bvc, Relative, 2));
+    instruction_set.insert(0x70, instruction!("BVS", Misc, Cpu::bvs, Relative, 2));
+
 
     // Other
     instruction_set.insert(0xEA, instruction!("NOP", SingleByte, Cpu::nop, Implied, 2));
@@ -958,6 +968,111 @@ impl Cpu {
     /// + + + - - -
     fn cpy(&mut self, operand: u8) {
         self.generic_cmp(self.y_reg, operand);
+    }
+
+    // Conditional branch
+
+    fn branch(&mut self, condition: bool, offset: u8) {
+        if condition {
+            let carry = if self.flag(Carry) { 1 } else { 0 };
+            self.pc += (offset as u16) + carry;
+        }
+    }
+
+    /// BCC - Branch on Carry Clear
+    ///
+    /// Operation:
+    /// branch on C = 0
+    ///
+    /// Status Register:
+    /// N Z C I D V
+    /// - - - - - -
+    fn bcc(&mut self, offset: u8) {
+        self.branch(!self.flag(Carry), offset);
+    }
+
+    /// BCS - Branch on Carry Set
+    ///
+    /// Operation:
+    /// branch on C = 1
+    ///
+    /// Status Register:
+    /// N Z C I D V
+    /// - - - - - -
+    fn bcs(&mut self, offset: u8) {
+        self.branch(self.flag(Carry), offset);
+    }
+
+    /// BEQ - Branch on Result Zero
+    ///
+    /// Operation:
+    /// branch on Z = 1
+    ///
+    /// Status Register:
+    /// N Z C I D V
+    /// - - - - - -
+    fn beq(&mut self, offset: u8) {
+        self.branch(self.flag(Zero), offset);
+    }
+
+    /// BMI - Branch on Result Minus
+    ///
+    /// Operation:
+    /// branch on N = 1
+    ///
+    /// Status Register:
+    /// N Z C I D V
+    /// - - - - - -
+    fn bmi(&mut self, offset: u8) {
+        self.branch(self.flag(Negative), offset);
+    }
+
+    /// BNE - Branch on Result not Zero
+    ///
+    /// Operation:
+    /// branch on Z = 0
+    ///
+    /// Status Register:
+    /// N Z C I D V
+    /// - - - - - -
+    fn bne(&mut self, offset: u8) {
+        self.branch(!self.flag(Zero), offset);
+    }
+
+    /// BPL - Branch on Result Plus
+    ///
+    /// Operation:
+    /// branch on N = 0
+    ///
+    /// Status Register:
+    /// N Z C I D V
+    /// - - - - - -
+    fn bpl(&mut self, offset: u8) {
+        self.branch(!self.flag(Negative), offset);
+    }
+
+    /// BVC - Branch on Overflow Clear
+    ///
+    /// Operation:
+    /// branch on V = 0
+    ///
+    /// Status Register:
+    /// N Z C I D V
+    /// - - - - - -
+    fn bvc(&mut self, offset: u8) {
+        self.branch(!self.flag(Overflow), offset);
+    }
+
+    /// BVS - Branch on Overflow Set
+    ///
+    /// Operation:
+    /// branch on V = 1
+    ///
+    /// Status Register:
+    /// N Z C I D V
+    /// - - - - - -
+    fn bvs(&mut self, offset: u8) {
+        self.branch(self.flag(Overflow), offset);
     }
 
     // Other
