@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.15.0
+------
+- Add BIT instruction
+
 0.14.0
 ------
 - Add branch instructions (wo/ tests)

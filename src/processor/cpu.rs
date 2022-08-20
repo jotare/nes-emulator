@@ -173,6 +173,7 @@ pub fn legal_opcode_instruction_set() -> HashMap<u8, Instruction> {
 
 
     // Other
+    instruction_set.insert(0x24, instruction!("BIT", Misc, Cpu::bit, ZeroPage, 3));
     instruction_set.insert(0xEA, instruction!("NOP", SingleByte, Cpu::nop, Implied, 2));
 
     instruction_set
@@ -1076,6 +1077,25 @@ impl Cpu {
     }
 
     // Other
+
+    /// BIT - Test Bits in Memory with Accumulator
+    ///
+    /// bits 7 and 6 of operand are transfered to bit 7 and 6 of SR
+    /// (N,V); the zero-flag is set to the result of operand AND
+    /// accumulator.
+    ///
+    /// Operation:
+    /// A AND M, M7 -> N, M6 -> V
+    ///
+    /// Status Register:
+    ///  N Z C I D V
+    /// M7 + - - - M6
+    fn bit(&mut self, operand: u8) {
+        let res = self.acc & operand;
+        self.set_flag(Negative, bv(operand, 7) != 0);
+        self.set_flag(Overflow, bv(operand, 6) != 0);
+        self.auto_set_flag(Zero, res);
+    }
 
     /// NOP - No Operation
     ///
