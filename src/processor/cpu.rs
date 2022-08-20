@@ -708,7 +708,7 @@ impl Cpu {
     /// SBC - Substract Memory from Accumulator with Borrow
     ///
     /// Operation:
-    /// A - M - ^C -> A
+    /// A - M - (1 - C) -> A
     ///
     /// Status Register:
     /// N Z C I D V
