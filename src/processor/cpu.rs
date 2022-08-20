@@ -345,36 +345,36 @@ impl Cpu {
     fn store(&mut self, data: u8, addr_mode: AddressingMode) {
         let addr = match addr_mode {
             ZeroPage => {
-                let adl = self.memory_read(self.pc + 1) as u16;
-                let addr = adl;
-                addr
+                self.memory_read(self.pc + 1) as u16
             }
             Absolute => {
                 let adl = self.memory_read(self.pc + 1) as u16;
                 let adh = (self.memory_read(self.pc + 2) as u16) << 8;
-                let addr = adh | adl;
-                addr
+                adh | adl
             }
             IndirectX => {
                 let bal = self.memory_read(self.pc + 1) as u16;
                 let adl = self.memory_read(bal + (self.x_reg as u16)) as u16;
                 let adh = self.memory_read(bal + (self.x_reg as u16) + 1) as u16;
-                let addr = (adh << 8) | adl;
-                addr
+                (adh << 8) | adl
             }
-            AbsoluteX => { todo!(); }
-            AbsoluteY => { todo!(); }
+            AbsoluteX => {
+                todo!();
+            }
+            AbsoluteY => {
+                todo!();
+            }
             ZeroPageX => {
                 let bal = self.memory_read(self.pc + 1) as u16;
-                let addr = (bal + (self.x_reg as u16)) & 0x00FF;
-                addr
+                (bal + (self.x_reg as u16)) & 0x00FF
             }
             ZeroPageY => {
                 let bal = self.memory_read(self.pc + 1) as u16;
-                let addr = (bal + (self.y_reg as u16)) & 0x00FF;
-                addr
+                (bal + (self.y_reg as u16)) & 0x00FF
             }
-            IndirectY => { todo!(); }
+            IndirectY => {
+                todo!();
+            }
             _ => {
                 panic!("Invalid store addressing mode: {:?}", addr_mode);
             }
