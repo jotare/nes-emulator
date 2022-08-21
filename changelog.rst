@@ -6,6 +6,7 @@ CHANGELOG
 - Add push and pull misc instructions
 - Add branch misc instructions
 - Add jump misc instruction
+- Add call and return misc instructions
 
 0.17.0
 ------

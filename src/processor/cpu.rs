@@ -60,6 +60,8 @@ pub enum MiscInstructionKind {
     Pull(fn(&mut Cpu)),
     Jump(fn(&mut Cpu, u16)),
     Branch(fn(&mut Cpu, u8)),
+    Call(fn(&mut Cpu, u16)),
+    Return(fn(&mut Cpu)),
 }
 use MiscInstructionKind::*;
 
@@ -134,6 +136,22 @@ macro_rules! instruction {
         Instruction {
             name: $name,
             instruction: Misc(Jump(|cpu, address| Cpu::$fun(cpu, address))),
+            addressing: $addr_mode,
+            cycles: $cycles,
+        }
+    };
+    ($name:expr, Misc(Call), Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
+        Instruction {
+            name: $name,
+            instruction: Misc(Call(|cpu, address| Cpu::$fun(cpu, address))),
+            addressing: $addr_mode,
+            cycles: $cycles,
+        }
+    };
+    ($name:expr, Misc(Return), Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
+        Instruction {
+            name: $name,
+            instruction: Misc(Return(|cpu| Cpu::$fun(cpu))),
             addressing: $addr_mode,
             cycles: $cycles,
         }
@@ -335,14 +353,14 @@ pub fn legal_opcode_instruction_set() -> HashMap<u8, Instruction> {
     instruction_set.insert(0x4C, instruction!("JMP", Misc(Jump), Cpu::jmp, Absolute, 3));
     instruction_set.insert(0x6C, instruction!("JMP", Misc(Jump), Cpu::jmp, Indirect, 5));
 
-    instruction_set.insert(0x20, instruction!("JSR", Misc, Cpu::jsr, Absolute, 6));
+    instruction_set.insert(0x20, instruction!("JSR", Misc(Call), Cpu::jsr, Absolute, 6));
 
     instruction_set.insert(0x40, instruction!("RTI", Misc, Cpu::rti, Implied, 6));
 
     // Interrupts
     instruction_set.insert(0x00, instruction!("BRK", Misc, Cpu::brk, Implied, 7));
 
-    instruction_set.insert(0x60, instruction!("RTS", Misc, Cpu::rts, Implied, 6));
+    instruction_set.insert(0x60, instruction!("RTS", Misc(Return), Cpu::rts, Implied, 6));
 
     // Other
     instruction_set.insert(0x24, instruction!("BIT", InternalExecOnMemoryData, Cpu::bit, ZeroPage, 3));
@@ -444,6 +462,13 @@ impl Cpu {
                 Branch(fun) => {
                     let (_, data) = self.load(addressing.clone());
                     fun(self, data);
+                }
+                Call(fun) => {
+                    let (addr, _) = self.load(addressing.clone());
+                    fun(self, addr);
+                }
+                Return(fun) => {
+                    fun(self);
                 }
             },
         }
@@ -1348,7 +1373,12 @@ impl Cpu {
     /// N Z C I D V
     /// - - - - - -
     fn jsr(&mut self, address: u16) {
-        todo!();
+        let pc = self.pc + 1;
+        let pch = (pc >> 8) as u8;
+        let pcl = (pc & 0x00FF) as u8;
+        self.push(pch);
+        self.push(pcl);
+        self.pc = address;
     }
 
     /// RTS - Return from subroutine
@@ -1360,7 +1390,9 @@ impl Cpu {
     /// N Z C I D V
     /// - - - - - -
     fn rts(&mut self) {
-        todo!();
+        let pcl = self.pull() as u16;
+        let pch = self.pull() as u16;
+        self.pc = (pch << 8) | pcl;
     }
 
     // Interrupts
