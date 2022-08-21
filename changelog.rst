@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.18.0
+------
+- Add push and pull misc instructions
+
 0.17.0
 ------
 - Add AbsoluteX, AbsoluteY and IndirectY load addressing modes

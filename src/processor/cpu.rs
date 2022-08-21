@@ -50,9 +50,16 @@ pub enum InstructionKind {
     InternalExecOnMemoryData(fn(&mut Cpu, u8)),
     StoreOp(fn(&mut Cpu) -> u8),
     ReadModifyWrite(fn(&mut Cpu, u8) -> u8),
-    Misc,
+    Misc(MiscInstructionKind),
 }
 use InstructionKind::*;
+
+#[derive(Clone)]
+pub enum MiscInstructionKind {
+    Push(fn(&mut Cpu)),
+    Pull(fn(&mut Cpu)),
+}
+use MiscInstructionKind::*;
 
 /// An `Instruction` represents a single MOS 6502 instruction. It has
 /// a name, an addressing mode, number of bytes and a function pointer
@@ -97,10 +104,18 @@ macro_rules! instruction {
             cycles: $cycles,
         }
     };
-    ($name:expr, Misc, Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
+    ($name:expr, Misc(Push), Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
         Instruction {
             name: $name,
-            instruction: Misc,
+            instruction: Misc(Push(|cpu| Cpu::$fun(cpu))),
+            addressing: $addr_mode,
+            cycles: $cycles,
+        }
+    };
+    ($name:expr, Misc(Pull), Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
+        Instruction {
+            name: $name,
+            instruction: Misc(Pull(|cpu| Cpu::$fun(cpu))),
             addressing: $addr_mode,
             cycles: $cycles,
         }
@@ -162,13 +177,13 @@ pub fn legal_opcode_instruction_set() -> HashMap<u8, Instruction> {
     instruction_set.insert(0x98, instruction!("TYA", SingleByte, Cpu::tya, Implied, 2));
 
     // // Stack instructions
-    instruction_set.insert(0x48, instruction!("PHA", Misc, Cpu::pha, Implied, 2));
+    instruction_set.insert(0x48, instruction!("PHA", Misc(Push), Cpu::pha, Implied, 2));
 
-    instruction_set.insert(0x08, instruction!("PHP", Misc, Cpu::php, Implied, 2));
+    instruction_set.insert(0x08, instruction!("PHP", Misc(Push), Cpu::php, Implied, 2));
 
-    instruction_set.insert(0x68, instruction!("PLA", Misc, Cpu::pla, Implied, 2));
+    instruction_set.insert(0x68, instruction!("PLA", Misc(Pull), Cpu::pla, Implied, 2));
 
-    instruction_set.insert(0x28, instruction!("PLP", Misc, Cpu::plp, Implied, 2));
+    instruction_set.insert(0x28, instruction!("PLP", Misc(Pull), Cpu::plp, Implied, 2));
 
     // Decrements and increments
     instruction_set.insert(0xC6, instruction!("DEC", ReadModifyWrite, Cpu::dec, ZeroPage, 5));
@@ -371,6 +386,19 @@ impl Cpu {
         let cycles = instruction.cycles;
         let instruction = instruction.instruction.clone();
 
+        self.exec(instruction, addressing);
+        self.pc += cycles as u16;
+    }
+
+    fn memory_read(&self, address: u16) -> u8 {
+        self.bus.read(address)
+    }
+
+    fn memory_write(&self, address: u16, data: u8) {
+        self.bus.write(address, data);
+    }
+
+    fn exec(&mut self, instruction: InstructionKind, addressing: AddressingMode) {
         match instruction {
             SingleByte(fun) => {
                 fun(self);
@@ -388,18 +416,10 @@ impl Cpu {
                 let result = fun(self, data);
                 self.store(result, addressing);
             }
-            Misc => {}
+            Misc(t) => match t {
+                Push(fun) | Pull(fun) => fun(self),
+            },
         }
-
-        self.pc += cycles as u16;
-    }
-
-    fn memory_read(&self, address: u16) -> u8 {
-        self.bus.read(address)
-    }
-
-    fn memory_write(&self, address: u16, data: u8) {
-        self.bus.write(address, data);
     }
 
     fn load(&mut self, addr_mode: AddressingMode) -> (u16, u8) {
@@ -722,6 +742,19 @@ impl Cpu {
 
     // Stack instructions
 
+    fn push(&mut self, data: u8) {
+        let address = 0x0100 + (self.sp as u16);
+        self.memory_write(address, data);
+        self.sp -= 1;
+    }
+
+    fn pull(&mut self) -> u8 {
+        let address = 0x0100 + (self.sp as u16);
+        let data = self.memory_read(address);
+        self.sp += 1;
+        data
+    }
+
     /// PHA - Push Accumulator on Stack
     ///
     /// Operation:
@@ -731,7 +764,7 @@ impl Cpu {
     /// N Z C I D V
     /// - - - - - -
     fn pha(&mut self) {
-        todo!();
+        self.push(self.acc);
     }
 
     /// PHP - Push Processor Status on Stack
@@ -746,7 +779,7 @@ impl Cpu {
     /// N Z C I D V
     /// - - - - - -
     fn php(&mut self) {
-        todo!();
+        self.push(self.sr | Break as u8 | (1 << 5));
     }
 
     /// PLA - Pull Accumulator from Stack
@@ -758,7 +791,7 @@ impl Cpu {
     /// N Z C I D V
     /// + + - - - -
     fn pla(&mut self) {
-        todo!();
+        self.acc = self.pull();
     }
 
     /// PLP - Pull Processor Status from Stack
@@ -773,7 +806,9 @@ impl Cpu {
     /// N Z C I D V
     /// + + - - - -
     fn plp(&mut self) {
-        todo!();
+        let mut stack_sr = self.pull();
+        stack_sr &= !(Break as u8 | (1 << 5));
+        self.sr = self.sr ^ !stack_sr;
     }
 
     // Decrements and increments
