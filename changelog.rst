@@ -1,6 +1,11 @@
 CHANGELOG
 =========
 
+0.16.0
+------
+- Complete instruction set (missing implementation for some
+  instructions)
+
 0.15.0
 ------
 - Add BIT instruction
