@@ -373,7 +373,6 @@ impl Cpu {
 
         match instruction {
             SingleByte(fun) => {
-                // both address and data will be discarted
                 fun(self);
             }
             InternalExecOnMemoryData(fun) => {
@@ -488,9 +487,7 @@ impl Cpu {
 
     fn store(&mut self, data: u8, addr_mode: AddressingMode) {
         let addr = match addr_mode {
-            ZeroPage => {
-                self.memory_read(self.pc + 1) as u16
-            }
+            ZeroPage => self.memory_read(self.pc + 1) as u16,
             Absolute => {
                 let adl = self.memory_read(self.pc + 1) as u16;
                 let adh = (self.memory_read(self.pc + 2) as u16) << 8;
@@ -572,7 +569,6 @@ impl Cpu {
     /// + + - - - -
     fn lda(&mut self, operand: u8) {
         self.acc = operand;
-
         self.auto_set_flag(Negative, self.acc);
         self.auto_set_flag(Zero, self.acc);
     }
@@ -587,7 +583,6 @@ impl Cpu {
     /// + + - - - -
     fn ldx(&mut self, operand: u8) {
         self.x_reg = operand;
-
         self.auto_set_flag(Negative, self.x_reg);
         self.auto_set_flag(Zero, self.x_reg);
     }
@@ -602,7 +597,6 @@ impl Cpu {
     /// + + - - - -
     fn ldy(&mut self, operand: u8) {
         self.y_reg = operand;
-
         self.auto_set_flag(Negative, self.y_reg);
         self.auto_set_flag(Zero, self.y_reg);
     }
@@ -652,7 +646,6 @@ impl Cpu {
     /// + + - - - -
     fn tax(&mut self) {
         self.x_reg = self.acc;
-
         self.auto_set_flag(Negative, self.x_reg);
         self.auto_set_flag(Zero, self.x_reg);
     }
@@ -667,7 +660,6 @@ impl Cpu {
     /// + + - - - -
     fn tay(&mut self) {
         self.y_reg = self.acc;
-
         self.auto_set_flag(Negative, self.y_reg);
         self.auto_set_flag(Zero, self.y_reg);
     }
@@ -682,7 +674,6 @@ impl Cpu {
     /// + + - - - -
     fn tsx(&mut self) {
         self.x_reg = self.sp;
-
         self.auto_set_flag(Negative, self.x_reg);
         self.auto_set_flag(Zero, self.x_reg);
     }
@@ -697,7 +688,6 @@ impl Cpu {
     /// + + - - - -
     fn txa(&mut self) {
         self.acc = self.x_reg;
-
         self.auto_set_flag(Negative, self.acc);
         self.auto_set_flag(Zero, self.acc);
     }
@@ -712,7 +702,6 @@ impl Cpu {
     /// + + - - - -
     fn txs(&mut self) {
         self.sp = self.x_reg;
-
         self.auto_set_flag(Negative, self.sp);
         self.auto_set_flag(Zero, self.sp);
     }
@@ -727,7 +716,6 @@ impl Cpu {
     /// + + - - - -
     fn tya(&mut self) {
         self.acc = self.y_reg;
-
         self.auto_set_flag(Negative, self.acc);
         self.auto_set_flag(Zero, self.acc);
     }
@@ -800,10 +788,8 @@ impl Cpu {
     /// + + - - - -
     fn dec(&mut self, operand: u8) -> u8 {
         let (res, _) = operand.overflowing_sub(1);
-
         self.auto_set_flag(Negative, res);
         self.auto_set_flag(Zero, res);
-
         res
     }
 
@@ -818,7 +804,6 @@ impl Cpu {
     fn dex(&mut self) {
         let (res, _) = self.x_reg.overflowing_sub(1);
         self.x_reg = res;
-
         self.auto_set_flag(Negative, self.x_reg);
         self.auto_set_flag(Zero, self.x_reg);
     }
@@ -834,7 +819,6 @@ impl Cpu {
     fn dey(&mut self) {
         let (res, _) = self.y_reg.overflowing_sub(1);
         self.y_reg = res;
-
         self.auto_set_flag(Negative, self.y_reg);
         self.auto_set_flag(Zero, self.y_reg);
     }
@@ -849,10 +833,8 @@ impl Cpu {
     /// + + - - - -
     fn inc(&mut self, operand: u8) -> u8 {
         let (res, _) = operand.overflowing_add(1);
-
         self.auto_set_flag(Negative, res);
         self.auto_set_flag(Zero, res);
-
         res
     }
 
@@ -867,7 +849,6 @@ impl Cpu {
     fn inx(&mut self) {
         let (res, _) = self.x_reg.overflowing_add(1);
         self.x_reg = res;
-
         self.auto_set_flag(Negative, self.x_reg);
         self.auto_set_flag(Zero, self.x_reg);
     }
@@ -883,7 +864,6 @@ impl Cpu {
     fn iny(&mut self) {
         let (res, _) = self.y_reg.overflowing_add(1);
         self.y_reg = res;
-
         self.auto_set_flag(Negative, self.y_reg);
         self.auto_set_flag(Zero, self.y_reg);
     }
@@ -900,7 +880,6 @@ impl Cpu {
     /// + + + - - +
     fn adc(&mut self, operand: u8) {
         let carry = if self.flag(Carry) { 1 } else { 0 };
-
         let res = self.acc as u16 + operand as u16 + carry;
         let carry = (res & (1 << 8)) != 0;
         let res = res as u8;
@@ -945,7 +924,6 @@ impl Cpu {
     /// + + - - - -
     fn and(&mut self, operand: u8) {
         self.acc &= operand;
-
         self.auto_set_flag(Negative, self.acc);
         self.auto_set_flag(Zero, self.acc);
     }
@@ -960,7 +938,6 @@ impl Cpu {
     /// + + - - - -
     fn eor(&mut self, operand: u8) {
         self.acc ^= operand;
-
         self.auto_set_flag(Negative, self.acc);
         self.auto_set_flag(Zero, self.acc);
     }
@@ -975,7 +952,6 @@ impl Cpu {
     /// + + - - - -
     fn ora(&mut self, operand: u8) {
         self.acc |= operand;
-
         self.auto_set_flag(Negative, self.acc);
         self.auto_set_flag(Zero, self.acc);
     }
