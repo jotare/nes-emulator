@@ -860,7 +860,7 @@ impl Cpu {
     fn plp(&mut self) {
         let mut stack_sr = self.pull();
         stack_sr &= !(Break as u8 | (1 << 5));
-        self.sr = self.sr ^ !stack_sr;
+        self.sr ^= !stack_sr;
     }
 
     // Decrements and increments
