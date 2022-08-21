@@ -58,6 +58,7 @@ use InstructionKind::*;
 pub enum MiscInstructionKind {
     Push(fn(&mut Cpu)),
     Pull(fn(&mut Cpu)),
+    Jump(fn(&mut Cpu, u16)),
     Branch(fn(&mut Cpu, u8)),
 }
 use MiscInstructionKind::*;
@@ -125,6 +126,14 @@ macro_rules! instruction {
         Instruction {
             name: $name,
             instruction: Misc(Branch(|cpu, offset| Cpu::$fun(cpu, offset))),
+            addressing: $addr_mode,
+            cycles: $cycles,
+        }
+    };
+    ($name:expr, Misc(Jump), Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
+        Instruction {
+            name: $name,
+            instruction: Misc(Jump(|cpu, address| Cpu::$fun(cpu, address))),
             addressing: $addr_mode,
             cycles: $cycles,
         }
@@ -323,8 +332,8 @@ pub fn legal_opcode_instruction_set() -> HashMap<u8, Instruction> {
     instruction_set.insert(0x70, instruction!("BVS", Misc(Branch), Cpu::bvs, Relative, 2));
 
     // Jumps and subroutines
-    instruction_set.insert(0x4C, instruction!("JMP", Misc, Cpu::jmp, Absolute, 3));
-    instruction_set.insert(0x6C, instruction!("JMP", Misc, Cpu::jmp, Indirect, 5));
+    instruction_set.insert(0x4C, instruction!("JMP", Misc(Jump), Cpu::jmp, Absolute, 3));
+    instruction_set.insert(0x6C, instruction!("JMP", Misc(Jump), Cpu::jmp, Indirect, 5));
 
     instruction_set.insert(0x20, instruction!("JSR", Misc, Cpu::jsr, Absolute, 6));
 
@@ -428,6 +437,10 @@ impl Cpu {
             }
             Misc(t) => match t {
                 Push(fun) | Pull(fun) => fun(self),
+                Jump(fun) => {
+                    let (addr, _) = self.load(addressing.clone());
+                    fun(self, addr);
+                }
                 Branch(fun) => {
                     let (_, data) = self.load(addressing.clone());
                     fun(self, data);
