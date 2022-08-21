@@ -345,8 +345,8 @@ pub fn legal_opcode_instruction_set() -> HashMap<u8, Instruction> {
     instruction_set.insert(0x60, instruction!("RTS", Misc, Cpu::rts, Implied, 6));
 
     // Other
-    instruction_set.insert(0x24, instruction!("BIT", Misc, Cpu::bit, ZeroPage, 3));
-    instruction_set.insert(0x2C, instruction!("BIT", Misc, Cpu::bit, Absolute, 4));
+    instruction_set.insert(0x24, instruction!("BIT", InternalExecOnMemoryData, Cpu::bit, ZeroPage, 3));
+    instruction_set.insert(0x2C, instruction!("BIT", InternalExecOnMemoryData, Cpu::bit, Absolute, 4));
 
     instruction_set.insert(0xEA, instruction!("NOP", SingleByte, Cpu::nop, Implied, 2));
 
