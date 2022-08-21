@@ -58,6 +58,7 @@ use InstructionKind::*;
 pub enum MiscInstructionKind {
     Push(fn(&mut Cpu)),
     Pull(fn(&mut Cpu)),
+    Branch(fn(&mut Cpu, u8)),
 }
 use MiscInstructionKind::*;
 
@@ -120,6 +121,15 @@ macro_rules! instruction {
             cycles: $cycles,
         }
     };
+    ($name:expr, Misc(Branch), Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
+        Instruction {
+            name: $name,
+            instruction: Misc(Branch(|cpu, offset| Cpu::$fun(cpu, offset))),
+            addressing: $addr_mode,
+            cycles: $cycles,
+        }
+    };
+
 }
 
 #[rustfmt::skip]
@@ -303,14 +313,14 @@ pub fn legal_opcode_instruction_set() -> HashMap<u8, Instruction> {
     instruction_set.insert(0xCC, instruction!("CPY", InternalExecOnMemoryData, Cpu::cpy, Absolute, 4));
 
     // Conditional branch instructions
-    instruction_set.insert(0x90, instruction!("BCC", Misc, Cpu::bcc, Relative, 2));
-    instruction_set.insert(0xB0, instruction!("BCS", Misc, Cpu::bcs, Relative, 2));
-    instruction_set.insert(0xF0, instruction!("BEQ", Misc, Cpu::beq, Relative, 2));
-    instruction_set.insert(0x30, instruction!("BMI", Misc, Cpu::bmi, Relative, 2));
-    instruction_set.insert(0xD0, instruction!("BNE", Misc, Cpu::bne, Relative, 2));
-    instruction_set.insert(0x10, instruction!("BPL", Misc, Cpu::bpl, Relative, 2));
-    instruction_set.insert(0x50, instruction!("BVC", Misc, Cpu::bvc, Relative, 2));
-    instruction_set.insert(0x70, instruction!("BVS", Misc, Cpu::bvs, Relative, 2));
+    instruction_set.insert(0x90, instruction!("BCC", Misc(Branch), Cpu::bcc, Relative, 2));
+    instruction_set.insert(0xB0, instruction!("BCS", Misc(Branch), Cpu::bcs, Relative, 2));
+    instruction_set.insert(0xF0, instruction!("BEQ", Misc(Branch), Cpu::beq, Relative, 2));
+    instruction_set.insert(0x30, instruction!("BMI", Misc(Branch), Cpu::bmi, Relative, 2));
+    instruction_set.insert(0xD0, instruction!("BNE", Misc(Branch), Cpu::bne, Relative, 2));
+    instruction_set.insert(0x10, instruction!("BPL", Misc(Branch), Cpu::bpl, Relative, 2));
+    instruction_set.insert(0x50, instruction!("BVC", Misc(Branch), Cpu::bvc, Relative, 2));
+    instruction_set.insert(0x70, instruction!("BVS", Misc(Branch), Cpu::bvs, Relative, 2));
 
     // Jumps and subroutines
     instruction_set.insert(0x4C, instruction!("JMP", Misc, Cpu::jmp, Absolute, 3));
@@ -418,6 +428,10 @@ impl Cpu {
             }
             Misc(t) => match t {
                 Push(fun) | Pull(fun) => fun(self),
+                Branch(fun) => {
+                    let (_, data) = self.load(addressing.clone());
+                    fun(self, data);
+                }
             },
         }
     }

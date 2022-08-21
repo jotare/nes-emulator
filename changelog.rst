@@ -4,6 +4,7 @@ CHANGELOG
 0.18.0
 ------
 - Add push and pull misc instructions
+- Add branch misc instructions
 
 0.17.0
 ------
