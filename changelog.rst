@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.17.0
+------
+- Add AbsoluteX, AbsoluteY and IndirectY load addressing modes
+
 0.16.0
 ------
 - Complete instruction set (missing implementation for some

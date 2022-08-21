@@ -503,10 +503,14 @@ impl Cpu {
                 (adh << 8) | adl
             }
             AbsoluteX => {
-                todo!();
+                let bal = self.memory_read(self.pc + 1) as u16;
+                let bah = self.memory_read(self.pc + 2) as u16;
+                ((bah << 8) | bal) + (self.x_reg as u16)
             }
             AbsoluteY => {
-                todo!();
+                let bal = self.memory_read(self.pc + 1) as u16;
+                let bah = self.memory_read(self.pc + 2) as u16;
+                ((bah << 8) | bal) + (self.y_reg as u16)
             }
             ZeroPageX => {
                 let bal = self.memory_read(self.pc + 1) as u16;
@@ -517,7 +521,12 @@ impl Cpu {
                 (bal + (self.y_reg as u16)) & 0x00FF
             }
             IndirectY => {
-                todo!();
+                let ial = self.memory_read(self.pc + 1) as u16;
+                let bal = self.memory_read(ial) as u16;
+                let bah = self.memory_read(ial + 1) as u16;
+                let adl = bal + (self.y_reg as u16);
+                let adh = bah;
+                (adh << 8) | adl
             }
             _ => {
                 panic!("Invalid store addressing mode: {:?}", addr_mode);
