@@ -62,6 +62,8 @@ pub enum MiscInstructionKind {
     Branch(fn(&mut Cpu, u8)),
     Call(fn(&mut Cpu, u16)),
     Return(fn(&mut Cpu)),
+    HardwareInterrupt(fn(&mut Cpu)),
+    ReturnFromInterrupt(fn(&mut Cpu)),
 }
 use MiscInstructionKind::*;
 
@@ -156,7 +158,22 @@ macro_rules! instruction {
             cycles: $cycles,
         }
     };
-
+    ($name:expr, Misc(HardwareInterrupt), Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
+        Instruction {
+            name: $name,
+            instruction: Misc(HardwareInterrupt(|cpu| Cpu::$fun(cpu))),
+            addressing: $addr_mode,
+            cycles: $cycles,
+        }
+    };
+    ($name:expr, Misc(ReturnFromInterrupt), Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
+        Instruction {
+            name: $name,
+            instruction: Misc(ReturnFromInterrupt(|cpu| Cpu::$fun(cpu))),
+            addressing: $addr_mode,
+            cycles: $cycles,
+        }
+    };
 }
 
 #[rustfmt::skip]
@@ -355,10 +372,10 @@ pub fn legal_opcode_instruction_set() -> HashMap<u8, Instruction> {
 
     instruction_set.insert(0x20, instruction!("JSR", Misc(Call), Cpu::jsr, Absolute, 6));
 
-    instruction_set.insert(0x40, instruction!("RTI", Misc, Cpu::rti, Implied, 6));
+    instruction_set.insert(0x40, instruction!("RTI", Misc(ReturnFromInterrupt), Cpu::rti, Implied, 6));
 
     // Interrupts
-    instruction_set.insert(0x00, instruction!("BRK", Misc, Cpu::brk, Implied, 7));
+    instruction_set.insert(0x00, instruction!("BRK", Misc(HardwareInterrupt), Cpu::brk, Implied, 7));
 
     instruction_set.insert(0x60, instruction!("RTS", Misc(Return), Cpu::rts, Implied, 6));
 
@@ -456,20 +473,22 @@ impl Cpu {
             Misc(t) => match t {
                 Push(fun) | Pull(fun) => fun(self),
                 Jump(fun) => {
-                    let (addr, _) = self.load(addressing.clone());
+                    let (addr, _) = self.load(addressing);
                     fun(self, addr);
                 }
                 Branch(fun) => {
-                    let (_, data) = self.load(addressing.clone());
+                    let (_, data) = self.load(addressing);
                     fun(self, data);
                 }
                 Call(fun) => {
-                    let (addr, _) = self.load(addressing.clone());
+                    let (addr, _) = self.load(addressing);
                     fun(self, addr);
                 }
                 Return(fun) => {
                     fun(self);
                 }
+                HardwareInterrupt(_) => todo!(),
+                ReturnFromInterrupt(_) => todo!(),
             },
         }
     }

@@ -7,6 +7,7 @@ CHANGELOG
 - Add branch misc instructions
 - Add jump misc instruction
 - Add call and return misc instructions
+- Prepare interrupt instructions
 
 0.17.0
 ------
