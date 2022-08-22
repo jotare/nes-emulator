@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 
-use crate::traits::Memory;
 use crate::traits::Bus;
+use crate::traits::Memory;
 
 pub struct AddressRange {
     pub start: u16,
@@ -24,7 +24,7 @@ impl Bus for MainBus {
     fn read(&self, address: u16) -> u8 {
         for (addr_range, device) in self.devices.borrow().iter() {
             if address >= addr_range.start || address < addr_range.end {
-                return device.read(address);
+                return device.read(address - addr_range.start);
             }
         }
         panic!(
@@ -36,7 +36,7 @@ impl Bus for MainBus {
     fn write(&self, address: u16, data: u8) {
         for (addr_range, device) in self.devices.borrow_mut().iter_mut() {
             if address >= addr_range.start || address < addr_range.end {
-                device.write(address, data);
+                device.write(address - addr_range.start, data);
                 return;
             }
         }

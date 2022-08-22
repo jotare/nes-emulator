@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.21.1
+------
+- Bus hides address range to attached devices
+
 0.21.0
 ------
 - Move traits to separate folder (to share between modules)
