@@ -456,7 +456,10 @@ impl Cpu {
         let instruction = instruction.instruction.clone();
 
         self.exec(instruction, addressing);
-        self.pc += bytes as u16;
+        match name {
+            "JMP" | "JSR" | "RTS" | "BRK" | "RTI" => {}
+            _ => self.pc += bytes as u16,
+        }
     }
 
     fn memory_read(&self, address: u16) -> u8 {

@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.20.1
+------
+- Fix PC increment on jumps and interrupts
+
 0.20.0
 ------
 - Implement BRK and RTI instructions
