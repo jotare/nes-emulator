@@ -451,11 +451,11 @@ impl Cpu {
             .unwrap_or_else(|| panic!("Invalid instruction '0x{:x}'", opcode));
 
         let addressing = instruction.addressing.clone();
-        let cycles = instruction.cycles;
+        let bytes = instruction.bytes;
         let instruction = instruction.instruction.clone();
 
         self.exec(instruction, addressing);
-        self.pc += cycles as u16;
+        self.pc += bytes as u16;
     }
 
     fn memory_read(&self, address: u16) -> u8 {

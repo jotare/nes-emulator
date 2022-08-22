@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.19.1
+------
+- Fix PC increment
+
 0.19.0
 ------
 - Add bytes to CPU instructions
