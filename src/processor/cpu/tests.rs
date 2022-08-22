@@ -738,6 +738,118 @@ fn test_comparaison_instruction_CPY() {
     assert!(!cpu.flag(Carry));
 }
 
+#[test]
+fn test_branch_instruction_BCC() {
+    let mut cpu = test_cpu();
+    let pc = cpu.pc;
+
+    cpu.set_flag(Carry, true);
+    cpu.bcc(10);
+    assert_eq!(cpu.pc, pc);
+
+    cpu.set_flag(Carry, false);
+    cpu.bcc(10);
+    assert_eq!(cpu.pc, pc + 10);
+}
+
+#[test]
+fn test_branch_instruction_BCS() {
+    let mut cpu = test_cpu();
+    let pc = cpu.pc;
+
+    cpu.set_flag(Carry, false);
+    cpu.bcs(10);
+    assert_eq!(cpu.pc, pc);
+
+    cpu.set_flag(Carry, true);
+    cpu.bcs(10);
+    assert_eq!(cpu.pc, pc + 10 + 1);
+}
+
+#[test]
+fn test_branch_instruction_BEQ() {
+    let mut cpu = test_cpu();
+    let pc = cpu.pc;
+
+    cpu.set_flag(Zero, false);
+    cpu.beq(10);
+    assert_eq!(cpu.pc, pc);
+
+    cpu.set_flag(Zero, true);
+    cpu.beq(10);
+    assert_eq!(cpu.pc, pc + 10);
+}
+
+#[test]
+fn test_branch_instruction_BMI() {
+    let mut cpu = test_cpu();
+    let pc = cpu.pc;
+
+    cpu.set_flag(Negative, false);
+    cpu.bmi(10);
+    assert_eq!(cpu.pc, pc);
+
+    cpu.set_flag(Negative, true);
+    cpu.bmi(10);
+    assert_eq!(cpu.pc, pc + 10);
+}
+
+#[test]
+fn test_branch_instruction_BNE() {
+    let mut cpu = test_cpu();
+    let pc = cpu.pc;
+
+    cpu.set_flag(Zero, true);
+    cpu.bne(10);
+    assert_eq!(cpu.pc, pc);
+
+    cpu.set_flag(Zero, false);
+    cpu.bne(10);
+    assert_eq!(cpu.pc, pc + 10);
+}
+
+#[test]
+fn test_branch_instruction_BPL() {
+    let mut cpu = test_cpu();
+    let pc = cpu.pc;
+
+    cpu.set_flag(Negative, true);
+    cpu.bpl(10);
+    assert_eq!(cpu.pc, pc);
+
+    cpu.set_flag(Negative, false);
+    cpu.bpl(10);
+    assert_eq!(cpu.pc, pc + 10);
+}
+
+#[test]
+fn test_branch_instruction_BVC() {
+    let mut cpu = test_cpu();
+    let pc = cpu.pc;
+
+    cpu.set_flag(Overflow, true);
+    cpu.bvc(10);
+    assert_eq!(cpu.pc, pc);
+
+    cpu.set_flag(Overflow, false);
+    cpu.bvc(10);
+    assert_eq!(cpu.pc, pc + 10);
+}
+
+#[test]
+fn test_branch_instruction_BVS() {
+    let mut cpu = test_cpu();
+    let pc = cpu.pc;
+
+    cpu.set_flag(Overflow, false);
+    cpu.bvs(10);
+    assert_eq!(cpu.pc, pc);
+
+    cpu.set_flag(Overflow, true);
+    cpu.bvs(10);
+    assert_eq!(cpu.pc, pc + 10);
+}
+
 //////////////////////////////////////////////////////////////////////
 // TEST ADDRESSING MODES
 //////////////////////////////////////////////////////////////////////

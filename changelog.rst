@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.20.4
+------
+- Test branch instructions
+
 0.20.3
 ------
 - Fix reset by starting on reset vector address
