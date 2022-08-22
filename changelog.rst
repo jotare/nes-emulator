@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.19.0
+------
+- Add bytes to CPU instructions
+
 0.18.0
 ------
 - Add push and pull misc instructions

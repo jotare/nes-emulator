@@ -74,103 +74,116 @@ pub struct Instruction {
     name: &'static str,
     instruction: InstructionKind,
     addressing: AddressingMode,
+    bytes: u8,
     cycles: u8,
 }
 
 macro_rules! instruction {
-    ($name:expr, SingleByte, Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
+    ($name:expr, SingleByte, Cpu::$fun:ident, $addr_mode:expr, $bytes:expr, $cycles:expr) => {
         Instruction {
             name: $name,
             instruction: SingleByte(|cpu| Cpu::$fun(cpu)),
             addressing: $addr_mode,
+            bytes: $bytes,
             cycles: $cycles,
         }
     };
-    ($name:expr, InternalExecOnMemoryData, Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
+    ($name:expr, InternalExecOnMemoryData, Cpu::$fun:ident, $addr_mode:expr, $bytes:expr, $cycles:expr) => {
         Instruction {
             name: $name,
             instruction: InternalExecOnMemoryData(|cpu, operand| Cpu::$fun(cpu, operand)),
             addressing: $addr_mode,
+            bytes: $bytes,
             cycles: $cycles,
         }
     };
-    ($name:expr, StoreOp, Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
+    ($name:expr, StoreOp, Cpu::$fun:ident, $addr_mode:expr, $bytes:expr, $cycles:expr) => {
         Instruction {
             name: $name,
             instruction: StoreOp(|cpu| Cpu::$fun(cpu)),
             addressing: $addr_mode,
+            bytes: $bytes,
             cycles: $cycles,
         }
     };
-    ($name:expr, ReadModifyWrite, Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
+    ($name:expr, ReadModifyWrite, Cpu::$fun:ident, $addr_mode:expr, $bytes:expr, $cycles:expr) => {
         Instruction {
             name: $name,
             instruction: ReadModifyWrite(|cpu, operand| Cpu::$fun(cpu, operand)),
             addressing: $addr_mode,
+            bytes: $bytes,
             cycles: $cycles,
         }
     };
-    ($name:expr, Misc(Push), Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
+    ($name:expr, Misc(Push), Cpu::$fun:ident, $addr_mode:expr, $bytes:expr, $cycles:expr) => {
         Instruction {
             name: $name,
             instruction: Misc(Push(|cpu| Cpu::$fun(cpu))),
             addressing: $addr_mode,
+            bytes: $bytes,
             cycles: $cycles,
         }
     };
-    ($name:expr, Misc(Pull), Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
+    ($name:expr, Misc(Pull), Cpu::$fun:ident, $addr_mode:expr, $bytes:expr, $cycles:expr) => {
         Instruction {
             name: $name,
             instruction: Misc(Pull(|cpu| Cpu::$fun(cpu))),
             addressing: $addr_mode,
+            bytes: $bytes,
             cycles: $cycles,
         }
     };
-    ($name:expr, Misc(Branch), Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
+    ($name:expr, Misc(Branch), Cpu::$fun:ident, $addr_mode:expr, $bytes:expr, $cycles:expr) => {
         Instruction {
             name: $name,
             instruction: Misc(Branch(|cpu, offset| Cpu::$fun(cpu, offset))),
             addressing: $addr_mode,
+            bytes: $bytes,
             cycles: $cycles,
         }
     };
-    ($name:expr, Misc(Jump), Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
+    ($name:expr, Misc(Jump), Cpu::$fun:ident, $addr_mode:expr, $bytes:expr, $cycles:expr) => {
         Instruction {
             name: $name,
             instruction: Misc(Jump(|cpu, address| Cpu::$fun(cpu, address))),
             addressing: $addr_mode,
+            bytes: $bytes,
             cycles: $cycles,
         }
     };
-    ($name:expr, Misc(Call), Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
+    ($name:expr, Misc(Call), Cpu::$fun:ident, $addr_mode:expr, $bytes:expr, $cycles:expr) => {
         Instruction {
             name: $name,
             instruction: Misc(Call(|cpu, address| Cpu::$fun(cpu, address))),
             addressing: $addr_mode,
+            bytes: $bytes,
             cycles: $cycles,
         }
     };
-    ($name:expr, Misc(Return), Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
+    ($name:expr, Misc(Return), Cpu::$fun:ident, $addr_mode:expr, $bytes:expr, $cycles:expr) => {
         Instruction {
             name: $name,
             instruction: Misc(Return(|cpu| Cpu::$fun(cpu))),
             addressing: $addr_mode,
+            bytes: $bytes,
             cycles: $cycles,
         }
     };
-    ($name:expr, Misc(HardwareInterrupt), Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
+    ($name:expr, Misc(HardwareInterrupt), Cpu::$fun:ident, $addr_mode:expr, $bytes:expr, $cycles:expr) => {
         Instruction {
             name: $name,
             instruction: Misc(HardwareInterrupt(|cpu| Cpu::$fun(cpu))),
             addressing: $addr_mode,
+            bytes: $bytes,
             cycles: $cycles,
         }
     };
-    ($name:expr, Misc(ReturnFromInterrupt), Cpu::$fun:ident, $addr_mode:expr, $cycles:expr) => {
+    ($name:expr, Misc(ReturnFromInterrupt), Cpu::$fun:ident, $addr_mode:expr, $bytes:expr, $cycles:expr) => {
         Instruction {
             name: $name,
             instruction: Misc(ReturnFromInterrupt(|cpu| Cpu::$fun(cpu))),
             addressing: $addr_mode,
+            bytes: $bytes,
             cycles: $cycles,
         }
     };
@@ -181,209 +194,210 @@ pub fn legal_opcode_instruction_set() -> HashMap<u8, Instruction> {
     let mut instruction_set = HashMap::new();
 
     // Transfer instructions
-    instruction_set.insert(0xA9, instruction!("LDA", InternalExecOnMemoryData, Cpu::lda, Immediate, 2));
-    instruction_set.insert(0xA5, instruction!("LDA", InternalExecOnMemoryData, Cpu::lda, ZeroPage, 3));
-    instruction_set.insert(0xB5, instruction!("LDA", InternalExecOnMemoryData, Cpu::lda, ZeroPageX, 4));
-    instruction_set.insert(0xAD, instruction!("LDA", InternalExecOnMemoryData, Cpu::lda, Absolute, 4));
-    instruction_set.insert(0xB9, instruction!("LDA", InternalExecOnMemoryData, Cpu::lda, AbsoluteX, 4));
-    instruction_set.insert(0xB9, instruction!("LDA", InternalExecOnMemoryData, Cpu::lda, AbsoluteY, 4));
-    instruction_set.insert(0xA1, instruction!("LDA", InternalExecOnMemoryData, Cpu::lda, IndirectX, 6));
-    instruction_set.insert(0xB1, instruction!("LDA", InternalExecOnMemoryData, Cpu::lda, IndirectY, 5));
+    instruction_set.insert(0xA9, instruction!("LDA", InternalExecOnMemoryData, Cpu::lda, Immediate, 2, 2));
+    instruction_set.insert(0xA5, instruction!("LDA", InternalExecOnMemoryData, Cpu::lda, ZeroPage, 2, 3));
+    instruction_set.insert(0xB5, instruction!("LDA", InternalExecOnMemoryData, Cpu::lda, ZeroPageX, 2, 4));
+    instruction_set.insert(0xAD, instruction!("LDA", InternalExecOnMemoryData, Cpu::lda, Absolute, 3, 4));
+    instruction_set.insert(0xB9, instruction!("LDA", InternalExecOnMemoryData, Cpu::lda, AbsoluteX, 3, 4));
+    instruction_set.insert(0xB9, instruction!("LDA", InternalExecOnMemoryData, Cpu::lda, AbsoluteY, 3, 4));
+    instruction_set.insert(0xA1, instruction!("LDA", InternalExecOnMemoryData, Cpu::lda, IndirectX, 2, 6));
+    instruction_set.insert(0xB1, instruction!("LDA", InternalExecOnMemoryData, Cpu::lda, IndirectY, 2, 5));
 
-    instruction_set.insert(0xA2, instruction!("LDX", InternalExecOnMemoryData, Cpu::ldx, Immediate, 2));
-    instruction_set.insert(0xA6, instruction!("LDX", InternalExecOnMemoryData, Cpu::ldx, ZeroPage, 3));
-    instruction_set.insert(0xB6, instruction!("LDX", InternalExecOnMemoryData, Cpu::ldx, ZeroPageY, 4));
-    instruction_set.insert(0xAE, instruction!("LDX", InternalExecOnMemoryData, Cpu::ldx, Absolute, 4));
-    instruction_set.insert(0xBE, instruction!("LDX", InternalExecOnMemoryData, Cpu::ldx, AbsoluteY, 4));
+    instruction_set.insert(0xA2, instruction!("LDX", InternalExecOnMemoryData, Cpu::ldx, Immediate, 2, 2));
+    instruction_set.insert(0xA6, instruction!("LDX", InternalExecOnMemoryData, Cpu::ldx, ZeroPage, 2, 3));
+    instruction_set.insert(0xB6, instruction!("LDX", InternalExecOnMemoryData, Cpu::ldx, ZeroPageY, 2, 4));
+    instruction_set.insert(0xAE, instruction!("LDX", InternalExecOnMemoryData, Cpu::ldx, Absolute, 3, 4));
+    instruction_set.insert(0xBE, instruction!("LDX", InternalExecOnMemoryData, Cpu::ldx, AbsoluteY, 3, 4));
 
-    instruction_set.insert(0xA0, instruction!("LDY", InternalExecOnMemoryData, Cpu::ldy, Immediate, 2));
-    instruction_set.insert(0xA4, instruction!("LDY", InternalExecOnMemoryData, Cpu::ldy, ZeroPage, 3));
-    instruction_set.insert(0xB4, instruction!("LDY", InternalExecOnMemoryData, Cpu::ldy, ZeroPageX, 4));
-    instruction_set.insert(0xAC, instruction!("LDY", InternalExecOnMemoryData, Cpu::ldy, Absolute, 4));
-    instruction_set.insert(0xBC, instruction!("LDY", InternalExecOnMemoryData, Cpu::ldy, AbsoluteX, 5));
+    instruction_set.insert(0xA0, instruction!("LDY", InternalExecOnMemoryData, Cpu::ldy, Immediate, 2, 2));
+    instruction_set.insert(0xA4, instruction!("LDY", InternalExecOnMemoryData, Cpu::ldy, ZeroPage, 2, 3));
+    instruction_set.insert(0xB4, instruction!("LDY", InternalExecOnMemoryData, Cpu::ldy, ZeroPageX, 2, 4));
+    instruction_set.insert(0xAC, instruction!("LDY", InternalExecOnMemoryData, Cpu::ldy, Absolute, 3, 4));
+    instruction_set.insert(0xBC, instruction!("LDY", InternalExecOnMemoryData, Cpu::ldy, AbsoluteX, 3, 5));
 
-    instruction_set.insert(0x85, instruction!("STA", StoreOp, Cpu::sta, ZeroPage, 3));
-    instruction_set.insert(0x95, instruction!("STA", StoreOp, Cpu::sta, ZeroPageX, 4));
-    instruction_set.insert(0x8D, instruction!("STA", StoreOp, Cpu::sta, Absolute, 4));
-    instruction_set.insert(0x9D, instruction!("STA", StoreOp, Cpu::sta, AbsoluteX, 5));
-    instruction_set.insert(0x99, instruction!("STA", StoreOp, Cpu::sta, AbsoluteY, 5));
-    instruction_set.insert(0x81, instruction!("STA", StoreOp, Cpu::sta, IndirectX, 6));
-    instruction_set.insert(0x91, instruction!("STA", StoreOp, Cpu::sta, IndirectY, 6));
+    instruction_set.insert(0x85, instruction!("STA", StoreOp, Cpu::sta, ZeroPage, 2, 3));
+    instruction_set.insert(0x95, instruction!("STA", StoreOp, Cpu::sta, ZeroPageX, 2, 4));
+    instruction_set.insert(0x8D, instruction!("STA", StoreOp, Cpu::sta, Absolute, 3, 4));
+    instruction_set.insert(0x9D, instruction!("STA", StoreOp, Cpu::sta, AbsoluteX, 3, 5));
+    instruction_set.insert(0x99, instruction!("STA", StoreOp, Cpu::sta, AbsoluteY, 3, 5));
+    instruction_set.insert(0x81, instruction!("STA", StoreOp, Cpu::sta, IndirectX, 2, 6));
+    instruction_set.insert(0x91, instruction!("STA", StoreOp, Cpu::sta, IndirectY, 2, 6));
 
-    instruction_set.insert(0x86, instruction!("STX", StoreOp, Cpu::stx, ZeroPage, 3));
-    instruction_set.insert(0x96, instruction!("STX", StoreOp, Cpu::stx, ZeroPageY, 4));
-    instruction_set.insert(0x8E, instruction!("STX", StoreOp, Cpu::stx, Absolute, 4));
+    instruction_set.insert(0x86, instruction!("STX", StoreOp, Cpu::stx, ZeroPage, 2, 3));
+    instruction_set.insert(0x96, instruction!("STX", StoreOp, Cpu::stx, ZeroPageY, 2, 4));
+    instruction_set.insert(0x8E, instruction!("STX", StoreOp, Cpu::stx, Absolute, 3, 4));
 
-    instruction_set.insert(0x84, instruction!("STY", StoreOp, Cpu::sty, ZeroPage, 3));
-    instruction_set.insert(0x84, instruction!("STY", StoreOp, Cpu::sty, ZeroPageX, 4));
-    instruction_set.insert(0x84, instruction!("STY", StoreOp, Cpu::sty, Absolute, 4));
+    instruction_set.insert(0x84, instruction!("STY", StoreOp, Cpu::sty, ZeroPage, 2, 3));
+    instruction_set.insert(0x84, instruction!("STY", StoreOp, Cpu::sty, ZeroPageX, 2, 4));
+    instruction_set.insert(0x84, instruction!("STY", StoreOp, Cpu::sty, Absolute, 3, 4));
 
-    instruction_set.insert(0xAA, instruction!("TAX", SingleByte, Cpu::tax, Implied, 2));
+    instruction_set.insert(0xAA, instruction!("TAX", SingleByte, Cpu::tax, Implied, 1, 2));
 
-    instruction_set.insert(0xA8, instruction!("TAY", SingleByte, Cpu::tay, Implied, 2));
+    instruction_set.insert(0xA8, instruction!("TAY", SingleByte, Cpu::tay, Implied, 1, 2));
 
-    instruction_set.insert(0xBA, instruction!("TSX", SingleByte, Cpu::tsx, Implied, 2));
+    instruction_set.insert(0xBA, instruction!("TSX", SingleByte, Cpu::tsx, Implied, 1, 2));
 
-    instruction_set.insert(0x8A, instruction!("TXA", SingleByte, Cpu::txa, Implied, 2));
+    instruction_set.insert(0x8A, instruction!("TXA", SingleByte, Cpu::txa, Implied, 1, 2));
 
-    instruction_set.insert(0x9A, instruction!("TXS", SingleByte, Cpu::txs, Implied, 2));
+    instruction_set.insert(0x9A, instruction!("TXS", SingleByte, Cpu::txs, Implied, 1, 2));
 
-    instruction_set.insert(0x98, instruction!("TYA", SingleByte, Cpu::tya, Implied, 2));
+    instruction_set.insert(0x98, instruction!("TYA", SingleByte, Cpu::tya, Implied, 1, 2));
 
     // // Stack instructions
-    instruction_set.insert(0x48, instruction!("PHA", Misc(Push), Cpu::pha, Implied, 2));
+    instruction_set.insert(0x48, instruction!("PHA", Misc(Push), Cpu::pha, Implied, 1, 2));
 
-    instruction_set.insert(0x08, instruction!("PHP", Misc(Push), Cpu::php, Implied, 2));
+    instruction_set.insert(0x08, instruction!("PHP", Misc(Push), Cpu::php, Implied, 1, 2));
 
-    instruction_set.insert(0x68, instruction!("PLA", Misc(Pull), Cpu::pla, Implied, 2));
+    instruction_set.insert(0x68, instruction!("PLA", Misc(Pull), Cpu::pla, Implied, 1, 2));
 
-    instruction_set.insert(0x28, instruction!("PLP", Misc(Pull), Cpu::plp, Implied, 2));
+    instruction_set.insert(0x28, instruction!("PLP", Misc(Pull), Cpu::plp, Implied, 1, 2));
 
     // Decrements and increments
-    instruction_set.insert(0xC6, instruction!("DEC", ReadModifyWrite, Cpu::dec, ZeroPage, 5));
-    instruction_set.insert(0xD6, instruction!("DEC", ReadModifyWrite, Cpu::dec, ZeroPageX, 6));
-    instruction_set.insert(0xCE, instruction!("DEC", ReadModifyWrite, Cpu::dec, Absolute, 6));
-    instruction_set.insert(0xDE, instruction!("DEC", ReadModifyWrite, Cpu::dec, AbsoluteX, 7));
+    instruction_set.insert(0xC6, instruction!("DEC", ReadModifyWrite, Cpu::dec, ZeroPage, 2, 5));
+    instruction_set.insert(0xD6, instruction!("DEC", ReadModifyWrite, Cpu::dec, ZeroPageX, 2, 6));
+    instruction_set.insert(0xCE, instruction!("DEC", ReadModifyWrite, Cpu::dec, Absolute, 3, 6));
+    instruction_set.insert(0xDE, instruction!("DEC", ReadModifyWrite, Cpu::dec, AbsoluteX, 3, 7));
 
-    instruction_set.insert(0xCA, instruction!("DEX", SingleByte, Cpu::dex, Immediate, 2));
+    instruction_set.insert(0xCA, instruction!("DEX", SingleByte, Cpu::dex, Immediate, 1, 2));
 
-    instruction_set.insert(0x88, instruction!("DEY", SingleByte, Cpu::dey, Immediate, 2));
+    instruction_set.insert(0x88, instruction!("DEY", SingleByte, Cpu::dey, Immediate, 1, 2));
 
-    instruction_set.insert(0xE6, instruction!("INC", ReadModifyWrite, Cpu::inc, ZeroPage, 5));
-    instruction_set.insert(0xF6, instruction!("INC", ReadModifyWrite, Cpu::inc, ZeroPageX, 6));
-    instruction_set.insert(0xEE, instruction!("INC", ReadModifyWrite, Cpu::inc, Absolute, 6));
-    instruction_set.insert(0xFE, instruction!("INC", ReadModifyWrite, Cpu::inc, AbsoluteX, 7));
+    instruction_set.insert(0xE6, instruction!("INC", ReadModifyWrite, Cpu::inc, ZeroPage, 2, 5));
+    instruction_set.insert(0xF6, instruction!("INC", ReadModifyWrite, Cpu::inc, ZeroPageX, 2, 6));
+    instruction_set.insert(0xEE, instruction!("INC", ReadModifyWrite, Cpu::inc, Absolute, 3, 6));
+    instruction_set.insert(0xFE, instruction!("INC", ReadModifyWrite, Cpu::inc, AbsoluteX, 3, 7));
 
-    instruction_set.insert(0xCA, instruction!("INX", SingleByte, Cpu::inx, Immediate, 2));
+    instruction_set.insert(0xCA, instruction!("INX", SingleByte, Cpu::inx, Immediate, 1, 2));
 
-    instruction_set.insert(0x88, instruction!("INY", SingleByte, Cpu::iny, Immediate, 2));
+    instruction_set.insert(0x88, instruction!("INY", SingleByte, Cpu::iny, Immediate, 1, 2));
 
     // Arithmetic operations
-    instruction_set.insert(0x69, instruction!("ADC", InternalExecOnMemoryData, Cpu::adc, Immediate, 2));
-    instruction_set.insert(0x65, instruction!("ADC", InternalExecOnMemoryData, Cpu::adc, ZeroPage, 3));
-    instruction_set.insert(0x75, instruction!("ADC", InternalExecOnMemoryData, Cpu::adc, ZeroPageX, 4));
-    instruction_set.insert(0x6D, instruction!("ADC", InternalExecOnMemoryData, Cpu::adc, Absolute, 4));
-    instruction_set.insert(0x7D, instruction!("ADC", InternalExecOnMemoryData, Cpu::adc, AbsoluteX, 4));
-    instruction_set.insert(0x79, instruction!("ADC", InternalExecOnMemoryData, Cpu::adc, AbsoluteY, 4));
-    instruction_set.insert(0x61, instruction!("ADC", InternalExecOnMemoryData, Cpu::adc, IndirectX, 6));
-    instruction_set.insert(0x71, instruction!("ADC", InternalExecOnMemoryData, Cpu::adc, IndirectY, 5));
+    instruction_set.insert(0x69, instruction!("ADC", InternalExecOnMemoryData, Cpu::adc, Immediate, 2, 2));
+    instruction_set.insert(0x65, instruction!("ADC", InternalExecOnMemoryData, Cpu::adc, ZeroPage, 2, 3));
+    instruction_set.insert(0x75, instruction!("ADC", InternalExecOnMemoryData, Cpu::adc, ZeroPageX, 2, 4));
+    instruction_set.insert(0x6D, instruction!("ADC", InternalExecOnMemoryData, Cpu::adc, Absolute, 3, 4));
+    instruction_set.insert(0x7D, instruction!("ADC", InternalExecOnMemoryData, Cpu::adc, AbsoluteX, 3, 4));
+    instruction_set.insert(0x79, instruction!("ADC", InternalExecOnMemoryData, Cpu::adc, AbsoluteY, 3, 4));
+    instruction_set.insert(0x61, instruction!("ADC", InternalExecOnMemoryData, Cpu::adc, IndirectX, 2, 6));
+    instruction_set.insert(0x71, instruction!("ADC", InternalExecOnMemoryData, Cpu::adc, IndirectY, 2, 5));
 
-    instruction_set.insert(0xE9, instruction!("SBC", InternalExecOnMemoryData, Cpu::sbc, Immediate, 2));
-    instruction_set.insert(0xE5, instruction!("SBC", InternalExecOnMemoryData, Cpu::sbc, ZeroPage, 3));
-    instruction_set.insert(0xF5, instruction!("SBC", InternalExecOnMemoryData, Cpu::sbc, ZeroPageX, 4));
-    instruction_set.insert(0xED, instruction!("SBC", InternalExecOnMemoryData, Cpu::sbc, Absolute, 4));
-    instruction_set.insert(0xFD, instruction!("SBC", InternalExecOnMemoryData, Cpu::sbc, AbsoluteX, 4));
-    instruction_set.insert(0xF9, instruction!("SBC", InternalExecOnMemoryData, Cpu::sbc, AbsoluteY, 4));
-    instruction_set.insert(0xE1, instruction!("SBC", InternalExecOnMemoryData, Cpu::sbc, IndirectX, 6));
-    instruction_set.insert(0xF1, instruction!("SBC", InternalExecOnMemoryData, Cpu::sbc, IndirectY, 5));
+    instruction_set.insert(0xE9, instruction!("SBC", InternalExecOnMemoryData, Cpu::sbc, Immediate, 2, 2));
+    instruction_set.insert(0xE5, instruction!("SBC", InternalExecOnMemoryData, Cpu::sbc, ZeroPage, 2, 3));
+    instruction_set.insert(0xF5, instruction!("SBC", InternalExecOnMemoryData, Cpu::sbc, ZeroPageX, 2, 4));
+    instruction_set.insert(0xED, instruction!("SBC", InternalExecOnMemoryData, Cpu::sbc, Absolute, 3, 4));
+    instruction_set.insert(0xFD, instruction!("SBC", InternalExecOnMemoryData, Cpu::sbc, AbsoluteX, 3, 4));
+    instruction_set.insert(0xF9, instruction!("SBC", InternalExecOnMemoryData, Cpu::sbc, AbsoluteY, 3, 4));
+    instruction_set.insert(0xE1, instruction!("SBC", InternalExecOnMemoryData, Cpu::sbc, IndirectX, 2, 6));
+    instruction_set.insert(0xF1, instruction!("SBC", InternalExecOnMemoryData, Cpu::sbc, IndirectY, 2, 5));
 
     // Logical operations
-    instruction_set.insert(0x29, instruction!("AND", InternalExecOnMemoryData, Cpu::and, Immediate, 2));
-    instruction_set.insert(0x25, instruction!("AND", InternalExecOnMemoryData, Cpu::and, ZeroPage, 3));
-    instruction_set.insert(0x35, instruction!("AND", InternalExecOnMemoryData, Cpu::and, ZeroPageX, 4));
-    instruction_set.insert(0x2D, instruction!("AND", InternalExecOnMemoryData, Cpu::and, Absolute, 4));
-    instruction_set.insert(0x3D, instruction!("AND", InternalExecOnMemoryData, Cpu::and, AbsoluteX, 4));
-    instruction_set.insert(0x39, instruction!("AND", InternalExecOnMemoryData, Cpu::and, AbsoluteY, 4));
-    instruction_set.insert(0x21, instruction!("AND", InternalExecOnMemoryData, Cpu::and, IndirectX, 6));
-    instruction_set.insert(0x31, instruction!("AND", InternalExecOnMemoryData, Cpu::and, IndirectY, 5));
+    instruction_set.insert(0x29, instruction!("AND", InternalExecOnMemoryData, Cpu::and, Immediate, 2, 2));
+    instruction_set.insert(0x25, instruction!("AND", InternalExecOnMemoryData, Cpu::and, ZeroPage, 2, 3));
+    instruction_set.insert(0x35, instruction!("AND", InternalExecOnMemoryData, Cpu::and, ZeroPageX, 2, 4));
+    instruction_set.insert(0x2D, instruction!("AND", InternalExecOnMemoryData, Cpu::and, Absolute, 3, 4));
+    instruction_set.insert(0x3D, instruction!("AND", InternalExecOnMemoryData, Cpu::and, AbsoluteX, 3, 4));
+    instruction_set.insert(0x39, instruction!("AND", InternalExecOnMemoryData, Cpu::and, AbsoluteY, 3, 4));
+    instruction_set.insert(0x21, instruction!("AND", InternalExecOnMemoryData, Cpu::and, IndirectX, 2, 6));
+    instruction_set.insert(0x31, instruction!("AND", InternalExecOnMemoryData, Cpu::and, IndirectY, 2, 5));
 
-    instruction_set.insert(0x49, instruction!("EOR", InternalExecOnMemoryData, Cpu::eor, Immediate, 2));
-    instruction_set.insert(0x45, instruction!("EOR", InternalExecOnMemoryData, Cpu::eor, ZeroPage, 3));
-    instruction_set.insert(0x55, instruction!("EOR", InternalExecOnMemoryData, Cpu::eor, ZeroPageX, 4));
-    instruction_set.insert(0x4D, instruction!("EOR", InternalExecOnMemoryData, Cpu::eor, Absolute, 4));
-    instruction_set.insert(0x5D, instruction!("EOR", InternalExecOnMemoryData, Cpu::eor, AbsoluteX, 4));
-    instruction_set.insert(0x59, instruction!("EOR", InternalExecOnMemoryData, Cpu::eor, AbsoluteY, 4));
-    instruction_set.insert(0x41, instruction!("EOR", InternalExecOnMemoryData, Cpu::eor, IndirectX, 6));
-    instruction_set.insert(0x51, instruction!("EOR", InternalExecOnMemoryData, Cpu::eor, IndirectY, 5));
+    instruction_set.insert(0x49, instruction!("EOR", InternalExecOnMemoryData, Cpu::eor, Immediate, 2, 2));
+    instruction_set.insert(0x45, instruction!("EOR", InternalExecOnMemoryData, Cpu::eor, ZeroPage, 2, 3));
+    instruction_set.insert(0x55, instruction!("EOR", InternalExecOnMemoryData, Cpu::eor, ZeroPageX, 2, 4));
+    instruction_set.insert(0x4D, instruction!("EOR", InternalExecOnMemoryData, Cpu::eor, Absolute, 3, 4));
+    instruction_set.insert(0x5D, instruction!("EOR", InternalExecOnMemoryData, Cpu::eor, AbsoluteX, 3, 4));
+    instruction_set.insert(0x59, instruction!("EOR", InternalExecOnMemoryData, Cpu::eor, AbsoluteY, 3, 4));
+    instruction_set.insert(0x41, instruction!("EOR", InternalExecOnMemoryData, Cpu::eor, IndirectX, 2, 6));
+    instruction_set.insert(0x51, instruction!("EOR", InternalExecOnMemoryData, Cpu::eor, IndirectY, 2, 5));
 
-    instruction_set.insert(0x09, instruction!("ORA", InternalExecOnMemoryData, Cpu::ora, Immediate, 2));
-    instruction_set.insert(0x05, instruction!("ORA", InternalExecOnMemoryData, Cpu::ora, ZeroPage, 3));
-    instruction_set.insert(0x15, instruction!("ORA", InternalExecOnMemoryData, Cpu::ora, ZeroPageX, 4));
-    instruction_set.insert(0x0D, instruction!("ORA", InternalExecOnMemoryData, Cpu::ora, Absolute, 4));
-    instruction_set.insert(0x1D, instruction!("ORA", InternalExecOnMemoryData, Cpu::ora, AbsoluteX, 4));
-    instruction_set.insert(0x19, instruction!("ORA", InternalExecOnMemoryData, Cpu::ora, AbsoluteY, 4));
-    instruction_set.insert(0x01, instruction!("ORA", InternalExecOnMemoryData, Cpu::ora, IndirectX, 6));
-    instruction_set.insert(0x11, instruction!("ORA", InternalExecOnMemoryData, Cpu::ora, IndirectY, 5));
+    instruction_set.insert(0x09, instruction!("ORA", InternalExecOnMemoryData, Cpu::ora, Immediate, 2, 2));
+    instruction_set.insert(0x05, instruction!("ORA", InternalExecOnMemoryData, Cpu::ora, ZeroPage, 2, 3));
+    instruction_set.insert(0x15, instruction!("ORA", InternalExecOnMemoryData, Cpu::ora, ZeroPageX, 2, 4));
+    instruction_set.insert(0x0D, instruction!("ORA", InternalExecOnMemoryData, Cpu::ora, Absolute, 3, 4));
+    instruction_set.insert(0x1D, instruction!("ORA", InternalExecOnMemoryData, Cpu::ora, AbsoluteX, 3, 4));
+    instruction_set.insert(0x19, instruction!("ORA", InternalExecOnMemoryData, Cpu::ora, AbsoluteY, 3, 4));
+    instruction_set.insert(0x01, instruction!("ORA", InternalExecOnMemoryData, Cpu::ora, IndirectX, 2, 6));
+    instruction_set.insert(0x11, instruction!("ORA", InternalExecOnMemoryData, Cpu::ora, IndirectY, 2, 5));
 
     // Shift and rotation instructions
-    instruction_set.insert(0x0A, instruction!("ASL", SingleByte, Cpu::asl, Accumulator, 2));
-    instruction_set.insert(0x06, instruction!("ASL", SingleByte, Cpu::asl, ZeroPage, 5));
-    instruction_set.insert(0x16, instruction!("ASL", SingleByte, Cpu::asl, ZeroPageX, 6));
-    instruction_set.insert(0x0E, instruction!("ASL", SingleByte, Cpu::asl, Absolute, 6));
-    instruction_set.insert(0x1E, instruction!("ASL", SingleByte, Cpu::asl, AbsoluteX, 7));
+    instruction_set.insert(0x0A, instruction!("ASL", SingleByte, Cpu::asl, Accumulator, 1, 2));
+    instruction_set.insert(0x06, instruction!("ASL", SingleByte, Cpu::asl, ZeroPage, 2, 5));
+    instruction_set.insert(0x16, instruction!("ASL", SingleByte, Cpu::asl, ZeroPageX, 2, 6));
+    instruction_set.insert(0x0E, instruction!("ASL", SingleByte, Cpu::asl, Absolute, 3, 6));
+    instruction_set.insert(0x1E, instruction!("ASL", SingleByte, Cpu::asl, AbsoluteX, 3, 7));
 
-    instruction_set.insert(0x4A, instruction!("LSR", SingleByte, Cpu::lsr, Immediate, 2));
-    instruction_set.insert(0x46, instruction!("LSR", SingleByte, Cpu::lsr, ZeroPage, 5));
-    instruction_set.insert(0x56, instruction!("LSR", SingleByte, Cpu::lsr, ZeroPageX, 6));
-    instruction_set.insert(0x4E, instruction!("LSR", SingleByte, Cpu::lsr, Absolute, 6));
-    instruction_set.insert(0x5E, instruction!("LSR", SingleByte, Cpu::lsr, AbsoluteX, 7));
+    instruction_set.insert(0x4A, instruction!("LSR", SingleByte, Cpu::lsr, Immediate, 1, 2));
+    instruction_set.insert(0x46, instruction!("LSR", SingleByte, Cpu::lsr, ZeroPage, 2, 5));
+    instruction_set.insert(0x56, instruction!("LSR", SingleByte, Cpu::lsr, ZeroPageX, 2, 6));
+    instruction_set.insert(0x4E, instruction!("LSR", SingleByte, Cpu::lsr, Absolute, 3, 6));
+    instruction_set.insert(0x5E, instruction!("LSR", SingleByte, Cpu::lsr, AbsoluteX, 3, 7));
 
-    instruction_set.insert(0x2A, instruction!("ROL", SingleByte, Cpu::rol, Immediate, 2));
-    instruction_set.insert(0x26, instruction!("ROL", SingleByte, Cpu::rol, ZeroPage, 5));
-    instruction_set.insert(0x36, instruction!("ROL", SingleByte, Cpu::rol, ZeroPageX, 6));
-    instruction_set.insert(0x2E, instruction!("ROL", SingleByte, Cpu::rol, Absolute, 6));
-    instruction_set.insert(0x3E, instruction!("ROL", SingleByte, Cpu::rol, AbsoluteX, 7));
+    instruction_set.insert(0x2A, instruction!("ROL", SingleByte, Cpu::rol, Immediate, 1, 2));
+    instruction_set.insert(0x26, instruction!("ROL", SingleByte, Cpu::rol, ZeroPage, 2, 5));
+    instruction_set.insert(0x36, instruction!("ROL", SingleByte, Cpu::rol, ZeroPageX, 2, 6));
+    instruction_set.insert(0x2E, instruction!("ROL", SingleByte, Cpu::rol, Absolute, 3, 6));
+    instruction_set.insert(0x3E, instruction!("ROL", SingleByte, Cpu::rol, AbsoluteX, 3, 7));
 
-    instruction_set.insert(0x6A, instruction!("ROR", SingleByte, Cpu::ror, Immediate, 2));
-    instruction_set.insert(0x66, instruction!("ROR", SingleByte, Cpu::ror, ZeroPage, 5));
-    instruction_set.insert(0x76, instruction!("ROR", SingleByte, Cpu::ror, ZeroPageX, 6));
-    instruction_set.insert(0x6E, instruction!("ROR", SingleByte, Cpu::ror, Absolute, 6));
-    instruction_set.insert(0x7E, instruction!("ROR", SingleByte, Cpu::ror, AbsoluteX, 7));
+    instruction_set.insert(0x6A, instruction!("ROR", SingleByte, Cpu::ror, Immediate, 1, 2));
+    instruction_set.insert(0x66, instruction!("ROR", SingleByte, Cpu::ror, ZeroPage, 2, 5));
+    instruction_set.insert(0x76, instruction!("ROR", SingleByte, Cpu::ror, ZeroPageX, 2, 6));
+    instruction_set.insert(0x6E, instruction!("ROR", SingleByte, Cpu::ror, Absolute, 3, 6));
+    instruction_set.insert(0x7E, instruction!("ROR", SingleByte, Cpu::ror, AbsoluteX, 3, 7));
 
     // Flag instructions
-    instruction_set.insert(0x18, instruction!("CLC", SingleByte, Cpu::clc, Implied, 2));
-    instruction_set.insert(0xD8, instruction!("CLD", SingleByte, Cpu::cld, Implied, 2));
-    instruction_set.insert(0x58, instruction!("CLI", SingleByte, Cpu::cli, Implied, 2));
-    instruction_set.insert(0xB8, instruction!("CLV", SingleByte, Cpu::clv, Implied, 2));
-    instruction_set.insert(0x38, instruction!("SEC", SingleByte, Cpu::sec, Implied, 2));
-    instruction_set.insert(0xF8, instruction!("SED", SingleByte, Cpu::sed, Implied, 2));
-    instruction_set.insert(0x78, instruction!("SEI", SingleByte, Cpu::sei, Implied, 2));
+    instruction_set.insert(0x18, instruction!("CLC", SingleByte, Cpu::clc, Implied, 1, 2));
+    instruction_set.insert(0xD8, instruction!("CLD", SingleByte, Cpu::cld, Implied, 1, 2));
+    instruction_set.insert(0x58, instruction!("CLI", SingleByte, Cpu::cli, Implied, 1, 2));
+    instruction_set.insert(0xB8, instruction!("CLV", SingleByte, Cpu::clv, Implied, 1, 2));
+    instruction_set.insert(0x38, instruction!("SEC", SingleByte, Cpu::sec, Implied, 1, 2));
+    instruction_set.insert(0xF8, instruction!("SED", SingleByte, Cpu::sed, Implied, 1, 2));
+    instruction_set.insert(0x78, instruction!("SEI", SingleByte, Cpu::sei, Implied, 1, 2));
 
     // Comparaisons
-    instruction_set.insert(0xC9, instruction!("CMP", InternalExecOnMemoryData, Cpu::cmp, Immediate, 2));
-    instruction_set.insert(0xC5, instruction!("CMP", InternalExecOnMemoryData, Cpu::cmp, ZeroPage, 3));
-    instruction_set.insert(0xD5, instruction!("CMP", InternalExecOnMemoryData, Cpu::cmp, ZeroPageX, 4));
-    instruction_set.insert(0xCD, instruction!("CMP", InternalExecOnMemoryData, Cpu::cmp, Absolute, 4));
-    instruction_set.insert(0xDD, instruction!("CMP", InternalExecOnMemoryData, Cpu::cmp, AbsoluteX, 4));
-    instruction_set.insert(0xC1, instruction!("CMP", InternalExecOnMemoryData, Cpu::cmp, IndirectX, 6));
-    instruction_set.insert(0xC1, instruction!("CMP", InternalExecOnMemoryData, Cpu::cmp, IndirectY, 5));
+    instruction_set.insert(0xC9, instruction!("CMP", InternalExecOnMemoryData, Cpu::cmp, Immediate, 2, 2));
+    instruction_set.insert(0xC5, instruction!("CMP", InternalExecOnMemoryData, Cpu::cmp, ZeroPage, 2, 3));
+    instruction_set.insert(0xD5, instruction!("CMP", InternalExecOnMemoryData, Cpu::cmp, ZeroPageX, 2, 4));
+    instruction_set.insert(0xCD, instruction!("CMP", InternalExecOnMemoryData, Cpu::cmp, Absolute, 3, 4));
+    instruction_set.insert(0xDD, instruction!("CMP", InternalExecOnMemoryData, Cpu::cmp, AbsoluteX, 3, 4));
+    instruction_set.insert(0xD9, instruction!("CMP", InternalExecOnMemoryData, Cpu::cmp, AbsoluteY, 3, 4));
+    instruction_set.insert(0xC1, instruction!("CMP", InternalExecOnMemoryData, Cpu::cmp, IndirectX, 3, 6));
+    instruction_set.insert(0xC1, instruction!("CMP", InternalExecOnMemoryData, Cpu::cmp, IndirectY, 2, 5));
 
-    instruction_set.insert(0xE0, instruction!("CPX", InternalExecOnMemoryData, Cpu::cpx, Immediate, 2));
-    instruction_set.insert(0xE4, instruction!("CPX", InternalExecOnMemoryData, Cpu::cpx, ZeroPage, 3));
-    instruction_set.insert(0xEC, instruction!("CPX", InternalExecOnMemoryData, Cpu::cpx, Absolute, 4));
+    instruction_set.insert(0xE0, instruction!("CPX", InternalExecOnMemoryData, Cpu::cpx, Immediate, 2, 2));
+    instruction_set.insert(0xE4, instruction!("CPX", InternalExecOnMemoryData, Cpu::cpx, ZeroPage, 2, 3));
+    instruction_set.insert(0xEC, instruction!("CPX", InternalExecOnMemoryData, Cpu::cpx, Absolute, 3, 4));
 
-    instruction_set.insert(0xC0, instruction!("CPY", InternalExecOnMemoryData, Cpu::cpy, Immediate, 2));
-    instruction_set.insert(0xC4, instruction!("CPY", InternalExecOnMemoryData, Cpu::cpy, ZeroPage, 3));
-    instruction_set.insert(0xCC, instruction!("CPY", InternalExecOnMemoryData, Cpu::cpy, Absolute, 4));
+    instruction_set.insert(0xC0, instruction!("CPY", InternalExecOnMemoryData, Cpu::cpy, Immediate, 2, 2));
+    instruction_set.insert(0xC4, instruction!("CPY", InternalExecOnMemoryData, Cpu::cpy, ZeroPage, 2, 3));
+    instruction_set.insert(0xCC, instruction!("CPY", InternalExecOnMemoryData, Cpu::cpy, Absolute, 3, 4));
 
     // Conditional branch instructions
-    instruction_set.insert(0x90, instruction!("BCC", Misc(Branch), Cpu::bcc, Relative, 2));
-    instruction_set.insert(0xB0, instruction!("BCS", Misc(Branch), Cpu::bcs, Relative, 2));
-    instruction_set.insert(0xF0, instruction!("BEQ", Misc(Branch), Cpu::beq, Relative, 2));
-    instruction_set.insert(0x30, instruction!("BMI", Misc(Branch), Cpu::bmi, Relative, 2));
-    instruction_set.insert(0xD0, instruction!("BNE", Misc(Branch), Cpu::bne, Relative, 2));
-    instruction_set.insert(0x10, instruction!("BPL", Misc(Branch), Cpu::bpl, Relative, 2));
-    instruction_set.insert(0x50, instruction!("BVC", Misc(Branch), Cpu::bvc, Relative, 2));
-    instruction_set.insert(0x70, instruction!("BVS", Misc(Branch), Cpu::bvs, Relative, 2));
+    instruction_set.insert(0x90, instruction!("BCC", Misc(Branch), Cpu::bcc, Relative, 2, 2));
+    instruction_set.insert(0xB0, instruction!("BCS", Misc(Branch), Cpu::bcs, Relative, 2, 2));
+    instruction_set.insert(0xF0, instruction!("BEQ", Misc(Branch), Cpu::beq, Relative, 2, 2));
+    instruction_set.insert(0x30, instruction!("BMI", Misc(Branch), Cpu::bmi, Relative, 2, 2));
+    instruction_set.insert(0xD0, instruction!("BNE", Misc(Branch), Cpu::bne, Relative, 2, 2));
+    instruction_set.insert(0x10, instruction!("BPL", Misc(Branch), Cpu::bpl, Relative, 2, 2));
+    instruction_set.insert(0x50, instruction!("BVC", Misc(Branch), Cpu::bvc, Relative, 2, 2));
+    instruction_set.insert(0x70, instruction!("BVS", Misc(Branch), Cpu::bvs, Relative, 2, 2));
 
     // Jumps and subroutines
-    instruction_set.insert(0x4C, instruction!("JMP", Misc(Jump), Cpu::jmp, Absolute, 3));
-    instruction_set.insert(0x6C, instruction!("JMP", Misc(Jump), Cpu::jmp, Indirect, 5));
+    instruction_set.insert(0x4C, instruction!("JMP", Misc(Jump), Cpu::jmp, Absolute, 3, 3));
+    instruction_set.insert(0x6C, instruction!("JMP", Misc(Jump), Cpu::jmp, Indirect, 3, 5));
 
-    instruction_set.insert(0x20, instruction!("JSR", Misc(Call), Cpu::jsr, Absolute, 6));
+    instruction_set.insert(0x20, instruction!("JSR", Misc(Call), Cpu::jsr, Absolute, 3, 6));
 
-    instruction_set.insert(0x40, instruction!("RTI", Misc(ReturnFromInterrupt), Cpu::rti, Implied, 6));
+    instruction_set.insert(0x40, instruction!("RTI", Misc(ReturnFromInterrupt), Cpu::rti, Implied, 1, 6));
 
     // Interrupts
-    instruction_set.insert(0x00, instruction!("BRK", Misc(HardwareInterrupt), Cpu::brk, Implied, 7));
+    instruction_set.insert(0x00, instruction!("BRK", Misc(HardwareInterrupt), Cpu::brk, Implied, 1, 7));
 
-    instruction_set.insert(0x60, instruction!("RTS", Misc(Return), Cpu::rts, Implied, 6));
+    instruction_set.insert(0x60, instruction!("RTS", Misc(Return), Cpu::rts, Implied, 1, 6));
 
     // Other
-    instruction_set.insert(0x24, instruction!("BIT", InternalExecOnMemoryData, Cpu::bit, ZeroPage, 3));
-    instruction_set.insert(0x2C, instruction!("BIT", InternalExecOnMemoryData, Cpu::bit, Absolute, 4));
+    instruction_set.insert(0x24, instruction!("BIT", InternalExecOnMemoryData, Cpu::bit, ZeroPage, 2, 3));
+    instruction_set.insert(0x2C, instruction!("BIT", InternalExecOnMemoryData, Cpu::bit, Absolute, 3, 4));
 
-    instruction_set.insert(0xEA, instruction!("NOP", SingleByte, Cpu::nop, Implied, 2));
+    instruction_set.insert(0xEA, instruction!("NOP", SingleByte, Cpu::nop, Implied, 1, 2));
 
     instruction_set
 }
