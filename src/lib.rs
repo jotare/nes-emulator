@@ -1,5 +1,6 @@
 /// NES emulator
 
+mod traits;
 mod nes;
 mod processor;
 

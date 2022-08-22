@@ -1,15 +1,11 @@
 use std::cell::RefCell;
 
-use super::memory::Memory;
+use crate::traits::Memory;
+use crate::traits::Bus;
 
 pub struct AddressRange {
     pub start: u16,
     pub end: u16,
-}
-
-pub trait Bus {
-    fn read(&self, address: u16) -> u8;
-    fn write(&self, address: u16, data: u8);
 }
 
 pub struct MainBus {

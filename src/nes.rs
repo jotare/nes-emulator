@@ -26,7 +26,7 @@ impl Nes {
     pub fn new() -> Self {
         let ram = Box::new(Ram::new());
         let bus = Rc::new(MainBus::new(vec![
-            (AddressRange { start: 0x0000, end: 0xFFFF }, ram),
+            (AddressRange { start: 0x0000, end: 0x1FFF }, ram),
         ]));
 
         let bus_ptr = Rc::clone(&bus);

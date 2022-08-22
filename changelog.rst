@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.21.0
+------
+- Move traits to separate folder (to share between modules)
+
 0.20.4
 ------
 - Test branch instructions

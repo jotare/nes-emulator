@@ -4,8 +4,9 @@ mod tests;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use super::bus::Bus;
 use super::utils::bv;
+use crate::traits::Bus;
+use crate::traits::Processor;
 
 /// MOS 6502 processor emulator.
 ///
@@ -432,40 +433,6 @@ impl Cpu {
         new
     }
 
-    pub fn reset(&mut self) {
-        self.acc = 0;
-        self.x_reg = 0;
-        self.y_reg = 0;
-        self.sp = 0xFF;
-        self.sr = 0;
-
-        // read address provided in the reset vector
-        let pcl = self.memory_read(0xFFFC) as u16;
-        let pch = self.memory_read(0xFFFD) as u16;
-        self.pc = (pch << 8) | pcl;
-    }
-
-    /// Fetch the instruction pointed by the program counter from
-    /// memory and execute it atomically.
-    pub fn execute(&mut self) {
-        let opcode = self.memory_read(self.pc);
-        let instruction = self
-            .instruction_set
-            .get(&opcode)
-            .unwrap_or_else(|| panic!("Invalid instruction '0x{:x}'", opcode));
-
-        let name = instruction.name;
-        let addressing = instruction.addressing.clone();
-        let bytes = instruction.bytes;
-        let instruction = instruction.instruction.clone();
-
-        self.exec(instruction, addressing);
-        match name {
-            "JMP" | "JSR" | "RTS" | "BRK" | "RTI" => {}
-            _ => self.pc += bytes as u16,
-        }
-    }
-
     fn memory_read(&self, address: u16) -> u8 {
         self.bus.read(address)
     }
@@ -665,6 +632,40 @@ impl Cpu {
             Zero => self.set_flag(Zero, value == 0),
             Negative => self.set_flag(Negative, bv(value, 7) != 0),
             _ => panic!("Auto set flag {:?} not implemented", flag),
+        }
+    }
+}
+
+impl Processor for Cpu {
+    fn reset(&mut self) {
+        self.acc = 0;
+        self.x_reg = 0;
+        self.y_reg = 0;
+        self.sp = 0xFF;
+        self.sr = 0;
+
+        // read address provided in the reset vector
+        let pcl = self.memory_read(0xFFFC) as u16;
+        let pch = self.memory_read(0xFFFD) as u16;
+        self.pc = (pch << 8) | pcl;
+    }
+
+    fn execute(&mut self) {
+        let opcode = self.memory_read(self.pc);
+        let instruction = self
+            .instruction_set
+            .get(&opcode)
+            .unwrap_or_else(|| panic!("Invalid instruction '0x{:x}'", opcode));
+
+        let name = instruction.name;
+        let addressing = instruction.addressing.clone();
+        let bytes = instruction.bytes;
+        let instruction = instruction.instruction.clone();
+
+        self.exec(instruction, addressing);
+        match name {
+            "JMP" | "JSR" | "RTS" | "BRK" | "RTI" => {}
+            _ => self.pc += bytes as u16,
         }
     }
 }

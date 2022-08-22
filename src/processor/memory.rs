@@ -1,12 +1,6 @@
-pub trait Memory {
-    /// Read a byte from the specified `address`
-    fn read(&self, address: u16) -> u8;
+use crate::traits::Memory;
 
-    /// Write a byte of `data` to the specified `address`
-    fn write(&mut self, address: u16, data: u8);
-}
-
-const RAM_SIZE: usize = 64 * 1024; // 64 kB RAM
+const RAM_SIZE: usize = 2 * 1024; // 2 kB RAM
 
 pub struct Ram {
     memory: Vec<u8>,
