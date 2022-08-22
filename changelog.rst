@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.20.3
+------
+- Fix reset by starting on reset vector address
+
 0.20.2
 ------
 - Fix SR push and pull in BRK and RTI

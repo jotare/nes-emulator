@@ -24,7 +24,13 @@ impl MockTestBus {
 }
 
 fn test_cpu() -> Cpu {
-    let mock_bus = Rc::new(MockTestBus::new());
+    let mut mock_bus = MockTestBus::new();
+
+    // reset will jump to start address
+    mock_bus.expect_read().with(eq(0xFFFC)).return_const(0);
+    mock_bus.expect_read().with(eq(0xFFFD)).return_const(0);
+
+    let mock_bus = Rc::new(mock_bus);
     let cpu = Cpu::new(mock_bus);
 
     cpu
@@ -33,6 +39,11 @@ fn test_cpu() -> Cpu {
 // Get a CPU with mocked peripherials and a loaded program
 fn test_cpu_with_program(program: Vec<u8>) -> Cpu {
     let mut mock_bus = MockTestBus::new();
+
+    // reset will jump to start address
+    mock_bus.expect_read().with(eq(0xFFFC)).return_const(0);
+    mock_bus.expect_read().with(eq(0xFFFD)).return_const(0);
+
     mock_bus.load_program(program);
 
     let mock_bus = Rc::new(mock_bus);

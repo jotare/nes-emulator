@@ -437,8 +437,12 @@ impl Cpu {
         self.x_reg = 0;
         self.y_reg = 0;
         self.sp = 0xFF;
-        self.pc = 0;
         self.sr = 0;
+
+        // read address provided in the reset vector
+        let pcl = self.memory_read(0xFFFC) as u16;
+        let pch = self.memory_read(0xFFFD) as u16;
+        self.pc = (pch << 8) | pcl;
     }
 
     /// Fetch the instruction pointed by the program counter from
