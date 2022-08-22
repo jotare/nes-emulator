@@ -450,6 +450,7 @@ impl Cpu {
             .get(&opcode)
             .unwrap_or_else(|| panic!("Invalid instruction '0x{:x}'", opcode));
 
+        let name = instruction.name;
         let addressing = instruction.addressing.clone();
         let bytes = instruction.bytes;
         let instruction = instruction.instruction.clone();
@@ -485,7 +486,8 @@ impl Cpu {
                 self.store(result, addressing);
             }
             Misc(t) => match t {
-                Push(fun) | Pull(fun) => fun(self),
+                Push(fun) => fun(self),
+                Pull(fun) => fun(self),
                 Jump(fun) => {
                     let (addr, _) = self.load(addressing);
                     fun(self, addr);
@@ -501,8 +503,8 @@ impl Cpu {
                 Return(fun) => {
                     fun(self);
                 }
-                HardwareInterrupt(_) => todo!(),
-                ReturnFromInterrupt(_) => todo!(),
+                HardwareInterrupt(fun) => fun(self),
+                ReturnFromInterrupt(fun) => fun(self),
             },
         }
     }
@@ -1450,7 +1452,15 @@ impl Cpu {
     /// N Z C I D V
     /// - - - 1 - -
     fn brk(&mut self) {
-        todo!();
+        let pc = self.pc + 1;
+        let pch = (pc >> 8) as u8;
+        let pcl = (pc & 0x00FF) as u8;
+        self.push(pch);
+        self.push(pcl);
+        self.push(self.sr);
+        let adl = self.memory_read(0xFFFE) as u16;
+        let adh = self.memory_read(0xFFFF) as u16;
+        self.pc = (adh << 8) | adl;
     }
 
     /// RTI - Return from Interrupt
@@ -1465,7 +1475,10 @@ impl Cpu {
     ///  N Z C I D V
     ///  from stack
     fn rti(&mut self) {
-        todo!();
+        self.sr = self.pull();
+        let pcl = self.pull() as u16;
+        let pch = self.pull() as u16;
+        self.pc = (pch << 8) | pcl;
     }
 
     // Other
