@@ -1460,7 +1460,7 @@ impl Cpu {
         let pcl = (pc & 0x00FF) as u8;
         self.push(pch);
         self.push(pcl);
-        self.push(self.sr);
+        self.push(self.sr | Break as u8);
         let adl = self.memory_read(0xFFFE) as u16;
         let adh = self.memory_read(0xFFFF) as u16;
         self.pc = (adh << 8) | adl;
@@ -1478,7 +1478,9 @@ impl Cpu {
     ///  N Z C I D V
     ///  from stack
     fn rti(&mut self) {
-        self.sr = self.pull();
+        let mut stack_sr = self.pull();
+        stack_sr &= !(Break as u8);
+        self.sr = stack_sr;
         let pcl = self.pull() as u16;
         let pch = self.pull() as u16;
         self.pc = (pch << 8) | pcl;

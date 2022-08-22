@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.20.2
+------
+- Fix SR push and pull in BRK and RTI
+
 0.20.1
 ------
 - Fix PC increment on jumps and interrupts
