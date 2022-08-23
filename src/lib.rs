@@ -1,6 +1,6 @@
 /// NES emulator
 
-mod traits;
+mod interfaces;
 mod nes;
 mod processor;
 

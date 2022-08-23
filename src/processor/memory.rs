@@ -1,4 +1,4 @@
-use crate::traits::Memory;
+use crate::interfaces::Memory;
 
 const RAM_SIZE: usize = 2 * 1024; // 2 kB RAM
 

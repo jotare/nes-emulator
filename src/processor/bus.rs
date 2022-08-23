@@ -1,28 +1,50 @@
 use std::cell::RefCell;
 
-use crate::traits::Bus;
-use crate::traits::Memory;
+use crate::interfaces::Bus;
+use crate::interfaces::AddressRange;
+use crate::interfaces::Memory;
 
-pub struct AddressRange {
-    pub start: u16,
-    pub end: u16,
-}
+type Device = (usize, Box<dyn Memory>, AddressRange);
 
 pub struct MainBus {
-    devices: RefCell<Vec<(AddressRange, Box<dyn Memory>)>>,
+    devices: RefCell<Vec<Device>>,
+    next_device_id: usize,
 }
 
 impl MainBus {
-    pub fn new(devices: Vec<(AddressRange, Box<dyn Memory>)>) -> Self {
+    pub fn new() -> Self {
         Self {
-            devices: RefCell::new(devices),
+            devices: RefCell::new(Vec::new()),
+            next_device_id: 0,
         }
     }
 }
 
 impl Bus for MainBus {
+    fn attach(&mut self, device: Box<dyn Memory>, addr_range: AddressRange) -> usize {
+        let device_id = self.next_device_id;
+        self.next_device_id += 1;
+        self.devices.borrow_mut().push((device_id, device, addr_range));
+        device_id
+    }
+
+    fn detach(&mut self, id: usize) {
+        let mut delete = None;
+
+        for (i, (_id, _, _)) in self.devices.borrow().iter().enumerate() {
+            if id == *_id {
+                delete = Some(i);
+            }
+        }
+
+        if let Some(i) = delete {
+            self.devices.borrow_mut().remove(i);
+        }
+    }
+
+    
     fn read(&self, address: u16) -> u8 {
-        for (addr_range, device) in self.devices.borrow().iter() {
+        for (_, device, addr_range) in self.devices.borrow().iter() {
             if address >= addr_range.start || address < addr_range.end {
                 return device.read(address - addr_range.start);
             }
@@ -34,7 +56,7 @@ impl Bus for MainBus {
     }
 
     fn write(&self, address: u16, data: u8) {
-        for (addr_range, device) in self.devices.borrow_mut().iter_mut() {
+        for (_, device, addr_range) in self.devices.borrow_mut().iter_mut() {
             if address >= addr_range.start || address < addr_range.end {
                 device.write(address - addr_range.start, data);
                 return;
@@ -54,7 +76,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_bus_read_without_attached_devices() {
-        let bus = MainBus::new(vec![]);
+        let bus = MainBus::new();
 
         bus.read(0x1234);
     }
@@ -62,7 +84,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_bus_write_without_attached_devices() {
-        let bus = MainBus::new(vec![]);
+        let bus = MainBus::new();
 
         bus.write(0x1234, 0xf0);
     }

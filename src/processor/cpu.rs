@@ -5,8 +5,8 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use super::utils::bv;
-use crate::traits::Bus;
-use crate::traits::Processor;
+use crate::interfaces::Bus;
+use crate::interfaces::Processor;
 
 /// MOS 6502 processor emulator.
 ///

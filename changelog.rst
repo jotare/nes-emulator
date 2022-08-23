@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.22.0
+------
+- Add attach and detach methods to Bus trait
+
 0.21.1
 ------
 - Bus hides address range to attached devices

@@ -4,11 +4,14 @@ use mockall::mock;
 use mockall::predicate::eq;
 
 use super::*;
+use crate::interfaces::{Bus, Memory, AddressRange};
 
 mock! {
     TestBus {}
 
     impl Bus for TestBus {
+        fn attach(&mut self, device: Box<dyn Memory>, addr_range: AddressRange) -> usize;
+        fn detach(&mut self, id: usize);
         fn read(&self, address: u16) -> u8;
         fn write(&self, address: u16, data: u8);
     }
