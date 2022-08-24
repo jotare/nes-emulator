@@ -15,7 +15,7 @@ use std::rc::Rc;
 use crate::interfaces::{AddressRange, Bus};
 use crate::processor::bus::MainBus;
 use crate::processor::cpu::Cpu;
-use crate::processor::memory::Ram;
+use crate::processor::memory::MirroredRam;
 
 pub struct Nes {
     cartidge: Option<Cartidge>,
@@ -25,7 +25,7 @@ pub struct Nes {
 
 impl Nes {
     pub fn new() -> Self {
-        let ram = Box::new(Ram::new());
+        let ram = Box::new(MirroredRam::new(2048, 3)); // 8 kB mirrored RAM
         let mut bus = MainBus::new();
         bus.attach(ram, AddressRange { start: 0x0000, end: 0x1FFF });
         let bus = Rc::new(bus);

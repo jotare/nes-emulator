@@ -7,8 +7,12 @@ pub struct Ram {
 }
 
 impl Ram {
-    pub fn new() -> Self {
-        Self { memory: vec![0; RAM_SIZE] }
+    pub fn new(size: usize) -> Self {
+        Self { memory: vec![0; size]}
+    }
+
+    pub fn size(&self) -> usize {
+        self.memory.len()
     }
 }
 
@@ -29,5 +33,31 @@ impl Ram {
             let i = i as u16;
             self.write(address + i, *byte);
         }
+    }
+}
+
+pub struct MirroredRam {
+    memory: Ram,
+    mirrors: usize,
+}
+
+impl MirroredRam {
+    pub fn new(size: usize, mirrors: usize) -> Self {
+        Self {
+            memory: Ram::new(size),
+            mirrors,
+        }
+    }
+}
+
+impl Memory for MirroredRam {
+    fn read(&self, address: u16) -> u8 {
+        let address = ((address as usize) % self.memory.size()) as u16;
+        self.memory.read(address)
+    }
+
+    fn write(&mut self, address: u16, data: u8) {
+        let address = ((address as usize) % self.memory.size()) as u16;
+        self.memory.write(address, data);
     }
 }

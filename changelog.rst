@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.23.0
+------
+- Add MirroredRam and use it as main memory
+
 0.22.0
 ------
 - Add attach and detach methods to Bus trait
