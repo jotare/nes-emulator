@@ -7,18 +7,16 @@
 /// start playing!
 ///
 ///
-use std::fs::File;
-use std::io::Read;
-use std::path::Path;
 use std::rc::Rc;
 
 use crate::interfaces::{AddressRange, Bus};
 use crate::processor::bus::MainBus;
 use crate::processor::cpu::Cpu;
 use crate::processor::memory::MirroredRam;
+use crate::cartidge::Catridge;
 
 pub struct Nes {
-    cartidge: Option<Cartidge>,
+    cartidge: Option<Catridge>,
     bus: Rc<MainBus>,
     cpu: Cpu,
 }
@@ -40,7 +38,7 @@ impl Nes {
         }
     }
 
-    pub fn load_cartidge(&mut self, cartidge: Cartidge) {
+    pub fn load_cartidge(&mut self, cartidge: Catridge) {
         self.cartidge = Some(cartidge);
     }
 
@@ -52,19 +50,5 @@ impl Nes {
 impl Default for Nes {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-pub struct Cartidge {
-    contents: Vec<u8>,
-}
-
-impl Cartidge {
-    pub fn new<P: AsRef<Path>>(path: P) -> Self {
-        let mut file = File::open(path).unwrap();
-        let mut buffer = Vec::new();
-        file.read_to_end(&mut buffer).unwrap();
-
-        Self { contents: buffer }
     }
 }
