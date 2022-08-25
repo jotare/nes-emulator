@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.24.0
+------
+- Rename MainBus to DataBus
+
 0.23.0
 ------
 - Add MirroredRam and use it as main memory

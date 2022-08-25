@@ -9,32 +9,40 @@
 ///
 use std::rc::Rc;
 
-use crate::interfaces::{AddressRange, Bus};
-use crate::processor::bus::MainBus;
+use crate::interfaces::AddressRange;
+use crate::interfaces::Bus as BusTrait;
+use crate::processor::bus::Bus;
 use crate::processor::cpu::Cpu;
 use crate::processor::memory::MirroredRam;
 use crate::cartidge::Catridge;
 
 pub struct Nes {
     cartidge: Option<Catridge>,
-    bus: Rc<MainBus>,
+    bus: Rc<Bus>
     cpu: Cpu,
 }
 
 impl Nes {
     pub fn new() -> Self {
         let ram = Box::new(MirroredRam::new(2048, 3)); // 8 kB mirrored RAM
-        let mut bus = MainBus::new();
-        bus.attach(ram, AddressRange { start: 0x0000, end: 0x1FFF });
-        let bus = Rc::new(bus);
+        let mut bus = Bus::new();
+        bus.attach(
+            ram,
+            AddressRange {
+                start: 0x0000,
+                end: 0x1FFF,
+            },
+        );
 
+
+        let bus = Rc::new(bus);
         let bus_ptr = Rc::clone(&bus);
         let cpu = Cpu::new(bus_ptr);
 
         Self {
             bus,
             cpu,
-            cartidge: None
+            cartidge: None,
         }
     }
 

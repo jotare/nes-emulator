@@ -1,17 +1,17 @@
 use std::cell::RefCell;
 
-use crate::interfaces::Bus;
+use crate::interfaces::Bus as BusTrait;
 use crate::interfaces::AddressRange;
 use crate::interfaces::Memory;
 
 type Device = (usize, Box<dyn Memory>, AddressRange);
 
-pub struct MainBus {
+pub struct Bus {
     devices: RefCell<Vec<Device>>,
     next_device_id: usize,
 }
 
-impl MainBus {
+impl Bus {
     pub fn new() -> Self {
         Self {
             devices: RefCell::new(Vec::new()),
@@ -20,7 +20,7 @@ impl MainBus {
     }
 }
 
-impl Bus for MainBus {
+impl BusTrait for Bus {
     fn attach(&mut self, device: Box<dyn Memory>, addr_range: AddressRange) -> usize {
         let device_id = self.next_device_id;
         self.next_device_id += 1;
@@ -76,7 +76,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_bus_read_without_attached_devices() {
-        let bus = MainBus::new();
+        let bus = Bus::new();
 
         bus.read(0x1234);
     }
@@ -84,7 +84,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_bus_write_without_attached_devices() {
-        let bus = MainBus::new();
+        let bus = Bus::new();
 
         bus.write(0x1234, 0xf0);
     }
