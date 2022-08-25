@@ -14,7 +14,7 @@ use crate::interfaces::Bus as BusTrait;
 use crate::processor::bus::Bus;
 use crate::processor::cpu::Cpu;
 use crate::processor::memory::MirroredRam;
-use crate::cartidge::Catridge;
+use crate::catridge::Catridge;
 
 pub struct Nes {
     cartidge: Option<Catridge>,

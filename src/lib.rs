@@ -1,9 +1,9 @@
 /// NES emulator
 
-mod cartidge;
+mod catridge;
 mod interfaces;
 mod nes;
 mod processor;
 
 pub use nes::Nes;
-pub use cartidge::Catridge;
+pub use catridge::Catridge;
