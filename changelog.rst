@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.25.0
+------
+- Add ROM implementation to memory module
+
 0.24.0
 ------
 - Rename MainBus to DataBus
