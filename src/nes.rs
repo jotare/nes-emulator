@@ -9,12 +9,12 @@
 ///
 use std::rc::Rc;
 
+use crate::cartidge::Cartidge;
 use crate::interfaces::AddressRange;
 use crate::interfaces::Bus as BusTrait;
 use crate::processor::bus::Bus;
 use crate::processor::cpu::Cpu;
 use crate::processor::memory::MirroredRam;
-use crate::catridge::Catridge;
 
 pub struct Nes {
     cartidge: Option<Catridge>,
