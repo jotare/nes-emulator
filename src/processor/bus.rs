@@ -42,29 +42,28 @@ impl BusTrait for Bus {
         }
     }
 
-    
     fn read(&self, address: u16) -> u8 {
         for (_, device, addr_range) in self.devices.borrow().iter() {
-            if address >= addr_range.start || address < addr_range.end {
-                return device.read(address - addr_range.start);
+            if address >= addr_range.start && address <= addr_range.end {
+                let virtual_address = address - addr_range.start;
+                return device.read(virtual_address);
             }
         }
         panic!(
-            "Bus doesn't have an attached device for address: '0x{:x}'",
-            address
+            "Bus doesn't have an attached device for address: '0x{address:x}'"
         );
     }
 
     fn write(&self, address: u16, data: u8) {
         for (_, device, addr_range) in self.devices.borrow_mut().iter_mut() {
-            if address >= addr_range.start || address < addr_range.end {
-                device.write(address - addr_range.start, data);
+            if address >= addr_range.start && address <= addr_range.end {
+                let virtual_address = address - addr_range.start;
+                device.write(virtual_address, data);
                 return;
             }
         }
         panic!(
-            "Bus doesn't have an attached device for address: '0x{:x}'",
-            address
+            "Bus doesn't have an attached device for address: '0x{address:x}'"
         );
     }
 }
