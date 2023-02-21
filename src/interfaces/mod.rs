@@ -41,4 +41,7 @@ pub trait Memory {
 
     /// Write a byte of `data` to the specified `address`
     fn write(&mut self, address: u16, data: u8);
+
+    /// Memory size in bytes
+    fn size(&self) -> usize;
 }

@@ -2,6 +2,7 @@ use crate::interfaces::Memory;
 
 const RAM_SIZE: usize = 2 * 1024; // 2 kB RAM
 
+#[derive(Debug, Clone)]
 pub struct Ram {
     memory: Vec<u8>,
 }
@@ -9,10 +10,6 @@ pub struct Ram {
 impl Ram {
     pub fn new(size: usize) -> Self {
         Self { memory: vec![0; size]}
-    }
-
-    pub fn size(&self) -> usize {
-        self.memory.len()
     }
 }
 
@@ -33,6 +30,10 @@ impl Memory for Ram {
 
     fn write(&mut self, address: u16, data: u8) {
         self.memory[address as usize] = data;
+    }
+
+    fn size(&self) -> usize {
+        self.memory.len()
     }
 }
 
@@ -60,6 +61,10 @@ impl Memory for MirroredRam {
         let address = ((address as usize) % self.memory.size()) as u16;
         self.memory.write(address, data);
     }
+
+    fn size(&self) -> usize {
+        self.memory.size() * (self.mirrors + 1)
+    }
 }
 
 /// ROM - Read-Only Memory
@@ -73,6 +78,7 @@ impl Rom {
     pub fn new(size: usize) -> Self {
         Self {
             memory: vec![0; size],
+            count: 0,
         }
     }
 
@@ -99,7 +105,11 @@ impl Memory for Rom {
 
     /// Trying to write on any location will panic, as a ROM is a
     /// read-only memory.
-    fn write(&mut self, address: u16, data: u8) {
+    fn write(&mut self, _address: u16, _data: u8) {
         panic!("ROM is a read-only memory and can't be written!");
+    }
+
+    fn size(&self) -> usize {
+        self.memory.len()
     }
 }
