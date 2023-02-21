@@ -3,6 +3,9 @@ mod tests;
 
 use std::collections::HashMap;
 use std::rc::Rc;
+use std::cell::RefCell;
+
+use log::{debug, info};
 
 use super::utils::bv;
 use crate::interfaces::Bus;
@@ -22,8 +25,48 @@ pub struct Cpu {
     sp: u8,    // Stack Pointer
     pc: u16,   // Program Counter
     sr: u8,    // Status Register
-    bus: Rc<dyn Bus>,
+    bus: Rc<RefCell<dyn Bus>>,
     instruction_set: HashMap<u8, Instruction>,
+}
+
+impl Processor for Cpu {
+    fn reset(&mut self) {
+        info!("CPU reset");
+        self.acc = 0;
+        self.x_reg = 0;
+        self.y_reg = 0;
+        self.sp = 0xFF;
+        self.sr = 0;
+
+        // read address provided in the reset vector
+        let pcl = self.memory_read(0xFFFC) as u16;
+        let pch = self.memory_read(0xFFFD) as u16;
+        self.pc = (pch << 8) | pcl;
+    }
+
+    fn execute(&mut self) -> u8 {
+        let opcode = self.memory_read(self.pc);
+        let instruction = self
+            .instruction_set
+            .get(&opcode)
+            .unwrap_or_else(|| panic!("Invalid instruction '0x{opcode:x}'"));
+
+        let name = instruction.name;
+        let addressing = instruction.addressing.clone();
+        let bytes = instruction.bytes;
+        let cycles = instruction.cycles;
+
+        let instruction = instruction.instruction.clone();
+
+        debug!("CPU execute: {} (PC: 0x{:X}, opcode: 0x{:X})", name, self.pc, opcode);
+        self.exec(instruction, addressing);
+        match name {
+            "JMP" | "JSR" | "RTS" | "BRK" | "RTI" => {}
+            _ => self.pc += bytes as u16,
+        }
+
+        cycles
+    }
 }
 
 // Instruction addressing modes
@@ -77,6 +120,243 @@ pub struct Instruction {
     addressing: AddressingMode,
     bytes: u8,
     cycles: u8,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum StatusRegisterFlag {
+    Negative = 1 << 7,
+    Overflow = 1 << 6,
+    // bit 5 is unused and is always 1
+    Break = 1 << 4,
+    Decimal = 1 << 3, // unused in the NES
+    InterruptDisable = 1 << 2,
+    Zero = 1 << 1,
+    Carry = 1 << 0,
+}
+use StatusRegisterFlag::*;
+
+impl Cpu {
+    /// Create a new CPU and connect it to a `Memory`. CPU is initialized in an
+    /// unknown state. Users must call `reset` method to call the Reset vector
+    /// (read from 0xFFFD, 0xFFFC) and jump to a desired entry point
+    pub fn new(bus: Rc<RefCell<dyn Bus>>) -> Self {
+        Self {
+            acc: 0,
+            x_reg: 0,
+            y_reg: 0,
+            sp: 0xFF, // 256 byte stack between 0x0100 - 0x01FF. Stack Pointer 0x00 - 0xFF
+            pc: 0,
+            sr: 0,
+            bus,
+            instruction_set: legal_opcode_instruction_set(),
+        }
+    }
+
+    fn memory_read(&self, address: u16) -> u8 {
+        self.bus.borrow().read(address)
+    }
+
+    fn memory_write(&self, address: u16, data: u8) {
+        self.bus.borrow().write(address, data);
+    }
+
+    fn exec(&mut self, instruction: InstructionKind, addressing: AddressingMode) {
+        match instruction {
+            SingleByte(fun) => {
+                fun(self);
+            }
+            InternalExecOnMemoryData(fun) => {
+                let (_, data) = self.load(addressing);
+                fun(self, data);
+            }
+            StoreOp(fun) => {
+                let data = fun(self);
+                self.store(data, addressing);
+            }
+            ReadModifyWrite(fun) => {
+                let (_, data) = self.load(addressing.clone());
+                let result = fun(self, data);
+                self.store(result, addressing);
+            }
+            Misc(t) => match t {
+                Push(fun) => fun(self),
+                Pull(fun) => fun(self),
+                Jump(fun) => {
+                    let (addr, _) = self.load(addressing);
+                    fun(self, addr);
+                }
+                Branch(fun) => {
+                    let (_, data) = self.load(addressing);
+                    fun(self, data);
+                }
+                Call(fun) => {
+                    let (addr, _) = self.load(addressing);
+                    fun(self, addr);
+                }
+                Return(fun) => {
+                    fun(self);
+                }
+                HardwareInterrupt(fun) => fun(self),
+                ReturnFromInterrupt(fun) => fun(self),
+            },
+        }
+    }
+
+    fn load(&mut self, addr_mode: AddressingMode) -> (u16, u8) {
+        let opcode = self.memory_read(self.pc);
+        let (addr, data) = match addr_mode {
+            Implied => {
+                let addr = self.pc + 1;
+                let data = opcode; // discarted
+                (addr, data)
+            }
+            Accumulator => {
+                let addr = self.pc + 1;
+                let data = self.acc;
+                (addr, data)
+            }
+            Immediate => {
+                let addr = self.pc + 1;
+                let data = self.memory_read(self.pc + 1);
+                (addr, data)
+            }
+            ZeroPage => {
+                // Effective address is 00, ADL
+                let adl = self.memory_read(self.pc + 1) as u16;
+                let addr = adl;
+                let data = self.memory_read(addr);
+                (addr, data)
+            }
+            Absolute => {
+                // Effective address is ADH, ADL
+                let adl = self.memory_read(self.pc + 1) as u16;
+                let adh = (self.memory_read(self.pc + 2) as u16) << 8;
+                let addr = adh | adl;
+                let data = self.memory_read(addr);
+                (addr, data)
+            }
+            IndirectX => {
+                // page zero base address
+                let bal = self.memory_read(self.pc + 1) as u16;
+                let adl = self.memory_read(bal + (self.x_reg as u16)) as u16;
+                let adh = self.memory_read(bal + (self.x_reg as u16) + 1) as u16;
+                let addr = (adh << 8) | adl;
+                let data = self.memory_read(addr);
+                (addr, data)
+            }
+            AbsoluteX => {
+                let bal = self.memory_read(self.pc + 1) as u16;
+                let bah = self.memory_read(self.pc + 2) as u16;
+                let addr = ((bah << 8) | bal) + self.x_reg as u16;
+                let data = self.memory_read(addr);
+                (addr, data)
+            }
+            AbsoluteY => {
+                let bal = self.memory_read(self.pc + 1) as u16;
+                let bah = self.memory_read(self.pc + 2) as u16;
+                let addr = ((bah << 8) | bal) + self.y_reg as u16;
+                let data = self.memory_read(addr);
+                (addr, data)
+            }
+            ZeroPageX => {
+                let bal = self.memory_read(self.pc + 1) as u16;
+                let addr = bal + self.x_reg as u16;
+                let data = self.memory_read(addr);
+                (addr, data)
+            }
+            ZeroPageY => {
+                let bal = self.memory_read(self.pc + 1) as u16;
+                let addr = bal + self.y_reg as u16;
+                let data = self.memory_read(addr);
+                (addr, data)
+            }
+            IndirectY => {
+                let ial = self.memory_read(self.pc + 1) as u16;
+                let bal = self.memory_read(ial) as u16;
+                let bah = self.memory_read(ial + 1) as u16;
+                let addr = ((bah << 8) | bal) + self.y_reg as u16;
+                let data = self.memory_read(addr);
+                (addr, data)
+            }
+            Relative => {
+                let offset = self.memory_read(self.pc + 1) as i8 as u8;
+                (self.pc + 2, offset)
+            }
+            _ => {
+                panic!("Invalid load addressing mode: {addr_mode:?}");
+            }
+        };
+        (addr, data)
+    }
+
+    fn store(&mut self, data: u8, addr_mode: AddressingMode) {
+        let addr = match addr_mode {
+            ZeroPage => self.memory_read(self.pc + 1) as u16,
+            Absolute => {
+                let adl = self.memory_read(self.pc + 1) as u16;
+                let adh = (self.memory_read(self.pc + 2) as u16) << 8;
+                adh | adl
+            }
+            IndirectX => {
+                let bal = self.memory_read(self.pc + 1) as u16;
+                let adl = self.memory_read(bal + (self.x_reg as u16)) as u16;
+                let adh = self.memory_read(bal + (self.x_reg as u16) + 1) as u16;
+                (adh << 8) | adl
+            }
+            AbsoluteX => {
+                let bal = self.memory_read(self.pc + 1) as u16;
+                let bah = self.memory_read(self.pc + 2) as u16;
+                ((bah << 8) | bal) + (self.x_reg as u16)
+            }
+            AbsoluteY => {
+                let bal = self.memory_read(self.pc + 1) as u16;
+                let bah = self.memory_read(self.pc + 2) as u16;
+                ((bah << 8) | bal) + (self.y_reg as u16)
+            }
+            ZeroPageX => {
+                let bal = self.memory_read(self.pc + 1) as u16;
+                (bal + (self.x_reg as u16)) & 0x00FF
+            }
+            ZeroPageY => {
+                let bal = self.memory_read(self.pc + 1) as u16;
+                (bal + (self.y_reg as u16)) & 0x00FF
+            }
+            IndirectY => {
+                let ial = self.memory_read(self.pc + 1) as u16;
+                let bal = self.memory_read(ial) as u16;
+                let bah = self.memory_read(ial + 1) as u16;
+                let adl = bal + (self.y_reg as u16);
+                let adh = bah;
+                (adh << 8) | adl
+            }
+            _ => {
+                panic!("Invalid store addressing mode: {addr_mode:?}");
+            }
+        };
+        self.memory_write(addr, data);
+    }
+
+    // Status Register
+
+    fn flag(&self, flag: StatusRegisterFlag) -> bool {
+        (self.sr & (flag as u8)) > 0
+    }
+
+    fn set_flag(&mut self, flag: StatusRegisterFlag, enable: bool) {
+        if enable {
+            self.sr |= flag as u8;
+        } else {
+            self.sr &= !(flag as u8);
+        }
+    }
+
+    fn auto_set_flag(&mut self, flag: StatusRegisterFlag, value: u8) {
+        match flag {
+            Zero => self.set_flag(Zero, value == 0),
+            Negative => self.set_flag(Negative, bv(value, 7) != 0),
+            _ => panic!("Auto set flag {flag:?} not implemented"),
+        }
+    }
 }
 
 macro_rules! instruction {
@@ -200,7 +480,7 @@ pub fn legal_opcode_instruction_set() -> HashMap<u8, Instruction> {
     instruction_set.insert(0xB5, instruction!("LDA", InternalExecOnMemoryData, Cpu::lda, ZeroPageX, 2, 4));
     instruction_set.insert(0xAD, instruction!("LDA", InternalExecOnMemoryData, Cpu::lda, Absolute, 3, 4));
     instruction_set.insert(0xB9, instruction!("LDA", InternalExecOnMemoryData, Cpu::lda, AbsoluteX, 3, 4));
-    instruction_set.insert(0xB9, instruction!("LDA", InternalExecOnMemoryData, Cpu::lda, AbsoluteY, 3, 4));
+    instruction_set.insert(0xBD, instruction!("LDA", InternalExecOnMemoryData, Cpu::lda, AbsoluteY, 3, 4));
     instruction_set.insert(0xA1, instruction!("LDA", InternalExecOnMemoryData, Cpu::lda, IndirectX, 2, 6));
     instruction_set.insert(0xB1, instruction!("LDA", InternalExecOnMemoryData, Cpu::lda, IndirectY, 2, 5));
 
@@ -268,9 +548,9 @@ pub fn legal_opcode_instruction_set() -> HashMap<u8, Instruction> {
     instruction_set.insert(0xEE, instruction!("INC", ReadModifyWrite, Cpu::inc, Absolute, 3, 6));
     instruction_set.insert(0xFE, instruction!("INC", ReadModifyWrite, Cpu::inc, AbsoluteX, 3, 7));
 
-    instruction_set.insert(0xCA, instruction!("INX", SingleByte, Cpu::inx, Immediate, 1, 2));
+    instruction_set.insert(0xE8, instruction!("INX", SingleByte, Cpu::inx, Immediate, 1, 2));
 
-    instruction_set.insert(0x88, instruction!("INY", SingleByte, Cpu::iny, Immediate, 1, 2));
+    instruction_set.insert(0xC8, instruction!("INY", SingleByte, Cpu::iny, Immediate, 1, 2));
 
     // Arithmetic operations
     instruction_set.insert(0x69, instruction!("ADC", InternalExecOnMemoryData, Cpu::adc, Immediate, 2, 2));
@@ -401,273 +681,6 @@ pub fn legal_opcode_instruction_set() -> HashMap<u8, Instruction> {
     instruction_set.insert(0xEA, instruction!("NOP", SingleByte, Cpu::nop, Implied, 1, 2));
 
     instruction_set
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum StatusRegisterFlag {
-    Carry = 1 << 0,
-    Zero = 1 << 1,
-    InterruptDisable = 1 << 2,
-    Decimal = 1 << 3, // unused in the NES
-    Break = 1 << 4,
-    // bit 5 is unused and is always 1
-    Overflow = 1 << 6,
-    Negative = 1 << 7,
-}
-use StatusRegisterFlag::*;
-
-impl Cpu {
-    /// Create a new CPU and connect it to a `Memory`.
-    pub fn new(bus: Rc<dyn Bus>) -> Self {
-        let mut new = Self {
-            acc: 0,
-            x_reg: 0,
-            y_reg: 0,
-            sp: 0xFF, // 256 byte stack between 0x0100 - 0x01FF. Stack Pointer 0x00 - 0xFF
-            pc: 0,
-            sr: 0,
-            bus,
-            instruction_set: legal_opcode_instruction_set(),
-        };
-        new.reset();
-        new
-    }
-
-    fn memory_read(&self, address: u16) -> u8 {
-        self.bus.read(address)
-    }
-
-    fn memory_write(&self, address: u16, data: u8) {
-        self.bus.write(address, data);
-    }
-
-    fn exec(&mut self, instruction: InstructionKind, addressing: AddressingMode) {
-        match instruction {
-            SingleByte(fun) => {
-                fun(self);
-            }
-            InternalExecOnMemoryData(fun) => {
-                let (_, data) = self.load(addressing);
-                fun(self, data);
-            }
-            StoreOp(fun) => {
-                let data = fun(self);
-                self.store(data, addressing);
-            }
-            ReadModifyWrite(fun) => {
-                let (_, data) = self.load(addressing.clone());
-                let result = fun(self, data);
-                self.store(result, addressing);
-            }
-            Misc(t) => match t {
-                Push(fun) => fun(self),
-                Pull(fun) => fun(self),
-                Jump(fun) => {
-                    let (addr, _) = self.load(addressing);
-                    fun(self, addr);
-                }
-                Branch(fun) => {
-                    let (_, data) = self.load(addressing);
-                    fun(self, data);
-                }
-                Call(fun) => {
-                    let (addr, _) = self.load(addressing);
-                    fun(self, addr);
-                }
-                Return(fun) => {
-                    fun(self);
-                }
-                HardwareInterrupt(fun) => fun(self),
-                ReturnFromInterrupt(fun) => fun(self),
-            },
-        }
-    }
-
-    fn load(&mut self, addr_mode: AddressingMode) -> (u16, u8) {
-        let opcode = self.memory_read(self.pc);
-        let (addr, data) = match addr_mode {
-            Implied => {
-                let addr = self.pc + 1;
-                let data = opcode; // discarted
-                (addr, data)
-            }
-            Accumulator => {
-                let addr = self.pc + 1;
-                let data = self.acc;
-                (addr, data)
-            }
-            Immediate => {
-                let addr = self.pc + 1;
-                let data = self.memory_read(self.pc + 1);
-                (addr, data)
-            }
-            ZeroPage => {
-                // Effective address is 00, ADL
-                let adl = self.memory_read(self.pc + 1) as u16;
-                let addr = adl;
-                let data = self.memory_read(addr);
-                (addr, data)
-            }
-            Absolute => {
-                // Effective address is ADH, ADL
-                let adl = self.memory_read(self.pc + 1) as u16;
-                let adh = (self.memory_read(self.pc + 2) as u16) << 8;
-                let addr = adh | adl;
-                let data = self.memory_read(addr);
-                (addr, data)
-            }
-            IndirectX => {
-                // page zero base address
-                let bal = self.memory_read(self.pc + 1) as u16;
-                let adl = self.memory_read(bal + (self.x_reg as u16)) as u16;
-                let adh = self.memory_read(bal + (self.x_reg as u16) + 1) as u16;
-                let addr = (adh << 8) | adl;
-                let data = self.memory_read(addr);
-                (addr, data)
-            }
-            AbsoluteX => {
-                let bal = self.memory_read(self.pc + 1) as u16;
-                let bah = self.memory_read(self.pc + 2) as u16;
-                let addr = ((bah << 8) | bal) + self.x_reg as u16;
-                let data = self.memory_read(addr);
-                (addr, data)
-            }
-            AbsoluteY => {
-                let bal = self.memory_read(self.pc + 1) as u16;
-                let bah = self.memory_read(self.pc + 2) as u16;
-                let addr = ((bah << 8) | bal) + self.y_reg as u16;
-                let data = self.memory_read(addr);
-                (addr, data)
-            }
-            ZeroPageX => {
-                let bal = self.memory_read(self.pc + 1) as u16;
-                let addr = bal + self.x_reg as u16;
-                let data = self.memory_read(addr);
-                (addr, data)
-            }
-            ZeroPageY => {
-                let bal = self.memory_read(self.pc + 1) as u16;
-                let addr = bal + self.y_reg as u16;
-                let data = self.memory_read(addr);
-                (addr, data)
-            }
-            IndirectY => {
-                let ial = self.memory_read(self.pc + 1) as u16;
-                let bal = self.memory_read(ial) as u16;
-                let bah = self.memory_read(ial + 1) as u16;
-                let addr = ((bah << 8) | bal) + self.y_reg as u16;
-                let data = self.memory_read(addr);
-                (addr, data)
-            }
-            _ => {
-                panic!("Invalid store addressing mode: {:?}", addr_mode);
-            }
-        };
-        (addr, data)
-    }
-
-    fn store(&mut self, data: u8, addr_mode: AddressingMode) {
-        let addr = match addr_mode {
-            ZeroPage => self.memory_read(self.pc + 1) as u16,
-            Absolute => {
-                let adl = self.memory_read(self.pc + 1) as u16;
-                let adh = (self.memory_read(self.pc + 2) as u16) << 8;
-                adh | adl
-            }
-            IndirectX => {
-                let bal = self.memory_read(self.pc + 1) as u16;
-                let adl = self.memory_read(bal + (self.x_reg as u16)) as u16;
-                let adh = self.memory_read(bal + (self.x_reg as u16) + 1) as u16;
-                (adh << 8) | adl
-            }
-            AbsoluteX => {
-                let bal = self.memory_read(self.pc + 1) as u16;
-                let bah = self.memory_read(self.pc + 2) as u16;
-                ((bah << 8) | bal) + (self.x_reg as u16)
-            }
-            AbsoluteY => {
-                let bal = self.memory_read(self.pc + 1) as u16;
-                let bah = self.memory_read(self.pc + 2) as u16;
-                ((bah << 8) | bal) + (self.y_reg as u16)
-            }
-            ZeroPageX => {
-                let bal = self.memory_read(self.pc + 1) as u16;
-                (bal + (self.x_reg as u16)) & 0x00FF
-            }
-            ZeroPageY => {
-                let bal = self.memory_read(self.pc + 1) as u16;
-                (bal + (self.y_reg as u16)) & 0x00FF
-            }
-            IndirectY => {
-                let ial = self.memory_read(self.pc + 1) as u16;
-                let bal = self.memory_read(ial) as u16;
-                let bah = self.memory_read(ial + 1) as u16;
-                let adl = bal + (self.y_reg as u16);
-                let adh = bah;
-                (adh << 8) | adl
-            }
-            _ => {
-                panic!("Invalid store addressing mode: {:?}", addr_mode);
-            }
-        };
-        self.memory_write(addr, data);
-    }
-
-    // Status Register
-
-    fn flag(&self, flag: StatusRegisterFlag) -> bool {
-        (self.sr & (flag as u8)) > 0
-    }
-
-    fn set_flag(&mut self, flag: StatusRegisterFlag, enable: bool) {
-        if enable {
-            self.sr |= flag as u8;
-        } else {
-            self.sr &= !(flag as u8);
-        }
-    }
-
-    fn auto_set_flag(&mut self, flag: StatusRegisterFlag, value: u8) {
-        match flag {
-            Zero => self.set_flag(Zero, value == 0),
-            Negative => self.set_flag(Negative, bv(value, 7) != 0),
-            _ => panic!("Auto set flag {:?} not implemented", flag),
-        }
-    }
-}
-
-impl Processor for Cpu {
-    fn reset(&mut self) {
-        self.acc = 0;
-        self.x_reg = 0;
-        self.y_reg = 0;
-        self.sp = 0xFF;
-        self.sr = 0;
-
-        // read address provided in the reset vector
-        let pcl = self.memory_read(0xFFFC) as u16;
-        let pch = self.memory_read(0xFFFD) as u16;
-        self.pc = (pch << 8) | pcl;
-    }
-
-    fn execute(&mut self) {
-        let opcode = self.memory_read(self.pc);
-        let instruction = self
-            .instruction_set
-            .get(&opcode)
-            .unwrap_or_else(|| panic!("Invalid instruction '0x{:x}'", opcode));
-
-        let name = instruction.name;
-        let addressing = instruction.addressing.clone();
-        let bytes = instruction.bytes;
-        let instruction = instruction.instruction.clone();
-
-        self.exec(instruction, addressing);
-        match name {
-            "JMP" | "JSR" | "RTS" | "BRK" | "RTI" => {}
-            _ => self.pc += bytes as u16,
-        }
-    }
 }
 
 // Instruction Set
@@ -839,14 +852,16 @@ impl Cpu {
 
     fn push(&mut self, data: u8) {
         let address = 0x0100 + (self.sp as u16);
+        println!("Push to SP 0x{:X} - 0x{:X}", self.sp, data);
         self.memory_write(address, data);
         self.sp -= 1;
     }
 
     fn pull(&mut self) -> u8 {
+        self.sp += 1;
         let address = 0x0100 + (self.sp as u16);
         let data = self.memory_read(address);
-        self.sp += 1;
+        println!("Pull from SP 0x{address:X} - 0x{data:X}");
         data
     }
 
@@ -1290,7 +1305,14 @@ impl Cpu {
     fn branch(&mut self, condition: bool, offset: u8) {
         if condition {
             let carry = if self.flag(Carry) { 1 } else { 0 };
-            self.pc += (offset as u16) + carry;
+            let offset = (offset as i8 as i16) + carry;
+            if offset >= 0 {
+                let (pc, _) = self.pc.overflowing_add(offset as u16);
+                self.pc = pc;
+            } else {
+                let (pc, _) = self.pc.overflowing_sub(offset as u16);
+                self.pc = pc;
+            }
         }
     }
 
@@ -1416,7 +1438,7 @@ impl Cpu {
     /// N Z C I D V
     /// - - - - - -
     fn jsr(&mut self, address: u16) {
-        let pc = self.pc + 1;
+        let pc = self.pc + 2;
         let pch = (pc >> 8) as u8;
         let pcl = (pc & 0x00FF) as u8;
         self.push(pch);
@@ -1435,7 +1457,7 @@ impl Cpu {
     fn rts(&mut self) {
         let pcl = self.pull() as u16;
         let pch = self.pull() as u16;
-        self.pc = (pch << 8) | pcl;
+        self.pc = ((pch << 8) | pcl) + 1;
     }
 
     // Interrupts
@@ -1460,15 +1482,16 @@ impl Cpu {
     /// N Z C I D V
     /// - - - 1 - -
     fn brk(&mut self) {
-        let pc = self.pc + 1;
-        let pch = (pc >> 8) as u8;
-        let pcl = (pc & 0x00FF) as u8;
+        let return_address = self.pc + 2;
+        let pch = (return_address >> 8) as u8;
+        let pcl = (return_address & 0x00FF) as u8;
         self.push(pch);
         self.push(pcl);
         self.push(self.sr | Break as u8);
         let adl = self.memory_read(0xFFFE) as u16;
         let adh = self.memory_read(0xFFFF) as u16;
         self.pc = (adh << 8) | adl;
+        self.set_flag(InterruptDisable, true);
     }
 
     /// RTI - Return from Interrupt

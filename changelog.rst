@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+0.26.0
+------
+- Add logging
+- Use interior mutability pattern for Nes bus
+- Fix various CPU errors
+
 0.25.0
 ------
 - Add ROM implementation to memory module

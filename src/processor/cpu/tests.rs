@@ -33,8 +33,9 @@ fn test_cpu() -> Cpu {
     mock_bus.expect_read().with(eq(0xFFFC)).return_const(0);
     mock_bus.expect_read().with(eq(0xFFFD)).return_const(0);
 
-    let mock_bus = Rc::new(mock_bus);
-    let cpu = Cpu::new(mock_bus);
+    let mock_bus = Rc::new(RefCell::new(mock_bus));
+    let mock_bus_ptr = Rc::clone(&mock_bus);
+    let cpu = Cpu::new(mock_bus_ptr);
 
     cpu
 }
@@ -49,7 +50,8 @@ fn test_cpu_with_program(program: Vec<u8>) -> Cpu {
 
     mock_bus.load_program(program);
 
-    let mock_bus = Rc::new(mock_bus);
+    let mock_bus = Rc::new(RefCell::new(mock_bus));
+    let mock_bus_ptr = Rc::clone(&mock_bus);
     let cpu = Cpu::new(mock_bus);
 
     cpu
@@ -841,6 +843,8 @@ fn test_branch_instruction_BVC() {
 
 #[test]
 fn test_branch_instruction_BVS() {
+    env_logger::builder().is_test(true).try_init();
+
     let mut cpu = test_cpu();
     let pc = cpu.pc;
 
