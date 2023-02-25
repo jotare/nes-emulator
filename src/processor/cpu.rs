@@ -1305,15 +1305,9 @@ impl Cpu {
 
     fn branch(&mut self, condition: bool, offset: u8) {
         if condition {
-            let carry = if self.flag(Carry) { 1 } else { 0 };
-            let offset = (offset as i8 as i16) + carry;
-            if offset >= 0 {
-                let (pc, _) = self.pc.overflowing_add(offset as u16);
-                self.pc = pc;
-            } else {
-                let (pc, _) = self.pc.overflowing_sub(offset as u16);
-                self.pc = pc;
-            }
+            // TODO add +1 if page changes
+            let (pc, _) = self.pc.overflowing_add_signed(offset as i8 as i16);
+            self.pc = pc;
         }
     }
 
