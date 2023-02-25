@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.27.0
+------
+- Add CartidgeHeader struct and improve header parsing
+
 0.26.0
 ------
 - Add logging

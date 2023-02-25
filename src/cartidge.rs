@@ -5,6 +5,7 @@ use std::path::Path;
 use log::debug;
 
 use crate::processor::memory::Ram;
+use crate::utils::bv;
 
 pub struct Cartidge {
     name: String,
@@ -44,40 +45,30 @@ impl Cartidge {
 
         let mut file = File::open(path).unwrap();
 
-        let mut header = vec![0; 16]; // 16 byte header
+        let mut header = [0; 16]; // 16 byte header
         file.read_exact(&mut header).unwrap();
 
-        // Program and character ROM sizes
-        let pgr_memory_size = (header[4] as usize) * 16 * 1024;
-        let chr_memory_size = (header[5] as usize) * 8 * 1024;
-
-        let trainer = (header[6] & 0x04) != 0;
-        let mapper = (header[7] & 0xF0) | ((header[6] & 0xF0) >> 4);
-        debug!("Cartidge mapper: {mapper}");
-
-        // match mapper {
-        //     0 => todo!(),
-        //     _ => panic!("Mapper {} not implemented", mapper),
-        // }
+        let cartidge_header = CartidgeHeader::parse(&header);
+        println!("Header: {cartidge_header:#?}");
 
         // Trainer content is ignored for now
-        if trainer {
-            let mut buf = vec![0; 512]; // 512-byte trainer at 0x7000 - 0x71FF
+        let _trainer = if cartidge_header.trainer {
+            let mut buf = [0; 512]; // 512-byte trainer at 0x7000 - 0x71FF
             file.read_exact(&mut buf).unwrap();
             Some(buf)
         } else {
             None
         };
 
-        let pgr_ram = Ram::new(0x7FFF - 0x6000 + 1);
+        let pgr_ram = Ram::new(cartidge_header.pgr_ram_size);
 
-        let mut pgr_memory = Ram::new(pgr_memory_size);
-        let mut buf = vec![0; pgr_memory_size];
+        let mut pgr_memory = Ram::new(cartidge_header.pgr_rom_size);
+        let mut buf = vec![0; cartidge_header.pgr_rom_size];
         file.read_exact(&mut buf).unwrap();
         pgr_memory.load(0, &buf);
 
-        let mut chr_memory = Ram::new(chr_memory_size);
-        let mut buf = vec![0; chr_memory_size];
+        let mut chr_memory = Ram::new(cartidge_header.chr_rom_size);
+        let mut buf = vec![0; cartidge_header.chr_rom_size];
         file.read_exact(&mut buf).unwrap();
         chr_memory.load(0, &buf);
 
@@ -96,18 +87,88 @@ impl Cartidge {
     }
 }
 
-
 impl std::fmt::Display for Cartidge {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.name)
     }
 }
 
+#[derive(Debug)]
+enum Mirroring {
+    /// Vertical arrangement (CIRAM A10 = PPU A11)
+    Horizontal,
+
+    /// Horizontal arrangement (CIRAM A10 = PPU A10)
+    Vertical,
+}
+
+#[derive(Debug)]
+struct CartidgeHeader {
+    pub pgr_rom_size: usize,
+    pub chr_rom_size: usize,
+    pub mirroring: Mirroring,
+
+    // 512-byte trainer at 0x7000-0x71FF (stored before PGR data)
+    pub trainer: bool,
+
+    // pub mapper: Box<dyn crate::mappers::Mapper>
+    pub mapper: u8,
+
+    pub pgr_ram_size: usize,
+}
+
+impl CartidgeHeader {
+    fn parse(header: &[u8; 16]) -> Self {
+        println!("Parse Header: {:X?}", header);
+
+        // (bytes 0-3) - NES cartidges started with ASCII "NES" and MS-DOS
+        // end-of-file (0x1A)
+        assert!(
+            header[0..4] == [0x4E, 0x45, 0x53, 0x1A],
+            "Invalid iNES header"
+        );
+
+        // (byte 4) - Size of PGR ROM in 16 KB units
+        let pgr_rom_size = (header[4] as usize) * 16 * 1024;
+
+        // (byte 5) - Size of CHR ROM in 8 KB units
+        let chr_rom_size = (header[5] as usize) * 8 * 1024;
+
+        // (byte 6) - Mapper, mirroring, battery, trainer
+        let mirroring = if bv(header[6], 0) == 0 {
+            Mirroring::Horizontal
+        } else {
+            Mirroring::Vertical
+        };
+
+        let trainer = bv(header[6], 2) != 0;
+
+        let mapper_number = (header[7] & 0xF0) | ((header[6] & 0xF0) >> 4);
+        // let mapper = crate::mappers::mapper_map(mapper_number);
+        debug!("Cartidge mapper: {mapper_number}");
+
+        // (byte 8) - PGR RAM size in 8 kB units (0 infers for 8 kB)
+        let pgr_ram_size = if header[8] > 0 {
+            (header[8] as usize) * 8 * 1024
+        } else {
+            8 * 1024
+        };
+
+        Self {
+            pgr_rom_size,
+            chr_rom_size,
+            mirroring,
+            trainer,
+            mapper: mapper_number,
+            pgr_ram_size,
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
-    use crate::interfaces::Memory;
     use super::*;
+    use crate::interfaces::Memory;
 
     #[test]
     fn test_cartidge_new() {
