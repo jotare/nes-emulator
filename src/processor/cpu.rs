@@ -7,7 +7,7 @@ use std::cell::RefCell;
 
 use log::{debug, info};
 
-use super::utils::bv;
+use crate::utils::bv;
 use crate::interfaces::Bus;
 use crate::interfaces::Processor;
 
