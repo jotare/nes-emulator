@@ -7,8 +7,8 @@
 /// start playing!
 ///
 ///
-use std::rc::Rc;
 use std::cell::RefCell;
+use std::rc::Rc;
 
 use log::info;
 
@@ -20,7 +20,6 @@ use crate::processor::bus::Bus;
 use crate::processor::cpu::Cpu;
 use crate::processor::memory::MirroredRam;
 use crate::processor::memory::Ram;
-
 
 type NesBus = Rc<RefCell<Bus>>;
 type NesCpu = Rc<RefCell<Cpu>>;
@@ -58,13 +57,19 @@ impl Nes {
         let fake_ppu = Box::new(MirroredRam::new(8, 1023)); // 8 B mirrored RAM
         bus.borrow_mut().attach(
             fake_ppu,
-            AddressRange { start: 0x2000, end: 0x3FFF }
+            AddressRange {
+                start: 0x2000,
+                end: 0x3FFF,
+            },
         );
 
         let fake_apu = Box::new(Ram::new(0x18)); // 0x18 B RAM - NES APU and I/O registers
         bus.borrow_mut().attach(
             fake_apu,
-            AddressRange { start: 0x4000, end: 0x4017 }
+            AddressRange {
+                start: 0x4000,
+                end: 0x4017,
+            },
         );
 
 
@@ -92,7 +97,10 @@ impl Nes {
         // XXX: use references to avoid cloning memory
         self.bus.borrow_mut().attach(
             Box::new(rom),
-            AddressRange { start: 0x8000, end: 0xFFFF }
+            AddressRange {
+                start: 0x8000,
+                end: 0xFFFF,
+            },
         );
 
         self.cartidge = Some(cartidge);

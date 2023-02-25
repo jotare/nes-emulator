@@ -9,7 +9,9 @@ pub struct Ram {
 
 impl Ram {
     pub fn new(size: usize) -> Self {
-        Self { memory: vec![0; size]}
+        Self {
+            memory: vec![0; size],
+        }
     }
 }
 
@@ -90,11 +92,11 @@ impl Rom {
             panic!("ROM memory can be written only once");
         }
 
-            for (i, byte) in contents.iter().enumerate() {
-                let i = i as u16;
-                self.write(address + i, *byte);
-            }
-            self.count += 1;
+        for (i, byte) in contents.iter().enumerate() {
+            let i = i as u16;
+            self.write(address + i, *byte);
+        }
+        self.count += 1;
     }
 }
 

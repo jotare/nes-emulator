@@ -1,15 +1,16 @@
 #[cfg(test)]
 mod tests;
 
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
-use std::cell::RefCell;
 
 use log::{debug, info};
 
-use crate::utils::bv;
 use crate::interfaces::Bus;
 use crate::interfaces::Processor;
+use crate::utils::bv;
+
 
 /// MOS 6502 processor emulator.
 ///
@@ -49,7 +50,7 @@ impl Processor for Cpu {
         let instruction = self
             .instruction_set
             .get(&opcode)
-            .unwrap_or_else(|| panic!("Invalid instruction '0x{opcode:x}'"));
+            .unwrap_or_else(|| panic!("Invalid instruction '0x{:X}' at PC: {:0>4X}", opcode, self.pc));
 
         let name = instruction.name;
         let addressing = instruction.addressing.clone();

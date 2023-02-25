@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 
-use crate::interfaces::Bus as BusTrait;
 use crate::interfaces::AddressRange;
+use crate::interfaces::Bus as BusTrait;
 use crate::interfaces::Memory;
 
 type Device = (usize, Box<dyn Memory>, AddressRange);
@@ -24,7 +24,9 @@ impl BusTrait for Bus {
     fn attach(&mut self, device: Box<dyn Memory>, addr_range: AddressRange) -> usize {
         let device_id = self.next_device_id;
         self.next_device_id += 1;
-        self.devices.borrow_mut().push((device_id, device, addr_range));
+        self.devices
+            .borrow_mut()
+            .push((device_id, device, addr_range));
         device_id
     }
 
@@ -49,9 +51,7 @@ impl BusTrait for Bus {
                 return device.read(virtual_address);
             }
         }
-        panic!(
-            "Bus doesn't have an attached device for address: '0x{address:x}'"
-        );
+        panic!("Bus doesn't have an attached device for address: '0x{address:x}'");
     }
 
     fn write(&self, address: u16, data: u8) {
@@ -62,9 +62,7 @@ impl BusTrait for Bus {
                 return;
             }
         }
-        panic!(
-            "Bus doesn't have an attached device for address: '0x{address:x}'"
-        );
+        panic!("Bus doesn't have an attached device for address: '0x{address:x}'");
     }
 }
 
