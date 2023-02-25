@@ -4,7 +4,7 @@ use mockall::mock;
 use mockall::predicate::eq;
 
 use super::*;
-use crate::interfaces::{Bus, Memory, AddressRange};
+use crate::interfaces::{AddressRange, Bus, Memory};
 
 mock! {
     TestBus {}
@@ -27,6 +27,8 @@ impl MockTestBus {
 }
 
 fn test_cpu() -> Cpu {
+    env_logger::builder().is_test(true).try_init().unwrap();
+
     let mut mock_bus = MockTestBus::new();
 
     // reset will jump to start address
@@ -42,17 +44,41 @@ fn test_cpu() -> Cpu {
 
 // Get a CPU with mocked peripherials and a loaded program
 fn test_cpu_with_program(program: Vec<u8>) -> Cpu {
-    let mut mock_bus = MockTestBus::new();
+    use crate::processor::memory::Ram;
+    use crate::processor::bus::Bus;
 
-    // reset will jump to start address
-    mock_bus.expect_read().with(eq(0xFFFC)).return_const(0);
-    mock_bus.expect_read().with(eq(0xFFFD)).return_const(0);
+    env_logger::builder().is_test(true).try_init().unwrap();
 
-    mock_bus.load_program(program);
+    let bus = Rc::new(RefCell::new(Bus::new()));
+    let bus_ptr = Rc::clone(&bus);
 
-    let mock_bus = Rc::new(RefCell::new(mock_bus));
-    let mock_bus_ptr = Rc::clone(&mock_bus);
-    let cpu = Cpu::new(mock_bus);
+    let cpu = Cpu::new(bus_ptr);
+
+    let mut memory = Ram::new(0xFFFF + 1);
+    memory.load(0, &program);
+
+    bus.borrow_mut().attach(
+        Box::new(memory),
+        AddressRange {
+            start: 0, end: 0xFFFF
+        },
+    );
+
+
+    // let mut mock_bus = MockTestBus::new();
+
+    // // reset will jump to start address
+    // mock_bus.expect_read().with(eq(0xFFFC)).return_const(0);
+    // mock_bus.expect_read().with(eq(0xFFFD)).return_const(0);
+    // mock_bus.expect_write().withf(|address: u16, data: u8| {
+    //     mock_bus.expect_read().with(eq(address)).return_const(data)
+    // });
+
+    // mock_bus.load_program(program);
+
+    // let mock_bus = Rc::new(RefCell::new(mock_bus));
+    // let mock_bus_ptr = Rc::clone(&mock_bus);
+    // let cpu = Cpu::new(mock_bus_ptr);
 
     cpu
 }
@@ -843,8 +869,6 @@ fn test_branch_instruction_BVC() {
 
 #[test]
 fn test_branch_instruction_BVS() {
-    env_logger::builder().is_test(true).try_init();
-
     let mut cpu = test_cpu();
     let pc = cpu.pc;
 
@@ -904,4 +928,31 @@ fn test_status_register() {
         cpu.set_flag(flag, false);
         assert!(!cpu.flag(flag));
     }
+}
+
+
+//////////////////////////////////////////////////////////////////////
+// TEST SMALL PROGRAMS
+//////////////////////////////////////////////////////////////////////
+
+#[test]
+fn test_multiply_by_10() {
+    let mut cpu = test_cpu_with_program(
+        vec![
+            0x0A,               // ASL - multiply by 2
+            0x85, 0xFF,         // STA 0 - store in 0x00
+            0x0A,               // ASL
+            0x0A,               // ASL
+            0x18,               // CLC
+            0x65, 0xFF,         // ADC 0 - A = x*8 + x*2
+        ]
+    );
+
+    let value = 4;
+    cpu.acc = value;
+    for _ in 0..6 {
+        cpu.execute();
+    }
+
+    assert_eq!(cpu.acc, value * 10);
 }
