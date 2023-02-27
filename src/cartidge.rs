@@ -4,7 +4,7 @@ use std::path::Path;
 
 use log::debug;
 
-use crate::processor::memory::Ram;
+use crate::processor::memory::{Ram, Rom};
 use crate::utils::bv;
 
 pub struct Cartidge {
@@ -14,7 +14,7 @@ pub struct Cartidge {
     pub program_ram: Ram,
 
     // Program memory (ROM)
-    pub program_rom: Ram,
+    pub program_rom: Rom,
 
     // Character memory, stores patterns and graphics for the PPU
     character_memory: Ram,
@@ -49,7 +49,7 @@ impl Cartidge {
         file.read_exact(&mut header).unwrap();
 
         let cartidge_header = CartidgeHeader::parse(&header);
-        println!("Header: {cartidge_header:#?}");
+        debug!("Header: {cartidge_header:#?}");
 
         // Trainer content is ignored for now
         let _trainer = if cartidge_header.trainer {
@@ -60,17 +60,17 @@ impl Cartidge {
             None
         };
 
-        let pgr_ram = Ram::new(cartidge_header.pgr_ram_size);
+        let program_ram = Ram::new(cartidge_header.pgr_ram_size);
 
-        let mut pgr_memory = Ram::new(cartidge_header.pgr_rom_size);
+        let mut program_rom = Rom::new(cartidge_header.pgr_rom_size);
         let mut buf = vec![0; cartidge_header.pgr_rom_size];
         file.read_exact(&mut buf).unwrap();
-        pgr_memory.load(0, &buf);
+        program_rom.load(0, &buf);
 
-        let mut chr_memory = Ram::new(cartidge_header.chr_rom_size);
+        let mut character_memory = Ram::new(cartidge_header.chr_rom_size);
         let mut buf = vec![0; cartidge_header.chr_rom_size];
         file.read_exact(&mut buf).unwrap();
-        chr_memory.load(0, &buf);
+        character_memory.load(0, &buf);
 
         let mut rest = Vec::new();
         file.read_to_end(&mut rest).unwrap();
@@ -80,9 +80,9 @@ impl Cartidge {
 
         Self {
             name: game_name,
-            program_ram: pgr_ram,
-            program_rom: pgr_memory,
-            character_memory: chr_memory,
+            program_ram,
+            program_rom,
+            character_memory,
         }
     }
 }
@@ -119,8 +119,6 @@ struct CartidgeHeader {
 
 impl CartidgeHeader {
     fn parse(header: &[u8; 16]) -> Self {
-        println!("Parse Header: {:X?}", header);
-
         // (bytes 0-3) - NES cartidges started with ASCII "NES" and MS-DOS
         // end-of-file (0x1A)
         assert!(
