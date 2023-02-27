@@ -2,7 +2,7 @@ use crate::interfaces::Memory;
 
 const RAM_SIZE: usize = 2 * 1024; // 2 kB RAM
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Ram {
     memory: Vec<u8>,
 }
@@ -39,6 +39,7 @@ impl Memory for Ram {
     }
 }
 
+#[derive(Clone)]
 pub struct MirroredRam {
     memory: Ram,
     mirrors: usize,
@@ -70,17 +71,18 @@ impl Memory for MirroredRam {
 }
 
 /// ROM - Read-Only Memory
+#[derive(Clone)]
 pub struct Rom {
     memory: Vec<u8>,
     /// How many times the ROM has been programmed
-    count: usize,
+    write_count: usize,
 }
 
 impl Rom {
     pub fn new(size: usize) -> Self {
         Self {
             memory: vec![0; size],
-            count: 0,
+            write_count: 0,
         }
     }
 
@@ -88,15 +90,15 @@ impl Rom {
     /// read-only, this method can be used one time. Any other call
     /// will panic.
     pub fn load(&mut self, address: u16, contents: &[u8]) {
-        if self.count > 0 {
+        if self.write_count > 0 {
             panic!("ROM memory can be written only once");
         }
 
         for (i, byte) in contents.iter().enumerate() {
             let i = i as u16;
-            self.write(address + i, *byte);
+            self.memory[(address + i) as usize] = *byte;
         }
-        self.count += 1;
+        self.write_count += 1;
     }
 }
 
@@ -107,8 +109,10 @@ impl Memory for Rom {
 
     /// Trying to write on any location will panic, as a ROM is a
     /// read-only memory.
-    fn write(&mut self, _address: u16, _data: u8) {
-        panic!("ROM is a read-only memory and can't be written!");
+    fn write(&mut self, address: u16, data: u8) {
+        panic!(
+            "ROM is a read-only memory and can't be written! Attempted to write 0x{data:0>2X} to 0x{address:0>4X}"
+        );
     }
 
     fn size(&self) -> usize {
