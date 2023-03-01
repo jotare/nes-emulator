@@ -44,8 +44,8 @@ fn test_cpu() -> Cpu {
 
 // Get a CPU with mocked peripherials and a loaded program
 fn test_cpu_with_program(program: Vec<u8>) -> Cpu {
-    use crate::processor::memory::Ram;
     use crate::processor::bus::Bus;
+    use crate::processor::memory::Ram;
 
     env_logger::builder().is_test(true).try_init().unwrap();
 
@@ -60,10 +60,10 @@ fn test_cpu_with_program(program: Vec<u8>) -> Cpu {
     bus.borrow_mut().attach(
         Box::new(memory),
         AddressRange {
-            start: 0, end: 0xFFFF
+            start: 0,
+            end: 0xFFFF,
         },
     );
-
 
     // let mut mock_bus = MockTestBus::new();
 
@@ -930,23 +930,20 @@ fn test_status_register() {
     }
 }
 
-
 //////////////////////////////////////////////////////////////////////
 // TEST SMALL PROGRAMS
 //////////////////////////////////////////////////////////////////////
 
 #[test]
 fn test_multiply_by_10() {
-    let mut cpu = test_cpu_with_program(
-        vec![
-            0x0A,               // ASL - multiply by 2
-            0x85, 0xFF,         // STA 0 - store in 0x00
-            0x0A,               // ASL
-            0x0A,               // ASL
-            0x18,               // CLC
-            0x65, 0xFF,         // ADC 0 - A = x*8 + x*2
-        ]
-    );
+    let mut cpu = test_cpu_with_program(vec![
+        0x0A, // ASL - multiply by 2
+        0x85, 0xFF, // STA 0 - store in 0x00
+        0x0A, // ASL
+        0x0A, // ASL
+        0x18, // CLC
+        0x65, 0xFF, // ADC 0 - A = x*8 + x*2
+    ]);
 
     let value = 4;
     cpu.acc = value;
