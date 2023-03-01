@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.29.0
+------
+- Processor execute returns a Result
+
 0.28.0
 ------
 - Add graphics module with empty PPU and GTK4 UI

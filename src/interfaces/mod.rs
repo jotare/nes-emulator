@@ -5,7 +5,7 @@ pub trait Processor {
     /// Fetch the instruction pointed by the program counter from memory and
     /// execute it atomically. Return the number of clocks spent in the
     /// processor while executing an instruction
-    fn execute(&mut self) -> u8;
+    fn execute(&mut self) -> Result<u8, &str>;
 }
 
 #[derive(Debug)]

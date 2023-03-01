@@ -45,12 +45,14 @@ impl Processor for Cpu {
         self.pc = (pch << 8) | pcl;
     }
 
-    fn execute(&mut self) -> u8 {
+    fn execute(&mut self) -> Result<u8, &str> {
         let opcode = self.memory_read(self.pc);
-        let instruction = self
-            .instruction_set
-            .get(&opcode)
-            .unwrap_or_else(|| panic!("Invalid instruction '0x{:X}' at PC: {:0>4X}", opcode, self.pc));
+        let instruction = self.instruction_set.get(&opcode).unwrap_or_else(|| {
+            panic!(
+                "Invalid instruction '0x{:X}' at PC: {:0>4X}",
+                opcode, self.pc
+            )
+        });
 
         let name = instruction.name;
         let addressing = instruction.addressing.clone();
@@ -66,7 +68,7 @@ impl Processor for Cpu {
             _ => self.pc += bytes as u16,
         }
 
-        cycles
+        Ok(cycles)
     }
 }
 
