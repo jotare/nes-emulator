@@ -1,6 +1,11 @@
 CHANGELOG
 =========
 
+0.28.0
+------
+- Add graphics module with empty PPU and GTK4 UI
+- Add PPU and memories to NES module
+
 0.27.0
 ------
 - Add CartidgeHeader struct and improve header parsing
