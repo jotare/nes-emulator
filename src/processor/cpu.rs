@@ -11,6 +11,7 @@ use crate::interfaces::Bus;
 use crate::interfaces::Processor;
 use crate::utils::bv;
 
+const INSTRUCTION_LIMIT: u64 = 160;
 
 /// MOS 6502 processor emulator.
 ///
@@ -28,6 +29,7 @@ pub struct Cpu {
     sr: u8,    // Status Register
     bus: Rc<RefCell<dyn Bus>>,
     instruction_set: HashMap<u8, Instruction>,
+    instruction_count: u64,
 }
 
 impl Processor for Cpu {
@@ -63,6 +65,12 @@ impl Processor for Cpu {
 
         debug!("CPU execute: {} (PC: 0x{:X}, opcode: 0x{:X})", name, self.pc, opcode);
         self.exec(instruction, addressing);
+        self.instruction_count += 1;
+
+        if self.instruction_count >= INSTRUCTION_LIMIT {
+            return Err("Reached instruction limit ({INSTRUCTION_LIMIT}). Stopping CPU");
+        }
+
         match name {
             "JMP" | "JSR" | "RTS" | "BRK" | "RTI" => {}
             _ => self.pc += bytes as u16,
@@ -152,6 +160,7 @@ impl Cpu {
             sr: 0,
             bus,
             instruction_set: legal_opcode_instruction_set(),
+            instruction_count: 0,
         }
     }
 

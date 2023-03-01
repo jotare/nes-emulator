@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.30.0
+------
+- Implement CPU instruction limit for test purposes
+
 0.29.0
 ------
 - Processor execute returns a Result
