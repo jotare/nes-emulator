@@ -19,13 +19,17 @@ const APP_NAME: &str = "NES Emulator (by jotare)";
 static RENDER_SIGNALER: OnceCell<Arc<RwLock<RenderSignaler>>> = OnceCell::new();
 
 pub struct GtkUi {
-    handle: JoinHandle<()>,
+    handle: Option<JoinHandle<()>>,
 }
 
 impl GtkUi {
-    /// Starts GtkUi and create a running GUI. It should only be called once
+    pub fn new() -> Self {
+        Self { handle: None }
+    }
+
+    /// Starts GtkUi a running GUI. It should only be called once
     /// during the whole program. If called more than once, it'll panic.
-    pub fn start() -> Self {
+    pub fn start(&mut self) {
         let already_initialized = RENDER_SIGNALER
             .set(Arc::new(RwLock::new(RenderSignaler::default())))
             .is_err();
@@ -72,14 +76,16 @@ impl GtkUi {
             app.run();
         });
 
-        Self {
-            handle: join_handle,
-        }
+        self.handle.replace(join_handle);
     }
 
-    pub fn join(self) {
+    pub fn join(&mut self) {
+        let handle = self
+            .handle
+            .take()
+            .expect("Can't join an uninitialized GtkUi");
         debug!("Waiting UI thread to end...");
-        self.handle.join().expect("Error waiting UI thread");
+        handle.join().expect("Error waiting UI thread");
         debug!("UI thread ended correctly");
     }
 

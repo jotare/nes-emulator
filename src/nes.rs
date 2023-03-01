@@ -14,13 +14,13 @@ use log::info;
 
 use crate::cartidge::Cartidge;
 use crate::graphics::ppu::Ppu;
-use crate::interfaces::AddressRange;
+use crate::graphics::ui::gtk_ui::GtkUi;
+use crate::graphics::ui::{Pixel, ORIGINAL_SCREEN_HEIGHT, ORIGINAL_SCREEN_WIDTH};
 use crate::interfaces::Bus as BusTrait;
-use crate::interfaces::Processor;
+use crate::interfaces::{AddressRange, Processor};
 use crate::processor::bus::Bus;
 use crate::processor::cpu::Cpu;
-use crate::processor::memory::MirroredRam;
-use crate::processor::memory::{Ram, Rom};
+use crate::processor::memory::{MirroredRam, Ram, Rom};
 
 type NesBus = Rc<RefCell<Bus>>;
 type NesCpu = Rc<RefCell<Cpu>>;
@@ -33,6 +33,8 @@ pub struct Nes {
 
     ppu: Ppu,
     graphics_bus: NesBus,
+
+    ui: GtkUi,
 }
 
 impl Nes {
@@ -112,12 +114,16 @@ impl Nes {
                 end: 0x4017,
             },
         );
+
+        let ui = GtkUi::new();
+
         Self {
             cpu,
             main_bus,
             ppu,
             graphics_bus,
             cartidge: None,
+            ui,
         }
     }
 
@@ -151,8 +157,49 @@ impl Nes {
     /// Blocking NES run
     pub fn run(&mut self) {
         info!("NES indefinedly running game");
-        loop {
-            self.cpu.execute();
+
+        self.ui.start();
+        self.render_colors_animation();
+        self.ui.join();
+
+        // loop {
+        //     self.cpu.execute();
+        // }
+    }
+
+    fn render_colors_animation(&self) {
+        let inter_frame_delay = std::time::Duration::from_millis(100);
+        for _ in 0..3 {
+            for c in 0..40 {
+                let mut frame = vec![
+                    [Pixel::new_rgb(0.0, 0.0, 0.0); ORIGINAL_SCREEN_WIDTH];
+                    ORIGINAL_SCREEN_HEIGHT
+                ];
+                for i in 0..ORIGINAL_SCREEN_HEIGHT {
+                    for j in 0..ORIGINAL_SCREEN_WIDTH {
+                        // let color = 1.0 / ((i + j) as f64 / (100.0 * (1.0 - c as f64 / 40.0) as f64));
+                        let color = 1.0 / ((i + j) as f64 / 100.0 / (c as f64 / 10.0));
+                        frame[i][j] = Pixel::new_rgb(1.0, 1.0 - color, color);
+                    }
+                }
+                self.ui.render(frame);
+                std::thread::sleep(inter_frame_delay);
+            }
+            for c in 0..40 {
+                let mut frame = vec![
+                    [Pixel::new_rgb(0.0, 0.0, 0.0); ORIGINAL_SCREEN_WIDTH];
+                    ORIGINAL_SCREEN_HEIGHT
+                ];
+                for i in 0..ORIGINAL_SCREEN_HEIGHT {
+                    for j in 0..ORIGINAL_SCREEN_WIDTH {
+                        let color = 1.0 / ((i + j) as f64 / 100.0 / (c as f64 / 10.0));
+                        frame[ORIGINAL_SCREEN_HEIGHT - i - 1][ORIGINAL_SCREEN_WIDTH - j - 1] =
+                            Pixel::new_rgb(1.0, color, 1.0 - color);
+                    }
+                }
+                self.ui.render(frame);
+                std::thread::sleep(inter_frame_delay);
+            }
         }
     }
 
