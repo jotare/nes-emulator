@@ -10,12 +10,12 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use log::info;
+use log::{error, info};
 
 use crate::cartidge::Cartidge;
 use crate::graphics::ppu::Ppu;
 use crate::graphics::ui::gtk_ui::GtkUi;
-use crate::graphics::ui::{Pixel, ORIGINAL_SCREEN_HEIGHT, ORIGINAL_SCREEN_WIDTH};
+use crate::graphics::ui::{Frame, Pixel, ORIGINAL_SCREEN_HEIGHT, ORIGINAL_SCREEN_WIDTH};
 use crate::interfaces::Bus as BusTrait;
 use crate::interfaces::{AddressRange, Processor};
 use crate::processor::bus::Bus;
@@ -159,48 +159,53 @@ impl Nes {
         info!("NES indefinedly running game");
 
         self.ui.start();
-        self.render_colors_animation();
-        self.ui.join();
 
-        // loop {
-        //     self.cpu.execute();
-        // }
-    }
-
-    fn render_colors_animation(&self) {
         let inter_frame_delay = std::time::Duration::from_millis(100);
-        for _ in 0..3 {
-            for c in 0..40 {
-                let mut frame = vec![
-                    [Pixel::new_rgb(0.0, 0.0, 0.0); ORIGINAL_SCREEN_WIDTH];
-                    ORIGINAL_SCREEN_HEIGHT
-                ];
-                for i in 0..ORIGINAL_SCREEN_HEIGHT {
-                    for j in 0..ORIGINAL_SCREEN_WIDTH {
-                        // let color = 1.0 / ((i + j) as f64 / (100.0 * (1.0 - c as f64 / 40.0) as f64));
-                        let color = 1.0 / ((i + j) as f64 / 100.0 / (c as f64 / 10.0));
-                        frame[i][j] = Pixel::new_rgb(1.0, 1.0 - color, color);
+
+        'outer: loop {
+            for direction in vec![true, false] {
+                println!("Direction: {direction}");
+                for step in 0..40 {
+                    let result = self.cpu.execute();
+                    if let Err(error) = result {
+                        error!("CPU execution error: {}", result.err().unwrap());
+                        break 'outer;
                     }
+
+                    let frame = self.colors_animation_frame(step, direction);
+                    self.ui.render(frame);
+                    std::thread::sleep(inter_frame_delay);
                 }
-                self.ui.render(frame);
-                std::thread::sleep(inter_frame_delay);
-            }
-            for c in 0..40 {
-                let mut frame = vec![
-                    [Pixel::new_rgb(0.0, 0.0, 0.0); ORIGINAL_SCREEN_WIDTH];
-                    ORIGINAL_SCREEN_HEIGHT
-                ];
-                for i in 0..ORIGINAL_SCREEN_HEIGHT {
-                    for j in 0..ORIGINAL_SCREEN_WIDTH {
-                        let color = 1.0 / ((i + j) as f64 / 100.0 / (c as f64 / 10.0));
-                        frame[ORIGINAL_SCREEN_HEIGHT - i - 1][ORIGINAL_SCREEN_WIDTH - j - 1] =
-                            Pixel::new_rgb(1.0, color, 1.0 - color);
-                    }
-                }
-                self.ui.render(frame);
-                std::thread::sleep(inter_frame_delay);
             }
         }
+
+        self.ui.join();
+    }
+
+    fn colors_animation_frame(&self, step: usize, forwards: bool) -> Frame {
+        fn compute_coloured_pixel(x: usize, y: usize, factor: f64, forwards: bool) -> Pixel {
+            let color = 1.0 / ((x + y) as f64 / 10.0 / factor);
+            if forwards {
+                Pixel::new_rgb(1.0, 1.0 - color, color)
+            } else {
+                Pixel::new_rgb(1.0, color, 1.0 - color)
+            }
+        }
+
+        let mut frame =
+            vec![[Pixel::new_rgb(0.0, 0.0, 0.0); ORIGINAL_SCREEN_WIDTH]; ORIGINAL_SCREEN_HEIGHT];
+        for y in 0..ORIGINAL_SCREEN_HEIGHT {
+            for x in 0..ORIGINAL_SCREEN_WIDTH {
+                if forwards {
+                    frame[y][x] = compute_coloured_pixel(x, y, step as f64, forwards);
+                } else {
+                    frame[ORIGINAL_SCREEN_HEIGHT - y - 1][ORIGINAL_SCREEN_WIDTH - x - 1] =
+                        compute_coloured_pixel(x, y, step as f64, forwards);
+                }
+            }
+        }
+
+        frame
     }
 
     fn clock(&self) {
