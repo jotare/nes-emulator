@@ -1,6 +1,8 @@
+use std::cell::RefCell;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
+use std::rc::Rc;
 
 use log::debug;
 
@@ -11,13 +13,13 @@ pub struct Cartidge {
     name: String,
 
     // Program memory (RAM)
-    pub program_ram: Ram,
+    pub program_ram: Rc<RefCell<Ram>>,
 
     // Program memory (ROM)
-    pub program_rom: Rom,
+    pub program_rom: Rc<RefCell<Rom>>,
 
     // Character memory, stores patterns and graphics for the PPU
-    character_memory: Ram,
+    pub character_memory: Rc<RefCell<Ram>>,
 }
 
 impl Cartidge {
@@ -60,17 +62,17 @@ impl Cartidge {
             None
         };
 
-        let program_ram = Ram::new(cartidge_header.pgr_ram_size);
+        let program_ram = Rc::new(RefCell::new(Ram::new(cartidge_header.pgr_ram_size)));
 
-        let mut program_rom = Rom::new(cartidge_header.pgr_rom_size);
+        let program_rom = Rc::new(RefCell::new(Rom::new(cartidge_header.pgr_rom_size)));
         let mut buf = vec![0; cartidge_header.pgr_rom_size];
         file.read_exact(&mut buf).unwrap();
-        program_rom.load(0, &buf);
+        program_rom.borrow_mut().load(0, &buf);
 
-        let mut character_memory = Ram::new(cartidge_header.chr_rom_size);
+        let character_memory = Rc::new(RefCell::new(Ram::new(cartidge_header.chr_rom_size)));
         let mut buf = vec![0; cartidge_header.chr_rom_size];
         file.read_exact(&mut buf).unwrap();
-        character_memory.load(0, &buf);
+        character_memory.borrow_mut().load(0, &buf);
 
         let mut rest = Vec::new();
         file.read_to_end(&mut rest).unwrap();
@@ -171,7 +173,7 @@ mod tests {
     #[test]
     fn test_cartidge_new() {
         let cartidge = Cartidge::new("roms/Super Mario Bros. (World).nes");
-        assert_eq!(cartidge.program_rom.size(), 32 * 1024);
-        assert_eq!(cartidge.character_memory.size(), 8 * 1024);
+        assert_eq!(cartidge.program_rom.borrow().size(), 32 * 1024);
+        assert_eq!(cartidge.character_memory.borrow().size(), 8 * 1024);
     }
 }

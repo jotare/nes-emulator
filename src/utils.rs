@@ -9,7 +9,6 @@ pub fn bvs(value: u8, major_bit: u8, minor_bit: u8) -> u8 {
     (value >> minor_bit) & ((1 << (major_bit - minor_bit + 1)) - 1)
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;

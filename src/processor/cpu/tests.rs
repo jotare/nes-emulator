@@ -10,7 +10,7 @@ mock! {
     TestBus {}
 
     impl Bus for TestBus {
-        fn attach(&mut self, device: Box<dyn Memory>, addr_range: AddressRange) -> usize;
+        fn attach(&mut self, device: Rc<RefCell<dyn Memory>>, addr_range: AddressRange) -> usize;
         fn detach(&mut self, id: usize);
         fn read(&self, address: u16) -> u8;
         fn write(&self, address: u16, data: u8);
@@ -27,7 +27,10 @@ impl MockTestBus {
 }
 
 fn test_cpu() -> Cpu {
-    env_logger::builder().is_test(true).try_init().unwrap_or_default();
+    env_logger::builder()
+        .is_test(true)
+        .try_init()
+        .unwrap_or_default();
 
     let mut mock_bus = MockTestBus::new();
 
@@ -45,18 +48,22 @@ fn test_cpu_with_program(program: Vec<u8>) -> Cpu {
     use crate::processor::bus::Bus;
     use crate::processor::memory::Ram;
 
-    env_logger::builder().is_test(true).try_init().unwrap_or_default();
+    env_logger::builder()
+        .is_test(true)
+        .try_init()
+        .unwrap_or_default();
 
     let bus = Rc::new(RefCell::new(Bus::new()));
     let bus_ptr = Rc::clone(&bus);
 
     let cpu = Cpu::new(bus_ptr);
 
-    let mut memory = Ram::new(0xFFFF + 1);
-    memory.load(0, &program);
+    let memory = Rc::new(RefCell::new(Ram::new(0xFFFF + 1)));
+    memory.borrow_mut().load(0, &program);
 
+    let memory_ptr = Rc::clone(&memory);
     bus.borrow_mut().attach(
-        Box::new(memory),
+        memory_ptr,
         AddressRange {
             start: 0,
             end: 0xFFFF,

@@ -1,3 +1,6 @@
+use std::cell::RefCell;
+use std::rc::Rc;
+
 pub trait Processor {
     /// Reset the processor
     fn reset(&mut self);
@@ -17,7 +20,7 @@ pub struct AddressRange {
 pub trait Bus {
     /// Attach a new device to the bus to further read/write from
     /// it. Return an UUID to uniquely refer to `device`.
-    fn attach(&mut self, device: Box<dyn Memory>, addr_range: AddressRange) -> usize;
+    fn attach(&mut self, device: Rc<RefCell<dyn Memory>>, addr_range: AddressRange) -> usize;
 
     /// Detach a device from the bus
     fn detach(&mut self, id: usize);

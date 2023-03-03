@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.32.0
+------
+- Memories are now shared and Nes have it's ownership
+
 0.31.0
 ------
 - CPU execute error is now a String

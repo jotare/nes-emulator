@@ -1,10 +1,11 @@
 use std::cell::RefCell;
+use std::rc::Rc;
 
 use crate::interfaces::AddressRange;
 use crate::interfaces::Bus as BusTrait;
 use crate::interfaces::Memory;
 
-type Device = (usize, Box<dyn Memory>, AddressRange);
+type Device = (usize, Rc<RefCell<dyn Memory>>, AddressRange);
 
 pub struct Bus {
     devices: RefCell<Vec<Device>>,
@@ -21,7 +22,7 @@ impl Bus {
 }
 
 impl BusTrait for Bus {
-    fn attach(&mut self, device: Box<dyn Memory>, addr_range: AddressRange) -> usize {
+    fn attach(&mut self, device: Rc<RefCell<dyn Memory>>, addr_range: AddressRange) -> usize {
         let device_id = self.next_device_id;
         self.next_device_id += 1;
         self.devices
@@ -48,7 +49,7 @@ impl BusTrait for Bus {
         for (_, device, addr_range) in self.devices.borrow().iter() {
             if address >= addr_range.start && address <= addr_range.end {
                 let virtual_address = address - addr_range.start;
-                return device.read(virtual_address);
+                return device.borrow().read(virtual_address);
             }
         }
         panic!("Bus doesn't have an attached device for address: '0x{address:x}'");
@@ -58,7 +59,7 @@ impl BusTrait for Bus {
         for (_, device, addr_range) in self.devices.borrow_mut().iter_mut() {
             if address >= addr_range.start && address <= addr_range.end {
                 let virtual_address = address - addr_range.start;
-                device.write(virtual_address, data);
+                device.borrow_mut().write(virtual_address, data);
                 return;
             }
         }

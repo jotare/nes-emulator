@@ -17,22 +17,30 @@ use crate::graphics::ppu::Ppu;
 use crate::graphics::ui::gtk_ui::GtkUi;
 use crate::graphics::ui::{Frame, Pixel, ORIGINAL_SCREEN_HEIGHT, ORIGINAL_SCREEN_WIDTH};
 use crate::interfaces::Bus as BusTrait;
-use crate::interfaces::{AddressRange, Processor};
+use crate::interfaces::{AddressRange, Memory, Processor};
 use crate::processor::bus::Bus;
 use crate::processor::cpu::Cpu;
-use crate::processor::memory::{MirroredRam, Ram, Rom};
+use crate::processor::memory::{MirroredRam, Ram};
 
+type NesPpu = Rc<RefCell<Ppu>>;
 type NesBus = Rc<RefCell<Bus>>;
-type NesCpu = Rc<RefCell<Cpu>>;
+type SharedMemory = Rc<RefCell<dyn Memory>>;
 
 pub struct Nes {
+    // XXX: change to u128 if overflow occur
+    system_clock: u64,
+
     cartidge: Option<Cartidge>,
 
     cpu: Cpu,
     main_bus: NesBus,
 
-    ppu: Ppu,
+    ppu: NesPpu,
     graphics_bus: NesBus,
+
+    ram: SharedMemory,
+    name_table: SharedMemory,
+    palettes: SharedMemory,
 
     ui: GtkUi,
 }
@@ -47,27 +55,13 @@ impl Nes {
         let cpu = Cpu::new(main_bus_ptr);
 
         let graphics_bus_ptr = Rc::clone(&graphics_bus);
-        let ppu = Ppu::new(graphics_bus_ptr);
+        let ppu = Rc::new(RefCell::new(Ppu::new(graphics_bus_ptr)));
 
         // Memory - 2 kB RAM mirrored 3 times. It's used by the CPU
-        let ram = Box::new(MirroredRam::new(0x0800, 3));
+        let ram = Rc::new(RefCell::new(MirroredRam::new(0x0800, 3)));
+        let ram_ptr = Rc::clone(&ram);
         main_bus.borrow_mut().attach(
-            ram,
-            AddressRange {
-                start: 0,
-                end: 0x1FFF,
-            },
-        );
-
-        // Pattern memory - also known as CHR ROM is a 8 kB memory where two
-        // pattern tables are stored. It contains all graphical information the
-        // PPU require to drawIt's main purpose is sprite storage.
-        //
-        // It can be split into two 4 kB (0x1000) sections containing the
-        // pattern tables 0 and 1
-        let pattern_memory = Box::new(Rom::new(0x2000));
-        graphics_bus.borrow_mut().attach(
-            pattern_memory,
+            ram_ptr,
             AddressRange {
                 start: 0,
                 end: 0x1FFF,
@@ -75,9 +69,10 @@ impl Nes {
         );
 
         // Name table memory - also known as VRAM
-        let name_table_memory = Box::new(Ram::new(0x3EFF - 0x2000 + 1));
+        let name_table_memory = Rc::new(RefCell::new(Ram::new(0x3EFF - 0x2000 + 1)));
+        let name_table_memory_ptr = Rc::clone(&name_table_memory);
         graphics_bus.borrow_mut().attach(
-            name_table_memory,
+            name_table_memory_ptr,
             AddressRange {
                 start: 0x2000,
                 end: 0x3EFF,
@@ -86,9 +81,10 @@ impl Nes {
 
         // Palette memory - 256-byte memory. It stores which colors should be
         // displayed on the screen when spites and background are combined
-        let palette_memory = Box::new(Ram::new(0x3FFF - 0x3F00 + 1));
+        let palette_memory = Rc::new(RefCell::new(Ram::new(0x3FFF - 0x3F00 + 1)));
+        let palette_memory_ptr = Rc::clone(&palette_memory);
         graphics_bus.borrow_mut().attach(
-            palette_memory,
+            palette_memory_ptr,
             AddressRange {
                 start: 0x3F00,
                 end: 0x3FFF,
@@ -97,18 +93,28 @@ impl Nes {
 
         // ----------------------------------------------------------------------------------------
 
-        let fake_ppu = Box::new(MirroredRam::new(8, 1023)); // 8 B mirrored RAM
+        // let fake_ppu = Box::new(MirroredRam::new(8, 1023)); // 8 B mirrored RAM
+        // main_bus.borrow_mut().attach(
+        //     fake_ppu,
+        //     AddressRange {
+        //         start: 0x2000,
+        //         end: 0x3FFF,
+        //     },
+        // );
+
+        let ppu_ptr = Rc::clone(&ppu);
         main_bus.borrow_mut().attach(
-            fake_ppu,
+            ppu_ptr,
             AddressRange {
                 start: 0x2000,
-                end: 0x3FFF,
+                end: 0x2007,
             },
         );
 
-        let fake_apu = Box::new(Ram::new(0x18)); // 0x18 B RAM - NES APU and I/O registers
+        let fake_apu = Rc::new(RefCell::new(Ram::new(0x18))); // 0x18 B RAM - NES APU and I/O registers
+        let fake_apu_ptr = Rc::clone(&fake_apu);
         main_bus.borrow_mut().attach(
-            fake_apu,
+            fake_apu_ptr,
             AddressRange {
                 start: 0x4000,
                 end: 0x4017,
@@ -118,11 +124,15 @@ impl Nes {
         let ui = GtkUi::new();
 
         Self {
+            system_clock: 0,
+            cartidge: None,
             cpu,
             main_bus,
             ppu,
             graphics_bus,
-            cartidge: None,
+            ram,
+            name_table: name_table_memory,
+            palettes: palette_memory,
             ui,
         }
     }
@@ -130,23 +140,40 @@ impl Nes {
     pub fn load_cartidge(&mut self, cartidge: Cartidge) {
         info!("Cartidge inserted: {}", cartidge);
 
-        let ram = cartidge.program_ram.clone();
-        let rom = cartidge.program_rom.clone();
+        let ram = Rc::clone(&cartidge.program_ram);
+        let rom = Rc::clone(&cartidge.program_rom);
+        let chr = Rc::clone(&cartidge.character_memory);
 
-        // XXX: use references to avoid cloning memory
         self.main_bus.borrow_mut().attach(
-            Box::new(ram),
+            // XXX: use references to avoid cloning memory
+            ram,
             AddressRange {
                 start: 0x6000,
                 end: 0x7FFF,
             },
         );
-        // XXX: use references to avoid cloning memory
+
         self.main_bus.borrow_mut().attach(
-            Box::new(rom),
+            // XXX: use references to avoid cloning memory
+            rom,
             AddressRange {
                 start: 0x8000,
                 end: 0xFFFF,
+            },
+        );
+
+        // Pattern memory - also known as CHR ROM is a 8 kB memory where two
+        // pattern tables are stored. It contains all graphical information the
+        // PPU require to draw.
+        //
+        // It can be split into two 4 kB (0x1000) sections containing the
+        // pattern tables 0 and 1
+        self.graphics_bus.borrow_mut().attach(
+            // XXX: use references to avoid cloning memory
+            chr,
+            AddressRange {
+                start: 0x0000,
+                end: 0x1FFF,
             },
         );
 
