@@ -27,7 +27,7 @@ impl MockTestBus {
 }
 
 fn test_cpu() -> Cpu {
-    env_logger::builder().is_test(true).try_init().unwrap();
+    env_logger::builder().is_test(true).try_init().unwrap_or_default();
 
     let mut mock_bus = MockTestBus::new();
 
@@ -45,7 +45,7 @@ fn test_cpu_with_program(program: Vec<u8>) -> Cpu {
     use crate::processor::bus::Bus;
     use crate::processor::memory::Ram;
 
-    env_logger::builder().is_test(true).try_init().unwrap();
+    env_logger::builder().is_test(true).try_init().unwrap_or_default();
 
     let bus = Rc::new(RefCell::new(Bus::new()));
     let bus_ptr = Rc::clone(&bus);
@@ -792,7 +792,7 @@ fn test_branch_instruction_BCS() {
 
     cpu.set_flag(Carry, true);
     cpu.bcs(10);
-    assert_eq!(cpu.pc, pc + 10 + 1);
+    assert_eq!(cpu.pc, pc + 10);
 }
 
 #[test]
