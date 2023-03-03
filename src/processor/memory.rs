@@ -119,3 +119,25 @@ impl Memory for Rom {
         self.memory.len()
     }
 }
+
+// Sprite memory
+pub struct PatternMemory {
+    // 0x0000 - 0x1FFF (ppu bus)
+}
+
+// 2D arrays which store the ids of which patterns to show in the
+// backgraound
+pub struct NameTable {
+    // 0x2000 - 0x2FFF (ppu bus)
+}
+
+// Stores which colors should be displayed on the screen when you
+// combine the sprites and the background
+pub struct Palettes {
+    // 0x3F00 - 0x3FFF (ppu bus)
+}
+
+// Program ROM
+pub struct ProgramRom {
+    // 0x4020 - 0xFFFF (main bus)
+}
