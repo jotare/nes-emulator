@@ -47,7 +47,7 @@ impl Processor for Cpu {
         self.pc = (pch << 8) | pcl;
     }
 
-    fn execute(&mut self) -> Result<u8, &str> {
+    fn execute(&mut self) -> Result<u8, String> {
         let opcode = self.memory_read(self.pc);
         let instruction = self.instruction_set.get(&opcode).unwrap_or_else(|| {
             panic!(
@@ -68,7 +68,9 @@ impl Processor for Cpu {
         self.instruction_count += 1;
 
         if self.instruction_count >= INSTRUCTION_LIMIT {
-            return Err("Reached instruction limit ({INSTRUCTION_LIMIT}). Stopping CPU");
+            return Err(format!(
+                "Reached instruction limit ({INSTRUCTION_LIMIT}). Stopping CPU"
+            ));
         }
 
         match name {

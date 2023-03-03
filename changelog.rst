@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.31.0
+------
+- CPU execute error is now a String
+
 0.30.0
 ------
 - Implement CPU instruction limit for test purposes

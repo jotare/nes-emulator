@@ -20,7 +20,7 @@ mock! {
 impl MockTestBus {
     fn load_program(&mut self, program: Vec<u8>) {
         for (addr, value) in program.iter().enumerate() {
-            let (addr, value) = (addr as u16, *value as u8);
+            let (addr, value) = (addr as u16, *value);
             self.expect_read().with(eq(addr)).return_const(value);
         }
     }
@@ -37,9 +37,7 @@ fn test_cpu() -> Cpu {
 
     let mock_bus = Rc::new(RefCell::new(mock_bus));
     let mock_bus_ptr = Rc::clone(&mock_bus);
-    let cpu = Cpu::new(mock_bus_ptr);
-
-    cpu
+    Cpu::new(mock_bus_ptr)
 }
 
 // Get a CPU with mocked peripherials and a loaded program
@@ -893,7 +891,7 @@ fn test_addressing_mode_immediate() {
     ]);
     cpu.acc = 0x72;
 
-    cpu.execute();
+    cpu.execute().unwrap();
     assert_eq!(cpu.acc, 0x22);
 }
 
@@ -948,7 +946,7 @@ fn test_multiply_by_10() {
     let value = 4;
     cpu.acc = value;
     for _ in 0..6 {
-        cpu.execute();
+        cpu.execute().unwrap();
     }
 
     assert_eq!(cpu.acc, value * 10);

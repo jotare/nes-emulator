@@ -160,15 +160,14 @@ impl Nes {
 
         self.ui.start();
 
-        let inter_frame_delay = std::time::Duration::from_millis(100);
+        let inter_frame_delay = std::time::Duration::from_millis(16);
 
         'outer: loop {
-            for direction in vec![true, false] {
-                println!("Direction: {direction}");
+            for direction in [true, false] {
                 for step in 0..40 {
                     let result = self.cpu.execute();
                     if let Err(error) = result {
-                        error!("CPU execution error: {}", result.err().unwrap());
+                        error!("CPU execution error: {}", error);
                         break 'outer;
                     }
 
@@ -194,6 +193,7 @@ impl Nes {
 
         let mut frame =
             vec![[Pixel::new_rgb(0.0, 0.0, 0.0); ORIGINAL_SCREEN_WIDTH]; ORIGINAL_SCREEN_HEIGHT];
+
         for y in 0..ORIGINAL_SCREEN_HEIGHT {
             for x in 0..ORIGINAL_SCREEN_WIDTH {
                 if forwards {
