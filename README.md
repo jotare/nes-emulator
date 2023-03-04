@@ -36,10 +36,13 @@ cargo test
 - Memories (RAM, ROM and mirrored RAMs)
 - Buses
 - GTK4 GUI capable to render frames
+- Partial Maper-0 support
 
 ### Work in progress
 
 - PPU (Picture Processing Unit)
+- Mapper-0 suppot
+- Support more mappers
 
 ### TODOs and ideas
 
