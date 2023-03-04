@@ -7,9 +7,6 @@ pub const ORIGINAL_SCREEN_WIDTH: usize = 256;
 pub const ORIGINAL_SCREEN_HEIGHT: usize = 240;
 pub const PIXEL_SCALE_FACTOR: usize = 4;
 
-pub const SCREEN_WIDTH: usize = ORIGINAL_SCREEN_WIDTH * PIXEL_SCALE_FACTOR;
-pub const SCREEN_HEIGHT: usize = ORIGINAL_SCREEN_HEIGHT * PIXEL_SCALE_FACTOR;
-
 #[derive(Copy, Clone)]
 pub struct Pixel {
     red: f64,

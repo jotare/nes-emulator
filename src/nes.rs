@@ -121,7 +121,7 @@ impl Nes {
             },
         );
 
-        let ui = GtkUi::new();
+        let ui = GtkUi::default();
 
         Self {
             system_clock: 0,
@@ -185,32 +185,46 @@ impl Nes {
     pub fn run(&mut self) {
         info!("NES indefinedly running game");
 
-        self.ui.start();
+        let cpu_enable = false;
+        let ui_enable = true;
+
+        if ui_enable {
+            self.ui.start();
+        }
 
         let inter_frame_delay = std::time::Duration::from_millis(16);
+        // let inter_frame_delay = std::time::Duration::from_millis(1000);
 
-        'outer: loop {
-            for direction in [true, false] {
-                for step in 0..40 {
-                    let result = self.cpu.execute();
-                    if let Err(error) = result {
-                        error!("CPU execution error: {}", error);
-                        break 'outer;
+        if cpu_enable || ui_enable {
+            'outer: loop {
+                for direction in [true, false] {
+                    for step in 0..160 {
+                        if cpu_enable {
+                            let result = self.cpu.execute();
+                            if let Err(error) = result {
+                                error!("CPU execution error: {}", error);
+                                break 'outer;
+                            }
+                        }
+
+                        if ui_enable {
+                            let frame = self.colors_animation_frame(step, direction);
+                            self.ui.render(frame);
+                            std::thread::sleep(inter_frame_delay);
+                        }
                     }
-
-                    let frame = self.colors_animation_frame(step, direction);
-                    self.ui.render(frame);
-                    std::thread::sleep(inter_frame_delay);
                 }
             }
         }
 
-        self.ui.join();
+        if ui_enable {
+            self.ui.join();
+        }
     }
 
     fn colors_animation_frame(&self, step: usize, forwards: bool) -> Frame {
         fn compute_coloured_pixel(x: usize, y: usize, factor: f64, forwards: bool) -> Pixel {
-            let color = 1.0 / ((x + y) as f64 / 10.0 / factor);
+            let color = 1.0 / ((x + y) as f64 / 2.0 / factor);
             if forwards {
                 Pixel::new_rgb(1.0, 1.0 - color, color)
             } else {
