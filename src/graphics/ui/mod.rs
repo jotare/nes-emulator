@@ -33,6 +33,7 @@ impl Pixel {
 }
 
 // pub type Frame = [[(f64, f64, f64); SCREEN_WIDTH]; SCREEN_HEIGHT];
-pub type Frame = Vec<[Pixel; ORIGINAL_SCREEN_WIDTH]>;
+// pub type Frame = Vec<[Pixel; ORIGINAL_SCREEN_WIDTH]>;
+pub type Frame = Vec<Vec<Pixel>>;
 
 pub trait Ui {}

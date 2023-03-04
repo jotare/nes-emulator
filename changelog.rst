@@ -1,6 +1,11 @@
 CHANGELOG
 =========
 
+0.32.1
+------
+- Fix inversion of screen at GtkUi
+- Allow arbitrary screen size
+
 0.32.0
 ------
 - Memories are now shared and Nes have it's ownership

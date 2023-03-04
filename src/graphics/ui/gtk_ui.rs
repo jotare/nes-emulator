@@ -121,20 +121,20 @@ impl Default for GtkUi {
 }
 
 struct RenderSignaler {
-    frame: Option<Frame>,
+    screen_frame: Option<Frame>,
 }
 
 impl RenderSignaler {
     pub fn new() -> Self {
-        Self { frame: None }
+        Self { screen_frame: None }
     }
 
     pub fn should_render(&self) -> bool {
-        self.frame.is_some()
+        self.screen_frame.is_some()
     }
 
     pub fn set_frame(&mut self, frame: Frame) {
-        self.frame.replace(frame);
+        self.screen_frame.replace(frame);
     }
 }
 
@@ -220,7 +220,7 @@ impl PaintableImpl for PaintableScreen {
     fn snapshot(&self, snapshot: &gdk::Snapshot, _width: f64, _height: f64) {
         let frame = {
             let mut writer = RENDER_SIGNALER.get().unwrap().write().unwrap();
-            match writer.frame.take() {
+            match writer.screen_frame.take() {
                 Some(frame) => frame,
                 None => {
                     debug!("Trying to render without any frame");
@@ -229,20 +229,20 @@ impl PaintableImpl for PaintableScreen {
             }
         };
 
-        let context =
-            snapshot.append_cairo(&graphene::Rect::new(0.0, 0.0, self.intrinsic_width() as f32, self.intrinsic_height() as f32));
-        let pixel_size = 0.9;
-
         let (width, height, pixel_scale_factor) = {
             let inner = self.inner.borrow();
             (inner.width, inner.height, inner.pixel_scale_factor)
         };
+        let context =
+            snapshot.append_cairo(&graphene::Rect::new(0.0, 0.0, self.intrinsic_width() as f32, self.intrinsic_height() as f32));
+        let pixel_size = 0.9;
+
         for (h, row) in frame.iter().enumerate().take(height) {
             for (w, pixel) in row.iter().enumerate().take(width) {
                 context.set_source_rgb(pixel.red(), pixel.green(), pixel.blue());
                 context.rectangle(
-                    (h * pixel_scale_factor) as f64,
                     (w * pixel_scale_factor) as f64,
+                    (h * pixel_scale_factor) as f64,
                     pixel_size * pixel_scale_factor as f64,
                     pixel_size * pixel_scale_factor as f64,
                 );
