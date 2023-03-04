@@ -4,6 +4,7 @@ CHANGELOG
 0.33.0
 ------
 - Allow Pixel creation using u8
+- Add new Palette type with blargg's palette
 
 0.32.2
 ------
