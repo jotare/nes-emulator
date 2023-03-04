@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.33.0
+------
+- Allow Pixel creation using u8
+
 0.32.2
 ------
 - Fix bv shift with overflow

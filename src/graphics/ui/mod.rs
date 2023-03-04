@@ -19,6 +19,14 @@ impl Pixel {
         Self { red, green, blue }
     }
 
+    pub fn new_rgb_byte(red: u8, green: u8, blue: u8) -> Self {
+        Self {
+            red: red as f64 / u8::MAX as f64,
+            green: green as f64 / u8::MAX as f64,
+            blue: blue as f64 / u8::MAX as f64,
+        }
+    }
+
     pub fn red(&self) -> f64 {
         self.red
     }
