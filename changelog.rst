@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.32.2
+------
+- Fix bv shift with overflow
+
 0.32.1
 ------
 - Fix inversion of screen at GtkUi

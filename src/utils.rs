@@ -1,6 +1,6 @@
 /// Return the bit value for `value` at bit position `bit`
 pub fn bv(value: u8, bit: u8) -> u8 {
-    (value >> bit) & 1
+    value.rotate_right(bit.into()) & 1
 }
 
 /// Return the value from `value` between bit positions `major_bit` and
