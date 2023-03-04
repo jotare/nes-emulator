@@ -35,11 +35,11 @@ cargo test
 - CPU (MOS6502) emulated
 - Memories (RAM, ROM and mirrored RAMs)
 - Buses
+- GTK4 GUI capable to render frames
 
 ### Work in progress
 
 - PPU (Picture Processing Unit)
-- GTK4 GUI capable to render frames
 
 ### TODOs and ideas
 
