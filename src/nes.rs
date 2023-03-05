@@ -20,11 +20,9 @@ use crate::interfaces::Bus as BusTrait;
 use crate::interfaces::{AddressRange, Memory, Processor};
 use crate::processor::bus::Bus;
 use crate::processor::cpu::Cpu;
+use crate::types::{SharedBus, SharedPpu, SharedMemory};
 use crate::processor::memory::{MirroredRam, Ram};
 
-type NesPpu = Rc<RefCell<Ppu>>;
-type NesBus = Rc<RefCell<Bus>>;
-type SharedMemory = Rc<RefCell<dyn Memory>>;
 
 pub struct Nes {
     // XXX: change to u128 if overflow occur
@@ -33,10 +31,10 @@ pub struct Nes {
     cartidge: Option<Cartidge>,
 
     cpu: Cpu,
-    main_bus: NesBus,
+    main_bus: SharedBus,
 
-    ppu: NesPpu,
-    graphics_bus: NesBus,
+    ppu: SharedPpu,
+    graphics_bus: SharedBus,
 
     ram: SharedMemory,
     name_table: SharedMemory,
@@ -140,12 +138,11 @@ impl Nes {
     pub fn load_cartidge(&mut self, cartidge: Cartidge) {
         info!("Cartidge inserted: {}", cartidge);
 
-        let ram = Rc::clone(&cartidge.program_ram);
-        let rom = Rc::clone(&cartidge.program_rom);
-        let chr = Rc::clone(&cartidge.character_memory);
+        let ram = cartidge.mapper.program_ram_ref();
+        let rom = cartidge.mapper.program_rom_ref();
+        let chr = cartidge.mapper.character_memory_ref();
 
         self.main_bus.borrow_mut().attach(
-            // XXX: use references to avoid cloning memory
             ram,
             AddressRange {
                 start: 0x6000,
@@ -154,7 +151,6 @@ impl Nes {
         );
 
         self.main_bus.borrow_mut().attach(
-            // XXX: use references to avoid cloning memory
             rom,
             AddressRange {
                 start: 0x8000,
@@ -169,7 +165,6 @@ impl Nes {
         // It can be split into two 4 kB (0x1000) sections containing the
         // pattern tables 0 and 1
         self.graphics_bus.borrow_mut().attach(
-            // XXX: use references to avoid cloning memory
             chr,
             AddressRange {
                 start: 0x0000,

@@ -1,25 +1,16 @@
-use std::cell::RefCell;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
-use std::rc::Rc;
 
 use log::debug;
 
 use crate::processor::memory::{Ram, Rom};
+use crate::mappers::Mapper;
 use crate::utils::bv;
 
 pub struct Cartidge {
     name: String,
-
-    // Program memory (RAM)
-    pub program_ram: Rc<RefCell<Ram>>,
-
-    // Program memory (ROM)
-    pub program_rom: Rc<RefCell<Rom>>,
-
-    // Character memory, stores patterns and graphics for the PPU
-    pub character_memory: Rc<RefCell<Ram>>,
+    pub mapper: Box<dyn Mapper>
 }
 
 impl Cartidge {
@@ -62,17 +53,27 @@ impl Cartidge {
             None
         };
 
-        let program_ram = Rc::new(RefCell::new(Ram::new(cartidge_header.pgr_ram_size)));
+        use crate::mappers::MapperSpecs;
+        use crate::mappers::mapper_map;
 
-        let program_rom = Rc::new(RefCell::new(Rom::new(cartidge_header.pgr_rom_size)));
+        let mapper_specs = MapperSpecs {
+            program_ram_capacity: cartidge_header.pgr_ram_size,
+            program_rom_capacity: cartidge_header.pgr_rom_size,
+            character_memory_capacity: cartidge_header.chr_rom_size,
+        };
+        let mut mapper = mapper_map(cartidge_header.mapper, mapper_specs);
+
+        // let program_rom = Rc::new(RefCell::new(Rom::new(cartidge_header.pgr_rom_size)));
         let mut buf = vec![0; cartidge_header.pgr_rom_size];
         file.read_exact(&mut buf).unwrap();
-        program_rom.borrow_mut().load(0, &buf);
+        mapper.load_program_rom(&buf);
+        // program_rom.borrow_mut().load(0, &buf);
 
-        let character_memory = Rc::new(RefCell::new(Ram::new(cartidge_header.chr_rom_size)));
+        // let character_memory = Rc::new(RefCell::new(Ram::new(cartidge_header.chr_rom_size)));
         let mut buf = vec![0; cartidge_header.chr_rom_size];
         file.read_exact(&mut buf).unwrap();
-        character_memory.borrow_mut().load(0, &buf);
+        mapper.load_character_memory(&buf);
+        // character_memory.borrow_mut().load(0, &buf);
 
         let mut rest = Vec::new();
         file.read_to_end(&mut rest).unwrap();
@@ -82,9 +83,7 @@ impl Cartidge {
 
         Self {
             name: game_name,
-            program_ram,
-            program_rom,
-            character_memory,
+            mapper
         }
     }
 }

@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.34.0
+------
+- Support mappers on cartidge and implement mapper 0
+
 0.33.0
 ------
 - Allow Pixel creation using u8

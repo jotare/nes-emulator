@@ -120,6 +120,42 @@ impl Memory for Rom {
     }
 }
 
+#[derive(Clone)]
+pub struct MirroredRom {
+    memory: Rom,
+    mirrors: usize,
+}
+
+impl MirroredRom {
+    pub fn new(size: usize, mirrors: usize) -> Self {
+        Self {
+            memory: Rom::new(size),
+            mirrors,
+        }
+    }
+    pub fn load(&mut self, address: u16, contents: &[u8]) {
+        self.memory.load(address, contents);
+    }
+
+}
+
+impl Memory for MirroredRom {
+    fn read(&self, address: u16) -> u8 {
+        let address = ((address as usize) % self.memory.size()) as u16;
+        self.memory.read(address)
+    }
+
+    fn write(&mut self, address: u16, data: u8) {
+        let address = ((address as usize) % self.memory.size()) as u16;
+        self.memory.write(address, data);
+    }
+
+    fn size(&self) -> usize {
+        self.memory.size() * (self.mirrors + 1)
+    }
+}
+
+
 // Sprite memory
 pub struct PatternMemory {
     // 0x0000 - 0x1FFF (ppu bus)
