@@ -1,6 +1,11 @@
 CHANGELOG
 =========
 
+0.36.0
+------
+- Remove unneeded trait Processor
+- Refactor CPU and split in simpler modules
+
 0.35.0
 ------
 - Add new bit utility functions to set and clear bits

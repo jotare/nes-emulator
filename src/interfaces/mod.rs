@@ -1,16 +1,6 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-pub trait Processor {
-    /// Reset the processor
-    fn reset(&mut self);
-
-    /// Fetch the instruction pointed by the program counter from memory and
-    /// execute it atomically. Return the number of clocks spent in the
-    /// processor while executing an instruction
-    fn execute(&mut self) -> Result<u8, String>;
-}
-
 #[derive(Debug)]
 pub struct AddressRange {
     pub start: u16,
