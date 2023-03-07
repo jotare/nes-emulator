@@ -17,12 +17,12 @@ use crate::graphics::ppu::Ppu;
 use crate::graphics::ui::gtk_ui::GtkUi;
 use crate::graphics::ui::{Frame, Pixel, ORIGINAL_SCREEN_HEIGHT, ORIGINAL_SCREEN_WIDTH};
 use crate::interfaces::Bus as BusTrait;
-use crate::interfaces::{AddressRange, Memory, Processor};
+use crate::interfaces::{AddressRange, Processor};
 use crate::processor::bus::Bus;
-use crate::processor::cpu::Cpu;
-use crate::types::{SharedBus, SharedPpu, SharedMemory};
+// use crate::processor::cpu::Cpu;
 use crate::processor::memory::{MirroredRam, Ram};
-
+use crate::processor::mycpu::Cpu;
+use crate::types::{SharedBus, SharedMemory, SharedPpu};
 
 pub struct Nes {
     // XXX: change to u128 if overflow occur

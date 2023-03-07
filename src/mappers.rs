@@ -1,9 +1,8 @@
-use std::rc::Rc;
 use std::cell::RefCell;
+use std::rc::Rc;
 
-use crate::processor::memory::{Rom, Ram, MirroredRom};
-use crate::types::{SharedMemory, SharedRam, SharedMirroredRom};
-
+use crate::processor::memory::{MirroredRom, Ram};
+use crate::types::{SharedMemory, SharedMirroredRom, SharedRam};
 
 pub trait Mapper {
     fn load_program_rom(&mut self, data: &[u8]);
@@ -41,9 +40,18 @@ pub struct Mapper0 {
 impl Mapper0 {
     pub fn new(specs: MapperSpecs) -> Self {
         let program_rom = match specs.program_rom_capacity {
-            16384 => Rc::new(RefCell::new(MirroredRom::new(specs.program_rom_capacity, 1))),
-            32768 => Rc::new(RefCell::new(MirroredRom::new(specs.program_rom_capacity, 0))),
-            _ => panic!("Unexpected PGR ROM capacity: {}", specs.program_rom_capacity)
+            16384 => Rc::new(RefCell::new(MirroredRom::new(
+                specs.program_rom_capacity,
+                1,
+            ))),
+            32768 => Rc::new(RefCell::new(MirroredRom::new(
+                specs.program_rom_capacity,
+                0,
+            ))),
+            _ => panic!(
+                "Unexpected PGR ROM capacity: {}",
+                specs.program_rom_capacity
+            ),
         };
 
         Self {

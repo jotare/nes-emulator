@@ -1,9 +1,8 @@
 /// GTK-4 UI
 ///
 /// User Interface built on top of GTK-4 library
-
-use std::rc::Rc;
 use std::cell::RefCell;
+use std::rc::Rc;
 use std::sync::Arc;
 use std::sync::RwLock;
 use std::thread::{spawn, JoinHandle};
@@ -116,7 +115,11 @@ impl Ui for GtkUi {}
 
 impl Default for GtkUi {
     fn default() -> Self {
-        Self::new(ORIGINAL_SCREEN_WIDTH, ORIGINAL_SCREEN_HEIGHT, PIXEL_SCALE_FACTOR)
+        Self::new(
+            ORIGINAL_SCREEN_WIDTH,
+            ORIGINAL_SCREEN_HEIGHT,
+            PIXEL_SCALE_FACTOR,
+        )
     }
 }
 
@@ -172,13 +175,17 @@ struct PaintableScreenInner {
 
 impl Default for PaintableScreenInner {
     fn default() -> Self {
-        Self { width: ORIGINAL_SCREEN_WIDTH, height: ORIGINAL_SCREEN_HEIGHT, pixel_scale_factor: PIXEL_SCALE_FACTOR }
+        Self {
+            width: ORIGINAL_SCREEN_WIDTH,
+            height: ORIGINAL_SCREEN_HEIGHT,
+            pixel_scale_factor: PIXEL_SCALE_FACTOR,
+        }
     }
 }
 
 #[derive(Default)]
 struct PaintableScreen {
-    inner: Rc<RefCell<PaintableScreenInner>>
+    inner: Rc<RefCell<PaintableScreenInner>>,
 }
 
 impl PaintableScreen {
@@ -198,8 +205,7 @@ impl ObjectSubclass for PaintableScreen {
     type Interfaces = (gdk::Paintable,);
 }
 
-impl ObjectImpl for PaintableScreen {
-}
+impl ObjectImpl for PaintableScreen {}
 
 impl PaintableImpl for PaintableScreen {
     fn flags(&self) -> gdk::PaintableFlags {
@@ -233,8 +239,12 @@ impl PaintableImpl for PaintableScreen {
             let inner = self.inner.borrow();
             (inner.width, inner.height, inner.pixel_scale_factor)
         };
-        let context =
-            snapshot.append_cairo(&graphene::Rect::new(0.0, 0.0, self.intrinsic_width() as f32, self.intrinsic_height() as f32));
+        let context = snapshot.append_cairo(&graphene::Rect::new(
+            0.0,
+            0.0,
+            self.intrinsic_width() as f32,
+            self.intrinsic_height() as f32,
+        ));
         let pixel_size = 0.9;
 
         for (h, row) in frame.iter().enumerate().take(height) {

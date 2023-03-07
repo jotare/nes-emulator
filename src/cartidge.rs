@@ -4,13 +4,12 @@ use std::path::Path;
 
 use log::debug;
 
-use crate::processor::memory::{Ram, Rom};
 use crate::mappers::Mapper;
 use crate::utils::bv;
 
 pub struct Cartidge {
     name: String,
-    pub mapper: Box<dyn Mapper>
+    pub mapper: Box<dyn Mapper>,
 }
 
 impl Cartidge {
@@ -53,8 +52,8 @@ impl Cartidge {
             None
         };
 
-        use crate::mappers::MapperSpecs;
         use crate::mappers::mapper_map;
+        use crate::mappers::MapperSpecs;
 
         let mapper_specs = MapperSpecs {
             program_ram_capacity: cartidge_header.pgr_ram_size,
@@ -83,7 +82,7 @@ impl Cartidge {
 
         Self {
             name: game_name,
-            mapper
+            mapper,
         }
     }
 }
@@ -167,12 +166,15 @@ impl CartidgeHeader {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::interfaces::Memory;
 
     #[test]
     fn test_cartidge_new() {
         let cartidge = Cartidge::new("roms/Super Mario Bros. (World).nes");
-        assert_eq!(cartidge.program_rom.borrow().size(), 32 * 1024);
-        assert_eq!(cartidge.character_memory.borrow().size(), 8 * 1024);
+
+        assert_eq!(cartidge.mapper.program_rom_ref().borrow().size(), 32 * 1024);
+        assert_eq!(
+            cartidge.mapper.character_memory_ref().borrow().size(),
+            8 * 1024
+        );
     }
 }

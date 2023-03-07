@@ -136,7 +136,6 @@ impl MirroredRom {
     pub fn load(&mut self, address: u16, contents: &[u8]) {
         self.memory.load(address, contents);
     }
-
 }
 
 impl Memory for MirroredRom {
@@ -154,7 +153,6 @@ impl Memory for MirroredRom {
         self.memory.size() * (self.mirrors + 1)
     }
 }
-
 
 // Sprite memory
 pub struct PatternMemory {

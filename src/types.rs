@@ -1,11 +1,10 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::processor::bus::Bus;
 use crate::graphics::ppu::Ppu;
 use crate::interfaces::Memory;
-use crate::processor::memory::{Ram, Rom, MirroredRom};
-
+use crate::processor::bus::Bus;
+use crate::processor::memory::{MirroredRom, Ram, Rom};
 
 pub type SharedPpu = Rc<RefCell<Ppu>>;
 pub type SharedBus = Rc<RefCell<Bus>>;

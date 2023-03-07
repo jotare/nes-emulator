@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use crate::graphics::ui::Pixel;
 
-
 pub struct Palette {
     palette: HashMap<u8, Pixel>,
 }
@@ -86,6 +85,9 @@ impl Palette {
     }
 
     pub fn decode_pixel(&self, color: u8) -> Pixel {
-        self.palette.get(&color).expect("Invalid color {color}").clone()
+        self.palette
+            .get(&color)
+            .expect("Invalid color {color}")
+            .clone()
     }
 }
