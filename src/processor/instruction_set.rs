@@ -22,17 +22,6 @@ impl InstructionSet {
     pub fn new_legal_opcode_set() -> Self {
         let mut instruction_set = HashMap::new();
 
-        instruction_set.insert(
-            0xA9,
-            Instruction {
-                name: "LDA",
-                instruction: InternalExecOnMemoryData(lda),
-                addressing_mode: Immediate,
-                bytes: 3,
-                cycles: 3,
-            },
-        );
-
         // Transfer instructions
         instruction_set.insert(
             0xA9,

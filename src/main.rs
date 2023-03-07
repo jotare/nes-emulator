@@ -11,5 +11,5 @@ fn main() {
     // let cartidge = Cartidge::new("roms/Galaga - Demons of Death (USA).nes");
 
     nes.load_cartidge(cartidge);
-    nes.run();
+    nes.run().unwrap();
 }

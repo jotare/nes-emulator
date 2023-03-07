@@ -176,75 +176,44 @@ impl Nes {
     }
 
     /// Blocking NES run
-    pub fn run(&mut self) {
+    pub fn run(&mut self) -> Result<(), String> {
         info!("NES indefinedly running game");
 
-        let cpu_enable = false;
-        let ui_enable = true;
 
-        if ui_enable {
-            self.ui.start();
+        self.ui.start();
+
+        loop {
+            self.clock()?;
         }
 
-        let inter_frame_delay = std::time::Duration::from_millis(16);
-        // let inter_frame_delay = std::time::Duration::from_millis(1000);
+        Ok(())
+    }
 
-        if cpu_enable || ui_enable {
-            'outer: loop {
-                for direction in [true, false] {
-                    for step in 0..160 {
-                        if cpu_enable {
-                            let result = self.cpu.execute();
-                            if let Err(error) = result {
-                                error!("CPU execution error: {}", error);
-                                break 'outer;
-                            }
-                        }
+    /// NES system clocks runs at ~21.47 MHz
+    fn clock(&mut self) -> Result<(), String> {
+        self.system_clock += 1;
 
-                        if ui_enable {
-                            let frame = self.colors_animation_frame(step, direction);
-                            self.ui.render(frame);
-                            std::thread::sleep(inter_frame_delay);
-                        }
-                    }
+        // PPU clock runs every 4 system clocks
+        if self.system_clock % 4 == 0 {
+            self.ppu.borrow_mut().clock();
+
+            {
+                let ppu = self.ppu.borrow();
+                if ppu.frame_ready() {
+                    let color = (self.system_clock / 4 % (u8::MAX as u64 + 1)) as u8;
+                    let frame = ppu.get_frame(color);
+                    self.ui.render(frame);
+                    std::thread::sleep(std::time::Duration::from_millis(16));
                 }
             }
         }
 
-        if ui_enable {
-            self.ui.join();
-        }
-    }
-
-    fn colors_animation_frame(&self, step: usize, forwards: bool) -> Frame {
-        fn compute_coloured_pixel(x: usize, y: usize, factor: f64, forwards: bool) -> Pixel {
-            let color = 1.0 / ((x + y) as f64 / 2.0 / factor);
-            if forwards {
-                Pixel::new_rgb(1.0, 1.0 - color, color)
-            } else {
-                Pixel::new_rgb(1.0, color, 1.0 - color)
-            }
+        // CPU clock runs every 12 system clocks
+        if self.system_clock % 12 == 0 {
+            self.cpu.clock()?;
         }
 
-        let mut frame =
-            vec![[Pixel::new_rgb(0.0, 0.0, 0.0); ORIGINAL_SCREEN_WIDTH]; ORIGINAL_SCREEN_HEIGHT];
-
-        for y in 0..ORIGINAL_SCREEN_HEIGHT {
-            for x in 0..ORIGINAL_SCREEN_WIDTH {
-                if forwards {
-                    frame[y][x] = compute_coloured_pixel(x, y, step as f64, forwards);
-                } else {
-                    frame[ORIGINAL_SCREEN_HEIGHT - y - 1][ORIGINAL_SCREEN_WIDTH - x - 1] =
-                        compute_coloured_pixel(x, y, step as f64, forwards);
-                }
-            }
-        }
-
-        frame
-    }
-
-    fn clock(&self) {
-        todo!("Implement clocks in CPU and PPU");
+        Ok(())
     }
 }
 
