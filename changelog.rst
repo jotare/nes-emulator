@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.35.0
+------
+- Add new bit utility functions to set and clear bits
+
 0.34.0
 ------
 - Support mappers on cartidge and implement mapper 0
