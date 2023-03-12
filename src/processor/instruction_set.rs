@@ -64,7 +64,7 @@ impl InstructionSet {
             },
         );
         instruction_set.insert(
-            0xB9,
+            0xBD,
             Instruction {
                 name: "LDA",
                 instruction: InternalExecOnMemoryData(lda),
@@ -74,7 +74,7 @@ impl InstructionSet {
             },
         );
         instruction_set.insert(
-            0xBD,
+            0xB9,
             Instruction {
                 name: "LDA",
                 instruction: InternalExecOnMemoryData(lda),
@@ -202,7 +202,7 @@ impl InstructionSet {
                 instruction: InternalExecOnMemoryData(ldy),
                 addressing_mode: AbsoluteX,
                 bytes: 3,
-                cycles: 5,
+                cycles: 4,
             },
         );
 
@@ -319,7 +319,7 @@ impl InstructionSet {
             },
         );
         instruction_set.insert(
-            0x84,
+            0x94,
             Instruction {
                 name: "STY",
                 instruction: StoreOp(sty),
@@ -329,7 +329,7 @@ impl InstructionSet {
             },
         );
         instruction_set.insert(
-            0x84,
+            0x8C,
             Instruction {
                 name: "STY",
                 instruction: StoreOp(sty),
@@ -413,7 +413,7 @@ impl InstructionSet {
                 instruction: Misc(Push(pha)),
                 addressing_mode: Implied,
                 bytes: 1,
-                cycles: 2,
+                cycles: 3,
             },
         );
 
@@ -424,7 +424,7 @@ impl InstructionSet {
                 instruction: Misc(Push(php)),
                 addressing_mode: Implied,
                 bytes: 1,
-                cycles: 2,
+                cycles: 3,
             },
         );
 
@@ -435,7 +435,7 @@ impl InstructionSet {
                 instruction: Misc(Pull(pla)),
                 addressing_mode: Implied,
                 bytes: 1,
-                cycles: 2,
+                cycles: 4,
             },
         );
 
@@ -446,7 +446,7 @@ impl InstructionSet {
                 instruction: Misc(Pull(plp)),
                 addressing_mode: Implied,
                 bytes: 1,
-                cycles: 2,
+                cycles: 4,
             },
         );
 
@@ -497,7 +497,7 @@ impl InstructionSet {
             Instruction {
                 name: "DEX",
                 instruction: SingleByte(dex),
-                addressing_mode: Immediate,
+                addressing_mode: Implied,
                 bytes: 1,
                 cycles: 2,
             },
@@ -508,7 +508,7 @@ impl InstructionSet {
             Instruction {
                 name: "DEY",
                 instruction: SingleByte(dey),
-                addressing_mode: Immediate,
+                addressing_mode: Implied,
                 bytes: 1,
                 cycles: 2,
             },
@@ -560,7 +560,7 @@ impl InstructionSet {
             Instruction {
                 name: "INX",
                 instruction: SingleByte(inx),
-                addressing_mode: Immediate,
+                addressing_mode: Implied,
                 bytes: 1,
                 cycles: 2,
             },
@@ -571,7 +571,7 @@ impl InstructionSet {
             Instruction {
                 name: "INY",
                 instruction: SingleByte(iny),
-                addressing_mode: Immediate,
+                addressing_mode: Implied,
                 bytes: 1,
                 cycles: 2,
             },
@@ -1041,7 +1041,7 @@ impl InstructionSet {
             Instruction {
                 name: "LSR",
                 instruction: SingleByte(lsr),
-                addressing_mode: Immediate,
+                addressing_mode: Accumulator,
                 bytes: 1,
                 cycles: 2,
             },
@@ -1092,7 +1092,7 @@ impl InstructionSet {
             Instruction {
                 name: "ROL",
                 instruction: SingleByte(rol),
-                addressing_mode: Immediate,
+                addressing_mode: Accumulator,
                 bytes: 1,
                 cycles: 2,
             },
@@ -1143,7 +1143,7 @@ impl InstructionSet {
             Instruction {
                 name: "ROR",
                 instruction: SingleByte(ror),
-                addressing_mode: Immediate,
+                addressing_mode: Accumulator,
                 bytes: 1,
                 cycles: 2,
             },
@@ -1328,12 +1328,12 @@ impl InstructionSet {
                 name: "CMP",
                 instruction: InternalExecOnMemoryData(cmp),
                 addressing_mode: IndirectX,
-                bytes: 3,
+                bytes: 2,
                 cycles: 6,
             },
         );
         instruction_set.insert(
-            0xC1,
+            0xD1,
             Instruction {
                 name: "CMP",
                 instruction: InternalExecOnMemoryData(cmp),
@@ -2368,7 +2368,7 @@ pub fn jsr(cpu: &mut InternalCpu, address: u16, memory: &SharedBus) {
 pub fn rts(cpu: &mut InternalCpu, memory: &SharedBus) {
     let pcl = pull(cpu, memory) as u16;
     let pch = pull(cpu, memory) as u16;
-    cpu.pc = ((pch << 8) | pcl) + 1;
+    cpu.pc = ((pch << 8) | pcl);
 }
 
 // Interrupts

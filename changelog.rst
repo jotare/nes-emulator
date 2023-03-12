@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.36.1
+------
+- Fix CPU instructions
+
 0.36.0
 ------
 - Remove unneeded trait Processor
