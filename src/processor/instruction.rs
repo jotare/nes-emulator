@@ -5,6 +5,7 @@ pub type Opcode = u8;
 
 #[derive(Clone)]
 pub struct Instruction {
+    pub opcode: Opcode,
     pub name: &'static str,
     pub instruction: InstructionKind,
     pub addressing_mode: AddressingMode,

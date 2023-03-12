@@ -2,8 +2,9 @@ use log::{debug, info};
 
 use crate::interfaces::Bus as _;
 use crate::processor::instruction::{
-    AddressingMode, Instruction, InstructionKind, MiscInstructionKind, Opcode,
+    AddressingMode, Instruction, InstructionKind, MiscInstructionKind,
 };
+use crate::processor::instruction_set;
 use crate::processor::instruction_set::InstructionSet;
 use crate::processor::internal_cpu::InternalCpu;
 use crate::processor::status_register::StatusRegisterFlag;
@@ -64,7 +65,7 @@ impl Cpu {
 
     /// Execute a complete instruction and return the number of clocks used
     pub fn execute(&mut self) -> Result<u8, String> {
-        let (_opcode, instruction) = self.fetch()?;
+        let instruction = self.fetch()?;
         let clocks = instruction.cycles;
         self.execute_instruction(instruction)?;
         Ok(clocks)
@@ -135,10 +136,10 @@ impl Cpu {
     }
 
     fn load(&mut self, addr_mode: AddressingMode) -> (u16, u8) {
-        let opcode = self.bus_read(self.cpu.pc);
         let (addr, data) = match addr_mode {
             Implied => {
                 let addr = self.cpu.pc + 1;
+                let opcode = self.bus_read(self.cpu.pc);
                 let data = opcode; // discarted
                 (addr, data)
             }
@@ -149,7 +150,7 @@ impl Cpu {
             }
             Immediate => {
                 let addr = self.cpu.pc + 1;
-                let data = self.bus_read(self.cpu.pc + 1);
+                let data = self.bus_read(addr);
                 (addr, data)
             }
             ZeroPage => {
@@ -268,13 +269,13 @@ impl Cpu {
         self.bus_write(addr, data);
     }
 
-    fn fetch(&self) -> Result<(Opcode, Instruction), String> {
+    fn fetch(&self) -> Result<Instruction, String> {
         let opcode = self.bus_read(self.cpu.pc);
         let instruction = self.instruction_set.lookup(opcode).ok_or(format!(
             "Invalid instruction 0x{:0>2X} at PC 0x{:0>4X}",
             opcode, self.cpu.pc
         ))?;
-        Ok((opcode, instruction))
+        Ok(instruction)
     }
 
     fn bus_read(&self, address: u16) -> u8 {
