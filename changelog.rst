@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.37.1
+------
+- Fix CPU instructions and addressing modes
+
 0.37.0
 ------
 - Add opcode field to CPU Instruction

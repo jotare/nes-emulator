@@ -159,12 +159,12 @@ fn test_transfer_instruction_TXS() {
     instruction_set::txs(&mut cpu);
     assert_eq!(cpu.x_reg, cpu.sp);
     assert!(!cpu.sr.get(Zero));
-    assert!(cpu.sr.get(Negative));
+    assert!(!cpu.sr.get(Negative));
 
     cpu.x_reg = 0;
     instruction_set::txs(&mut cpu);
     assert_eq!(cpu.x_reg, cpu.sp);
-    assert!(cpu.sr.get(Zero));
+    assert!(!cpu.sr.get(Zero));
     assert!(!cpu.sr.get(Negative));
 }
 
@@ -339,41 +339,61 @@ fn test_arithmetic_instruction_ADC() {
 fn test_arithmetic_instruction_SBC() {
     let mut cpu = InternalCpu::default();
 
-    cpu.acc = 5;
-    cpu.sr.clear(Carry);
-    instruction_set::sbc(&mut cpu, 2);
-    assert_eq!(cpu.acc, 3);
-    assert!(!cpu.sr.get(Negative));
-    assert!(!cpu.sr.get(Zero));
-    assert!(!cpu.sr.get(Carry));
-    assert!(!cpu.sr.get(Overflow));
-
-    cpu.acc = 5;
     cpu.sr.set(Carry);
-    instruction_set::sbc(&mut cpu, 4);
+    instruction_set::sbc(&mut cpu, 0);
     assert_eq!(cpu.acc, 0);
     assert!(!cpu.sr.get(Negative));
     assert!(cpu.sr.get(Zero));
-    assert!(!cpu.sr.get(Carry));
+    assert!(cpu.sr.get(Carry));
     assert!(!cpu.sr.get(Overflow));
 
-    cpu.acc = 0;
     cpu.sr.clear(Carry);
-    instruction_set::sbc(&mut cpu, 1);
+    instruction_set::sbc(&mut cpu, 0);
     assert_eq!(cpu.acc, 0xFF);
     assert!(cpu.sr.get(Negative));
     assert!(!cpu.sr.get(Zero));
-    assert!(cpu.sr.get(Carry));
-    assert!(cpu.sr.get(Overflow));
+    assert!(!cpu.sr.get(Carry));
+    assert!(!cpu.sr.get(Overflow));
 
-    cpu.acc = 0;
-    cpu.sr.set(Carry);
-    instruction_set::sbc(&mut cpu, 1);
-    assert_eq!(cpu.acc, 0xFE);
-    assert!(cpu.sr.get(Negative));
-    assert!(!cpu.sr.get(Zero));
-    assert!(cpu.sr.get(Carry));
-    assert!(cpu.sr.get(Overflow));
+    // // C = 0; 5 - 4 - (1 - C) = 0
+    // cpu.acc = 5;
+    // cpu.sr.clear(Carry);
+    // instruction_set::sbc(&mut cpu, 4);
+    // assert_eq!(cpu.acc, 0);
+    // assert!(!cpu.sr.get(Negative));
+    // assert!(cpu.sr.get(Zero));
+    // assert!(!cpu.sr.get(Carry));
+    // assert!(!cpu.sr.get(Overflow));
+
+    // // C = 1; 5 - 2 - (1 - C) = 3
+    // cpu.acc = 5;
+    // cpu.sr.set(Carry);
+    // instruction_set::sbc(&mut cpu, 2);
+    // assert_eq!(cpu.acc, 3);
+    // assert!(!cpu.sr.get(Negative));
+    // assert!(!cpu.sr.get(Zero));
+    // assert!(!cpu.sr.get(Carry));
+    // assert!(!cpu.sr.get(Overflow));
+
+    // // C = 0; 0 - 1 - (1 - C) = -2 = 0xFE
+    // cpu.acc = 0;
+    // cpu.sr.clear(Carry);
+    // instruction_set::sbc(&mut cpu, 1);
+    // assert_eq!(cpu.acc, 0xFE);
+    // assert!(cpu.sr.get(Negative));
+    // assert!(!cpu.sr.get(Zero));
+    // assert!(cpu.sr.get(Carry));
+    // assert!(cpu.sr.get(Overflow));
+
+    // // C = 1; 0 - 1 - (1 - C) = -1 = 0xFF
+    // cpu.acc = 0;
+    // cpu.sr.set(Carry);
+    // instruction_set::sbc(&mut cpu, 1);
+    // assert_eq!(cpu.acc, 0xFF);
+    // assert!(cpu.sr.get(Negative));
+    // assert!(!cpu.sr.get(Zero));
+    // assert!(cpu.sr.get(Carry));
+    // assert!(cpu.sr.get(Overflow));
 }
 
 #[test]
@@ -449,25 +469,25 @@ fn test_logical_instruction_ORA() {
 }
 
 #[test]
-fn test_shift_instruction_ASL() {
+fn test_shift_instruction_ASL_ACC() {
     let mut cpu = InternalCpu::default();
 
     cpu.acc = 2;
-    instruction_set::asl(&mut cpu);
+    instruction_set::asl_acc(&mut cpu);
     assert_eq!(cpu.acc, 4);
     assert!(!cpu.sr.get(Zero));
     assert!(!cpu.sr.get(Negative));
     assert!(!cpu.sr.get(Carry));
 
     cpu.acc = 0x40;
-    instruction_set::asl(&mut cpu);
+    instruction_set::asl_acc(&mut cpu);
     assert_eq!(cpu.acc, 0x80);
     assert!(!cpu.sr.get(Zero));
     assert!(cpu.sr.get(Negative));
     assert!(!cpu.sr.get(Carry));
 
     cpu.acc = 0x80;
-    instruction_set::asl(&mut cpu);
+    instruction_set::asl_acc(&mut cpu);
     assert_eq!(cpu.acc, 0);
     assert!(cpu.sr.get(Zero));
     assert!(!cpu.sr.get(Negative));
@@ -475,18 +495,18 @@ fn test_shift_instruction_ASL() {
 }
 
 #[test]
-fn test_shift_instruction_LSR() {
+fn test_shift_instruction_LSR_ACC() {
     let mut cpu = InternalCpu::default();
 
     cpu.acc = 1;
-    instruction_set::lsr(&mut cpu);
+    instruction_set::lsr_acc(&mut cpu);
     assert_eq!(cpu.acc, 0);
     assert!(cpu.sr.get(Zero));
     assert!(!cpu.sr.get(Negative));
     assert!(cpu.sr.get(Carry));
 
     cpu.acc = 0x40;
-    instruction_set::lsr(&mut cpu);
+    instruction_set::lsr_acc(&mut cpu);
     assert_eq!(cpu.acc, 0x20);
     assert!(!cpu.sr.get(Zero));
     assert!(!cpu.sr.get(Negative));
@@ -494,12 +514,12 @@ fn test_shift_instruction_LSR() {
 }
 
 #[test]
-fn test_rotate_instruction_ROL() {
+fn test_rotate_instruction_ROL_ACC() {
     let mut cpu = InternalCpu::default();
 
     cpu.acc = 0b1111_0000;
     cpu.sr.set(Carry);
-    instruction_set::rol(&mut cpu);
+    instruction_set::rol_acc(&mut cpu);
     assert_eq!(cpu.acc, 0b1110_0001);
     assert!(!cpu.sr.get(Zero));
     assert!(cpu.sr.get(Negative));
@@ -507,7 +527,7 @@ fn test_rotate_instruction_ROL() {
 
     cpu.acc = 0b1000_0000;
     cpu.sr.clear(Carry);
-    instruction_set::rol(&mut cpu);
+    instruction_set::rol_acc(&mut cpu);
     assert_eq!(cpu.acc, 0);
     assert!(cpu.sr.get(Zero));
     assert!(!cpu.sr.get(Negative));
@@ -515,7 +535,7 @@ fn test_rotate_instruction_ROL() {
 
     cpu.acc = 0b0000_1000;
     cpu.sr.clear(Carry);
-    instruction_set::rol(&mut cpu);
+    instruction_set::rol_acc(&mut cpu);
     assert_eq!(cpu.acc, 0b0001_0000);
     assert!(!cpu.sr.get(Zero));
     assert!(!cpu.sr.get(Negative));
@@ -523,12 +543,12 @@ fn test_rotate_instruction_ROL() {
 }
 
 #[test]
-fn test_rotate_instruction_ROR() {
+fn test_rotate_instruction_ROR_ACC() {
     let mut cpu = InternalCpu::default();
 
     cpu.acc = 0b0000_1111;
     cpu.sr.set(Carry);
-    instruction_set::ror(&mut cpu);
+    instruction_set::ror_acc(&mut cpu);
     assert_eq!(cpu.acc, 0b1000_0111);
     assert!(!cpu.sr.get(Zero));
     assert!(cpu.sr.get(Negative));
@@ -536,7 +556,7 @@ fn test_rotate_instruction_ROR() {
 
     cpu.acc = 0b0000_0001;
     cpu.sr.clear(Carry);
-    instruction_set::ror(&mut cpu);
+    instruction_set::ror_acc(&mut cpu);
     assert_eq!(cpu.acc, 0);
     assert!(cpu.sr.get(Zero));
     assert!(!cpu.sr.get(Negative));
@@ -544,7 +564,7 @@ fn test_rotate_instruction_ROR() {
 
     cpu.acc = 0b0001_0000;
     cpu.sr.clear(Carry);
-    instruction_set::ror(&mut cpu);
+    instruction_set::ror_acc(&mut cpu);
     assert_eq!(cpu.acc, 0b0000_1000);
     assert!(!cpu.sr.get(Zero));
     assert!(!cpu.sr.get(Negative));

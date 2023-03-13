@@ -19,6 +19,7 @@ pub struct InstructionSet {
 }
 
 impl InstructionSet {
+    #[rustfmt::skip]
     pub fn new_legal_opcode_set() -> Self {
         let mut instruction_set = HashMap::new();
 
@@ -803,7 +804,7 @@ impl InstructionSet {
             Instruction {
                 name: "ASL",
                 opcode: 0x0A,
-                instruction: SingleByte(asl),
+                instruction: SingleByte(asl_acc),
                 addressing_mode: Accumulator,
                 bytes: 1,
                 cycles: 2,
@@ -811,7 +812,7 @@ impl InstructionSet {
             Instruction {
                 name: "ASL",
                 opcode: 0x06,
-                instruction: SingleByte(asl),
+                instruction: ReadModifyWrite(asl),
                 addressing_mode: ZeroPage,
                 bytes: 2,
                 cycles: 5,
@@ -819,7 +820,7 @@ impl InstructionSet {
             Instruction {
                 name: "ASL",
                 opcode: 0x16,
-                instruction: SingleByte(asl),
+                instruction: ReadModifyWrite(asl),
                 addressing_mode: ZeroPageX,
                 bytes: 2,
                 cycles: 6,
@@ -827,7 +828,7 @@ impl InstructionSet {
             Instruction {
                 name: "ASL",
                 opcode: 0x0E,
-                instruction: SingleByte(asl),
+                instruction: ReadModifyWrite(asl),
                 addressing_mode: Absolute,
                 bytes: 3,
                 cycles: 6,
@@ -835,7 +836,7 @@ impl InstructionSet {
             Instruction {
                 name: "ASL",
                 opcode: 0x1E,
-                instruction: SingleByte(asl),
+                instruction: ReadModifyWrite(asl),
                 addressing_mode: AbsoluteX,
                 bytes: 3,
                 cycles: 7,
@@ -844,7 +845,7 @@ impl InstructionSet {
             Instruction {
                 name: "LSR",
                 opcode: 0x4A,
-                instruction: SingleByte(lsr),
+                instruction: SingleByte(lsr_acc),
                 addressing_mode: Accumulator,
                 bytes: 1,
                 cycles: 2,
@@ -852,7 +853,7 @@ impl InstructionSet {
             Instruction {
                 name: "LSR",
                 opcode: 0x46,
-                instruction: SingleByte(lsr),
+                instruction: ReadModifyWrite(lsr),
                 addressing_mode: ZeroPage,
                 bytes: 2,
                 cycles: 5,
@@ -860,7 +861,7 @@ impl InstructionSet {
             Instruction {
                 name: "LSR",
                 opcode: 0x56,
-                instruction: SingleByte(lsr),
+                instruction: ReadModifyWrite(lsr),
                 addressing_mode: ZeroPageX,
                 bytes: 2,
                 cycles: 6,
@@ -868,7 +869,7 @@ impl InstructionSet {
             Instruction {
                 name: "LSR",
                 opcode: 0x4E,
-                instruction: SingleByte(lsr),
+                instruction: ReadModifyWrite(lsr),
                 addressing_mode: Absolute,
                 bytes: 3,
                 cycles: 6,
@@ -876,7 +877,7 @@ impl InstructionSet {
             Instruction {
                 name: "LSR",
                 opcode: 0x5E,
-                instruction: SingleByte(lsr),
+                instruction: ReadModifyWrite(lsr),
                 addressing_mode: AbsoluteX,
                 bytes: 3,
                 cycles: 7,
@@ -885,7 +886,7 @@ impl InstructionSet {
             Instruction {
                 name: "ROL",
                 opcode: 0x2A,
-                instruction: SingleByte(rol),
+                instruction: SingleByte(rol_acc),
                 addressing_mode: Accumulator,
                 bytes: 1,
                 cycles: 2,
@@ -893,7 +894,7 @@ impl InstructionSet {
             Instruction {
                 name: "ROL",
                 opcode: 0x26,
-                instruction: SingleByte(rol),
+                instruction: ReadModifyWrite(rol),
                 addressing_mode: ZeroPage,
                 bytes: 2,
                 cycles: 5,
@@ -901,7 +902,7 @@ impl InstructionSet {
             Instruction {
                 name: "ROL",
                 opcode: 0x36,
-                instruction: SingleByte(rol),
+                instruction: ReadModifyWrite(rol),
                 addressing_mode: ZeroPageX,
                 bytes: 2,
                 cycles: 6,
@@ -909,7 +910,7 @@ impl InstructionSet {
             Instruction {
                 name: "ROL",
                 opcode: 0x2E,
-                instruction: SingleByte(rol),
+                instruction: ReadModifyWrite(rol),
                 addressing_mode: Absolute,
                 bytes: 3,
                 cycles: 6,
@@ -917,7 +918,7 @@ impl InstructionSet {
             Instruction {
                 name: "ROL",
                 opcode: 0x3E,
-                instruction: SingleByte(rol),
+                instruction: ReadModifyWrite(rol),
                 addressing_mode: AbsoluteX,
                 bytes: 3,
                 cycles: 7,
@@ -926,7 +927,7 @@ impl InstructionSet {
             Instruction {
                 name: "ROR",
                 opcode: 0x6A,
-                instruction: SingleByte(ror),
+                instruction: SingleByte(ror_acc),
                 addressing_mode: Accumulator,
                 bytes: 1,
                 cycles: 2,
@@ -934,7 +935,7 @@ impl InstructionSet {
             Instruction {
                 name: "ROR",
                 opcode: 0x66,
-                instruction: SingleByte(ror),
+                instruction: ReadModifyWrite(ror),
                 addressing_mode: ZeroPage,
                 bytes: 2,
                 cycles: 5,
@@ -942,7 +943,7 @@ impl InstructionSet {
             Instruction {
                 name: "ROR",
                 opcode: 0x76,
-                instruction: SingleByte(ror),
+                instruction: ReadModifyWrite(ror),
                 addressing_mode: ZeroPageX,
                 bytes: 2,
                 cycles: 6,
@@ -950,7 +951,7 @@ impl InstructionSet {
             Instruction {
                 name: "ROR",
                 opcode: 0x6E,
-                instruction: SingleByte(ror),
+                instruction: ReadModifyWrite(ror),
                 addressing_mode: Absolute,
                 bytes: 3,
                 cycles: 6,
@@ -958,7 +959,7 @@ impl InstructionSet {
             Instruction {
                 name: "ROR",
                 opcode: 0x7E,
-                instruction: SingleByte(ror),
+                instruction: ReadModifyWrite(ror),
                 addressing_mode: AbsoluteX,
                 bytes: 3,
                 cycles: 7,
@@ -1444,11 +1445,9 @@ pub fn txa(cpu: &mut InternalCpu) {
 ///
 /// Status Register:
 /// N Z C I D V
-/// + + - - - -
+/// - - - - - -
 pub fn txs(cpu: &mut InternalCpu) {
     cpu.sp = cpu.x_reg;
-    cpu.sr.auto_set(Negative, cpu.sp);
-    cpu.sr.auto_set(Zero, cpu.sp);
 }
 
 /// TYA - Transfer Index Y to Accumulator
@@ -1520,6 +1519,8 @@ pub fn php(cpu: &mut InternalCpu, memory: &SharedBus) {
 /// + + - - - -
 pub fn pla(cpu: &mut InternalCpu, memory: &SharedBus) {
     cpu.acc = pull(cpu, memory);
+    cpu.sr.auto_set(Negative, cpu.acc);
+    cpu.sr.auto_set(Zero, cpu.acc);
 }
 
 /// PLP - Pull Processor Status from Stack
@@ -1534,10 +1535,10 @@ pub fn pla(cpu: &mut InternalCpu, memory: &SharedBus) {
 /// N Z C I D V
 /// + + - - - -
 pub fn plp(cpu: &mut InternalCpu, memory: &SharedBus) {
-    let mut stack_sr = pull(cpu, memory);
-    stack_sr &= !((1 << Break as u8) | (1 << 5));
-    let current_sr: u8 = cpu.sr.into();
-    cpu.sr = StatusRegister::from(current_sr ^ !stack_sr);
+    let mut sr = StatusRegister::from(pull(cpu, memory));
+    sr.set_value(Break, cpu.sr.get(Break));
+    // XXX bit 5 is ignored, as NES don't use it
+    cpu.sr = sr
 }
 
 // Decrements and increments
@@ -1666,16 +1667,25 @@ pub fn adc(cpu: &mut InternalCpu, operand: u8) {
 /// N Z C I D V
 /// + + + - - +
 pub fn sbc(cpu: &mut InternalCpu, operand: u8) {
-    let carry = if cpu.sr.get(Carry) { 1 } else { 0 };
-    let (res, carry) = cpu.acc.overflowing_sub(operand + carry);
-    let overflow = utils::bv(cpu.acc, 7) == utils::bv(operand, 7)
-        && utils::bv(operand, 7) != utils::bv(res, 7);
+    adc(cpu, !operand);
+    // let carry = if cpu.sr.get(Carry) { 1 } else { 0 };
 
-    cpu.acc = res;
-    cpu.sr.auto_set(Negative, cpu.acc);
-    cpu.sr.auto_set(Zero, cpu.acc);
-    cpu.sr.set_value(Carry, carry);
-    cpu.sr.set_value(Overflow, overflow);
+    // let res = cpu.acc as u16 + (operand ^ 0xFF) as u16 + carry;
+    // let overflow = utils::bv(cpu.acc, 7) == utils::bv(operand, 7)
+    //     && utils::bv(operand, 7) != utils::bv(res as u8, 7);
+    // let carry = if overflow {
+    //     false
+    // } else {
+    //     true
+    // };
+
+    // let res = res as u8;
+
+    // cpu.acc = res;
+    // cpu.sr.auto_set(Negative, cpu.acc);
+    // cpu.sr.auto_set(Zero, cpu.acc);
+    // cpu.sr.set_value(Carry, carry);
+    // cpu.sr.set_value(Overflow, overflow);
 }
 
 // Logic operations
@@ -1732,12 +1742,16 @@ pub fn ora(cpu: &mut InternalCpu, operand: u8) {
 /// Status Register:
 /// N Z C I D V
 /// + + + - - -
-pub fn asl(cpu: &mut InternalCpu) {
-    let carry = utils::bv(cpu.acc, 7) != 0;
-    cpu.acc <<= 1;
-    cpu.sr.auto_set(Negative, cpu.acc);
-    cpu.sr.auto_set(Zero, cpu.acc);
+pub fn asl_acc(cpu: &mut InternalCpu) {
+    cpu.acc = asl(cpu, cpu.acc);
+}
+pub fn asl(cpu: &mut InternalCpu, operand: u8) -> u8 {
+    let result = operand << 1;
+    let carry = utils::bv(operand, 7) != 0;
+    cpu.sr.auto_set(Negative, result);
+    cpu.sr.auto_set(Zero, result);
     cpu.sr.set_value(Carry, carry);
+    result
 }
 
 /// LSR - Shift One Bit Right (Memory or Accumulator)
@@ -1748,12 +1762,17 @@ pub fn asl(cpu: &mut InternalCpu) {
 /// Status Register:
 /// N Z C I D V
 /// 0 + + - - -
-pub fn lsr(cpu: &mut InternalCpu) {
-    let carry = utils::bv(cpu.acc, 0) != 0;
-    cpu.acc >>= 1;
-    cpu.sr.auto_set(Negative, cpu.acc);
-    cpu.sr.auto_set(Zero, cpu.acc);
+pub fn lsr_acc(cpu: &mut InternalCpu) {
+    cpu.acc = lsr(cpu, cpu.acc);
+}
+
+pub fn lsr(cpu: &mut InternalCpu, operand: u8) -> u8 {
+    let result = operand >> 1;
+    let carry = utils::bv(operand, 0) != 0;
+    cpu.sr.clear(Negative);
+    cpu.sr.auto_set(Zero, result);
     cpu.sr.set_value(Carry, carry);
+    result
 }
 
 /// ROL - Rotate One Bit Left (Memory or Accumulator)
@@ -1764,13 +1783,18 @@ pub fn lsr(cpu: &mut InternalCpu) {
 /// Status Register:
 /// N Z C I D V
 /// + + + - - -
-pub fn rol(cpu: &mut InternalCpu) {
-    let new_carry = utils::bv(cpu.acc, 7) != 0;
+pub fn rol_acc(cpu: &mut InternalCpu) {
+    cpu.acc = rol(cpu, cpu.acc);
+}
+
+pub fn rol(cpu: &mut InternalCpu, operand: u8) -> u8 {
+    let new_carry = utils::bv(operand, 7) != 0;
     let curr_carry = if cpu.sr.get(Carry) { 1 } else { 0 };
-    cpu.acc = cpu.acc << 1 | curr_carry;
-    cpu.sr.auto_set(Negative, cpu.acc);
-    cpu.sr.auto_set(Zero, cpu.acc);
+    let result = operand << 1 | curr_carry;
+    cpu.sr.auto_set(Negative, result);
+    cpu.sr.auto_set(Zero, result);
     cpu.sr.set_value(Carry, new_carry);
+    result
 }
 
 /// ROR - Rotate One Bit Right (Memory or Accumulator)
@@ -1781,13 +1805,18 @@ pub fn rol(cpu: &mut InternalCpu) {
 /// Status Register:
 /// N Z C I D V
 /// + + + - - -
-pub fn ror(cpu: &mut InternalCpu) {
-    let new_carry = utils::bv(cpu.acc, 0) != 0;
+pub fn ror_acc(cpu: &mut InternalCpu) {
+    cpu.acc = ror(cpu, cpu.acc);
+}
+
+pub fn ror(cpu: &mut InternalCpu, operand: u8) -> u8 {
+    let new_carry = utils::bv(operand, 0) != 0;
     let curr_carry = if cpu.sr.get(Carry) { 1 } else { 0 };
-    cpu.acc = cpu.acc >> 1 | (curr_carry << 7);
-    cpu.sr.auto_set(Negative, cpu.acc);
-    cpu.sr.auto_set(Zero, cpu.acc);
+    let result = operand >> 1 | (curr_carry << 7);
+    cpu.sr.auto_set(Negative, result);
+    cpu.sr.auto_set(Zero, result);
     cpu.sr.set_value(Carry, new_carry);
+    result
 }
 
 // Flag instructions
@@ -2072,7 +2101,7 @@ pub fn jsr(cpu: &mut InternalCpu, address: u16, memory: &SharedBus) {
 pub fn rts(cpu: &mut InternalCpu, memory: &SharedBus) {
     let pcl = pull(cpu, memory) as u16;
     let pch = pull(cpu, memory) as u16;
-    cpu.pc = (pch << 8) | pcl;
+    cpu.pc = ((pch << 8) | pcl) + 1;
 }
 
 // Interrupts
@@ -2146,10 +2175,9 @@ pub fn rti(cpu: &mut InternalCpu, memory: &SharedBus) {
 ///  N Z C I D V
 /// M7 + - - - M6
 pub fn bit(cpu: &mut InternalCpu, operand: u8) {
-    let res = cpu.acc & operand;
     cpu.sr.set_value(Negative, utils::bv(operand, 7) != 0);
     cpu.sr.set_value(Overflow, utils::bv(operand, 6) != 0);
-    cpu.sr.auto_set(Zero, res);
+    cpu.sr.auto_set(Zero, cpu.acc & operand);
 }
 
 /// NOP - No Operation

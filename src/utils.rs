@@ -3,6 +3,10 @@ pub fn bv(value: u8, bit: u8) -> u8 {
     value.rotate_right(bit.into()) & 1
 }
 
+pub fn bv_16(value: u16, bit: u8) -> u16 {
+    value.rotate_right(bit.into()) & 1
+}
+
 /// Return the value from `value` between bit positions `major_bit` and
 /// `minor_bit`
 pub fn bvs_8(value: u8, major_bit: u8, minor_bit: u8) -> u8 {

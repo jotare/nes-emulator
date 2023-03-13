@@ -163,16 +163,16 @@ impl Cpu {
             Absolute => {
                 // Effective address is ADH, ADL
                 let adl = self.bus_read(self.cpu.pc + 1) as u16;
-                let adh = (self.bus_read(self.cpu.pc + 2) as u16) << 8;
-                let addr = adh | adl;
+                let adh = self.bus_read(self.cpu.pc + 2) as u16;
+                let addr = (adh << 8) | adl;
                 let data = self.bus_read(addr);
                 (addr, data)
             }
             IndirectX => {
                 // page zero base address
                 let bal = self.bus_read(self.cpu.pc + 1) as u16;
-                let adl = self.bus_read(bal + (self.cpu.x_reg as u16)) as u16;
-                let adh = self.bus_read(bal + (self.cpu.x_reg as u16) + 1) as u16;
+                let adl = self.bus_read((bal + (self.cpu.x_reg as u16)) & 0x00FF) as u16;
+                let adh = self.bus_read((bal + (self.cpu.x_reg as u16) + 1) & 0x00FF) as u16;
                 let addr = (adh << 8) | adl;
                 let data = self.bus_read(addr);
                 (addr, data)
@@ -193,13 +193,15 @@ impl Cpu {
             }
             ZeroPageX => {
                 let bal = self.bus_read(self.cpu.pc + 1) as u16;
-                let addr = bal + self.cpu.x_reg as u16;
+                // Zero page indexing can't cross page boundaries
+                let addr = (bal + (self.cpu.x_reg as u16)) & 0x00FF;
                 let data = self.bus_read(addr);
                 (addr, data)
             }
             ZeroPageY => {
                 let bal = self.bus_read(self.cpu.pc + 1) as u16;
-                let addr = bal + self.cpu.y_reg as u16;
+                // Zero page indexing can't cross page boundaries
+                let addr = (bal + (self.cpu.y_reg as u16)) & 0x00FF;
                 let data = self.bus_read(addr);
                 (addr, data)
             }
@@ -207,16 +209,30 @@ impl Cpu {
                 let ial = self.bus_read(self.cpu.pc + 1) as u16;
                 let bal = self.bus_read(ial) as u16;
                 let bah = self.bus_read(ial + 1) as u16;
-                let addr = ((bah << 8) | bal) + self.cpu.y_reg as u16;
-                let data = self.bus_read(addr);
+                let base_addr = (bah << 8) | bal;
+                let addr = base_addr + self.cpu.y_reg as u16;
+                let mut data = self.bus_read(addr);
+
+                let page_boundary_crossed = (ial & 0xFF00) != ((ial + 1) & 0xFF00);
+                if page_boundary_crossed {
+                    // Fetch data from next page
+                    data = self.bus_read(addr + 0x0100);
+                }
+
                 (addr, data)
             }
             Relative => {
                 let offset = self.bus_read(self.cpu.pc + 1) as i8 as u8;
                 (self.cpu.pc + 2, offset)
             }
-            _ => {
-                panic!("Invalid load addressing mode: {addr_mode:?}");
+            Indirect => {
+                let ind_l = self.bus_read(self.cpu.pc + 1) as u16;
+                let ind_h = self.bus_read(self.cpu.pc + 2) as u16;
+                let addr_l = self.bus_read((ind_h << 8) | ind_l) as u16;
+                let addr_h = self.bus_read((ind_h << 8) | ((ind_l + 1) & 0x00FF)) as u16;
+                let address = (addr_h << 8) | addr_l;
+
+                (address, 0)
             }
         };
         (addr, data)
@@ -227,13 +243,13 @@ impl Cpu {
             ZeroPage => self.bus_read(self.cpu.pc + 1) as u16,
             Absolute => {
                 let adl = self.bus_read(self.cpu.pc + 1) as u16;
-                let adh = (self.bus_read(self.cpu.pc + 2) as u16) << 8;
-                adh | adl
+                let adh = self.bus_read(self.cpu.pc + 2) as u16;
+                (adh << 8) | adl
             }
             IndirectX => {
                 let bal = self.bus_read(self.cpu.pc + 1) as u16;
-                let adl = self.bus_read(bal + (self.cpu.x_reg as u16)) as u16;
-                let adh = self.bus_read(bal + (self.cpu.x_reg as u16) + 1) as u16;
+                let adl = self.bus_read((bal + (self.cpu.x_reg as u16)) & 0x00FF) as u16;
+                let adh = self.bus_read((bal + (self.cpu.x_reg as u16) + 1) & 0x00FF) as u16;
                 (adh << 8) | adl
             }
             AbsoluteX => {
@@ -258,7 +274,7 @@ impl Cpu {
                 let ial = self.bus_read(self.cpu.pc + 1) as u16;
                 let bal = self.bus_read(ial) as u16;
                 let bah = self.bus_read(ial + 1) as u16;
-                let adl = bal + (self.cpu.y_reg as u16);
+                let adl = (bal + (self.cpu.y_reg as u16)) & 0x00FF;
                 let adh = bah;
                 (adh << 8) | adl
             }
