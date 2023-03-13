@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.38.0
+------
+- Add CPU interruption capabilities
+
 0.37.1
 ------
 - Fix CPU instructions and addressing modes

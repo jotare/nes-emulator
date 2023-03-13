@@ -21,6 +21,14 @@ pub struct Cpu {
     bus: SharedBus,
 
     clocks_before_next_execution: u8,
+    interrupt_request: Option<Interrupt>,
+}
+
+#[derive(Copy, Clone)]
+pub enum Interrupt {
+    NonMaskableInterrupt, // NMI
+    Reset,                // RES
+    InterruptRequest,     // IRQ
 }
 
 impl Cpu {
@@ -30,10 +38,13 @@ impl Cpu {
             instruction_set: InstructionSet::new_legal_opcode_set(),
             bus,
             clocks_before_next_execution: 1,
+            interrupt_request: None,
         }
     }
 
-    /// Reset the processor
+    /// Reset the processor to an init state. After concrete CPU
+    /// initializations, it'll call the Reset vector (RES interrupt) and leave
+    /// further state initialization to it.
     pub fn reset(&mut self) {
         info!("CPU reset");
         self.cpu.acc = 0;
@@ -51,16 +62,34 @@ impl Cpu {
     /// Perform a clock on the CPU. This emulation of CPU doesn't perform
     /// operations at clock level. Instead, at the end of an instruction cycle,
     /// it is executed atomically. The CPU will wait until the last cycle
-    /// though, emulating real CPU clock time
+    /// though, emulating real CPU clock time. A pending interrupt will wait
+    /// until the current instruction is completely executed.
     pub fn clock(&mut self) -> Result<(), String> {
         self.clocks_before_next_execution -= 1;
         if self.clocks_before_next_execution > 0 {
             return Ok(());
         }
 
-        let (_opcode, instruction) = self.fetch()?;
-        self.clocks_before_next_execution = instruction.cycles;
-        self.execute_instruction(instruction)
+        match self.interrupt_request {
+            Some(interrupt) => {
+                self.execute_interrupt(interrupt);
+                self.interrupt_request.take();
+                Ok(())
+            }
+            None => {
+                let instruction = self.fetch()?;
+                self.clocks_before_next_execution = instruction.cycles;
+                self.execute_instruction(instruction)
+            }
+        }
+    }
+
+    /// Execute a CPU interrupt
+    pub fn interrupt(&mut self, interrupt: Interrupt) {
+        if self.interrupt_request.is_some() {
+            println!("Attempting to interrupt CPU while there's a pending interruption");
+        }
+        self.interrupt_request.replace(interrupt);
     }
 
     /// Execute a complete instruction and return the number of clocks used
