@@ -87,7 +87,6 @@ pub struct Ppu {
     cycle: u16,
     scan_line: i16,
     frame_completed: bool,
-    sprite_screen: Box<[[u8; 240]; 256]>,
     palette: Palette,
     mirroring: Mirroring,
     nmi_request: bool,
@@ -113,7 +112,6 @@ impl Ppu {
             cycle: 0,
             scan_line: 0,
             frame_completed: false,
-            sprite_screen: Box::new([[0; 240]; 256]),
             palette: Palette::new(),
             mirroring: Mirroring::Horizontal,
             nmi_request: false,
@@ -247,7 +245,6 @@ impl Ppu {
         };
 
         let nametable = self.registers.borrow().ctrl.bits() & 0b0000_0011;
-        // let nametable = 2;
         let nametable_address = match nametable {
             0 => 0x2000,
             1 => 0x2400,
@@ -256,6 +253,12 @@ impl Ppu {
             _ => panic!("There's no name table {nametable}"),
         };
 
+        let attribute_table_address = nametable_address + 960;
+        let attribute_table: Vec<u8> = Vec::with_capacity(64);
+        for i in 0..64 {
+            let byte = self.bus.borrow().read(attribute_table_address + i);
+        }
+
         println!(
             "Pattern table: {pattern_table}. Nametable: {nametable}. Mirroring: {0:?}",
             self.mirroring
@@ -263,27 +266,30 @@ impl Ppu {
 
         for row in 0..30 {
             for col in 0..32 {
-                let tile_number = self
-                    .bus
-                    .borrow()
-                    .read((nametable_address + row * 32 + col) as u16)
-                    as usize;
+                let tile_number_address = (nametable_address + row * 32 + col) as u16;
+                let tile_number = self.bus.borrow().read(tile_number_address) as usize;
 
                 let mut bit_planes = [0; 16];
-                for i in 0..16 {
-                    bit_planes[i] = self
-                        .bus
-                        .borrow()
-                        .read(pattern_table_address + (tile_number * 16 + i) as u16);
+                for (i, item) in bit_planes.iter_mut().enumerate() {
+                    let address = pattern_table_address + (tile_number * 16 + i) as u16;
+                    *item = self.bus.borrow().read(address);
                 }
+
+                let attributes_address = (attribute_table_address + row / 4 * 8 + col / 4) as u16;
+                let attributes = self.bus.borrow().read(attributes_address);
+
+                let palette_number = match (col % 4, row % 4) {
+                    (x, y) if x < 2 && y < 2 => utils::bvs_8(attributes, 1, 0),
+                    (x, y) if x >= 2 && y < 2 => utils::bvs_8(attributes, 3, 2),
+                    (x, y) if x < 2 && y >= 2 => utils::bvs_8(attributes, 5, 4),
+                    (x, y) if x >= 2 && y >= 2 => utils::bvs_8(attributes, 7, 6),
+                    (x, y) => panic!("Impossible situation: x={x}, y={y}"),
+                };
 
                 for x in 0..8 {
                     for y in 0..8 {
                         let pattern = (utils::bv(bit_planes[y + 8], x as u8) << 1)
                             | (utils::bv(bit_planes[y], x as u8));
-                        let palette_number = 0;
-                        // let color = (palette_number << 2) + pattern;
-                        // let pixel = palette.decode_pixel(color);
                         let color = self
                             .bus
                             .borrow()
@@ -292,16 +298,13 @@ impl Ppu {
 
                         // let mrow = (tile_number / 16) * 8 + y;
                         // let mcol = ((tile_number % 16) + offset) * 8 + (7 - x);
-                        let mrow = row * 8 + y;
-                        let mcol = col * 8 + (7 - x);
+                        let mrow = (row as usize * 8 + y) as usize;
+                        let mcol = (col as usize * 8 + (7 - x)) as usize;
                         screen[mrow][mcol] = pixel;
                     }
                 }
-                // print!("{tile_number:0>2X} ");
             }
-            // println!();
         }
-        println!();
         screen
     }
 

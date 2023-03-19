@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.40.0
+------
+- Implement attribute table use on PPU rendering
+
 0.39.0
 ------
 - Partially implement PPU, CIRAM and nametable rendering
