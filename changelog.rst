@@ -1,6 +1,11 @@
 CHANGELOG
 =========
 
+0.42.0
+------
+- Add a Bus id
+- Add Bus debug logs
+
 0.41.0
 ------
 - Extend palette memory functionality

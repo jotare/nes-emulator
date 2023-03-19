@@ -46,8 +46,8 @@ pub struct Nes {
 
 impl Nes {
     pub fn new() -> Self {
-        let main_bus = Rc::new(RefCell::new(Bus::new()));
-        let graphics_bus = Rc::new(RefCell::new(Bus::new()));
+        let main_bus = Rc::new(RefCell::new(Bus::new("CPU")));
+        let graphics_bus = Rc::new(RefCell::new(Bus::new("PPU")));
 
         let main_bus_ptr = Rc::clone(&main_bus);
         let cpu = Cpu::new(main_bus_ptr);
