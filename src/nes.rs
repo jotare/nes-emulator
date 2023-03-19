@@ -13,9 +13,11 @@ use std::rc::Rc;
 use log::{error, info};
 
 use crate::cartidge::Cartidge;
+use crate::graphics::palette_memory::PaletteMemory;
 use crate::graphics::ppu::Ppu;
 use crate::graphics::ui::gtk_ui::GtkUi;
 use crate::graphics::ui::{Frame, Pixel, ORIGINAL_SCREEN_HEIGHT, ORIGINAL_SCREEN_WIDTH};
+use crate::hardware::*;
 use crate::interfaces::AddressRange;
 use crate::interfaces::Bus as BusTrait;
 use crate::processor::bus::Bus;
@@ -105,13 +107,13 @@ impl Nes {
 
         // Palette memory - 256-byte memory. It stores which colors should be
         // displayed on the screen when spites and background are combined
-        let palette_memory = Rc::new(RefCell::new(MirroredRam::new(0x3F1F - 0x3F00 + 1, 7)));
+        let palette_memory = Rc::new(RefCell::new(PaletteMemory::new()));
         let palette_memory_ptr = Rc::clone(&palette_memory);
         graphics_bus.borrow_mut().attach(
             palette_memory_ptr,
             AddressRange {
-                start: 0x3F00,
-                end: 0x3FFF,
+                start: PALETTE_MEMORY_START,
+                end: PALETTE_MEMORY_END,
             },
         );
 

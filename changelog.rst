@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.41.0
+------
+- Extend palette memory functionality
+
 0.40.0
 ------
 - Implement attribute table use on PPU rendering

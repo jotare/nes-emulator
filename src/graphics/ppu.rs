@@ -138,8 +138,6 @@ impl Ppu {
             self.set_vertical_blank(true);
             if self.registers.borrow().ctrl.contains(PpuCtrl::NMI_ENABLE) {
                 self.request_nmi();
-            } else {
-                println!("NOT requesting an NMI");
             }
         }
     }

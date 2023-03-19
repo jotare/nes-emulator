@@ -1,6 +1,7 @@
 /// NES emulator
 mod cartidge;
 mod graphics;
+mod hardware;
 mod interfaces;
 mod mappers;
 mod nes;

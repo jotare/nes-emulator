@@ -1,0 +1,6 @@
+// CPU Memory Map
+
+// PPU Memory Map
+pub const PALETTE_MEMORY_START: u16 = 0x3F00;
+pub const PALETTE_MEMORY_END: u16 = 0x3F1F;
+pub const PALETTE_MEMORY_SIZE: u16 = PALETTE_MEMORY_END - PALETTE_MEMORY_START + 1;
