@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.38.2
+------
+- Improve CPU logs
+
 0.38.1
 ------
 - Further implement and fix CPU interrupts

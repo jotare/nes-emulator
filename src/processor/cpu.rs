@@ -1,4 +1,4 @@
-use log::{debug, info};
+use log::{debug, info, trace, warn};
 
 use crate::interfaces::Bus as _;
 use crate::processor::instruction::{
@@ -90,7 +90,7 @@ impl Cpu {
     /// Execute a CPU interrupt
     pub fn interrupt(&mut self, interrupt: Interrupt) {
         if self.interrupt_request.is_some() {
-            println!("Attempting to interrupt CPU while there's a pending interruption");
+            warn!("Attempting to interrupt CPU while there's a pending interruption");
         }
         self.interrupt_request.replace(interrupt);
     }
@@ -151,18 +151,20 @@ impl Cpu {
             },
         }
 
-        debug!(
-            "CPU executed (PC: ${:0>4X}): \x1b[93m{}\x1b[0m | {}",
-            self.cpu.pc,
-            instruction.name,
-            Self::status_diff(&previous_cpu_status, &self.cpu)
-        );
-
         // Increase PC
         match instruction.name {
             "JMP" | "JSR" | "RTS" | "BRK" | "RTI" => {}
             _ => self.cpu.pc += instruction.bytes as u16,
         }
+
+        debug!(
+            "CPU executed (PC: ${:0>4X} >> ${:0>4X}): \x1b[93m{}\x1b[0m (${:0>2X})| {}",
+            previous_cpu_status.pc,
+            self.cpu.pc,
+            instruction.name,
+            instruction.opcode,
+            Self::status_diff(&previous_cpu_status, &self.cpu)
+        );
 
         Ok(())
     }
@@ -367,8 +369,8 @@ impl Cpu {
     }
 
     fn status_diff(previous: &InternalCpu, current: &InternalCpu) -> String {
-        format!(
-            "A: ${:0>2} >> ${:0>2}  X: ${:0>2X} >> ${:0>2X}  Y: ${:0>2X} >> ${:0>2X}  SP: ${:0>2X} >> ${:0>2X}  SR: (N: {}>{} Z: {}>{} C: {}>{} I: {}>{} D: {}>{} V: {}>{} B: {}>{})",
+        let registers = format!(
+            "A: ${:0>2X} >> ${:0>2X}  X: ${:0>2X} >> ${:0>2X}  Y: ${:0>2X} >> ${:0>2X}  SP: ${:0>2X} >> ${:0>2X}",
             previous.acc,
             current.acc,
             previous.x_reg,
@@ -377,21 +379,34 @@ impl Cpu {
             current.y_reg,
             previous.sp,
             current.sp,
+        );
+        let status_register = format!(
+            // "SR: (N: {}>{} Z: {}>{} C: {}>{} ...)",
+            "SR: (N: {}>{} Z: {}>{} C: {}>{} I: {}>{} D: {}>{} V: {}>{} B: {}>{})",
             if previous.sr.get(Negative) { "1" } else { "0" },
             if current.sr.get(Negative) { "1" } else { "0" },
             if previous.sr.get(Zero) { "1" } else { "0" },
             if current.sr.get(Zero) { "1" } else { "0" },
             if previous.sr.get(Carry) { "1" } else { "0" },
             if current.sr.get(Carry) { "1" } else { "0" },
-            if previous.sr.get(InterruptDisable) { "1" } else { "0" },
-            if current.sr.get(InterruptDisable) { "1" } else { "0" },
-            if previous.sr.get(Overflow) { "1" } else { "0" },
-            if current.sr.get(Overflow) { "1" } else { "0" },
+            if previous.sr.get(InterruptDisable) {
+                "1"
+            } else {
+                "0"
+            },
+            if current.sr.get(InterruptDisable) {
+                "1"
+            } else {
+                "0"
+            },
             if previous.sr.get(Decimal) { "1" } else { "0" },
             if current.sr.get(Decimal) { "1" } else { "0" },
+            if previous.sr.get(Overflow) { "1" } else { "0" },
+            if current.sr.get(Overflow) { "1" } else { "0" },
             if previous.sr.get(Break) { "1" } else { "0" },
             if current.sr.get(Break) { "1" } else { "0" },
-        )
+        );
+        format!("{registers}  {status_register}")
     }
 }
 
