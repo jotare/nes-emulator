@@ -1,4 +1,4 @@
 /// NES graphics hardware emulation
-pub mod palettes;
+pub mod palette;
 pub mod ppu;
 pub mod ui;

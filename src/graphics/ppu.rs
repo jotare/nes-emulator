@@ -14,7 +14,7 @@ use std::rc::Rc;
 
 use bitflags::bitflags;
 
-use crate::graphics::palettes::Palette;
+use crate::graphics::palette::Palette;
 use crate::graphics::ui::Frame;
 use crate::graphics::ui::Pixel;
 use crate::interfaces::{Bus, Memory};
