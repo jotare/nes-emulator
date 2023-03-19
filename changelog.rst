@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.39.0
+------
+- Partially implement PPU, CIRAM and nametable rendering
+
 0.38.2
 ------
 - Improve CPU logs

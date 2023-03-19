@@ -4,12 +4,15 @@ use std::path::Path;
 
 use log::debug;
 
-use crate::mappers::Mapper;
+use crate::mappers::mapper_map;
+use crate::mappers::{Mapper, MapperSpecs};
+use crate::processor::memory::Mirroring;
 use crate::utils::bv;
 
 pub struct Cartidge {
     name: String,
     pub mapper: Box<dyn Mapper>,
+    header: CartidgeHeader,
 }
 
 impl Cartidge {
@@ -52,9 +55,6 @@ impl Cartidge {
             None
         };
 
-        use crate::mappers::mapper_map;
-        use crate::mappers::MapperSpecs;
-
         let mapper_specs = MapperSpecs {
             program_ram_capacity: cartidge_header.pgr_ram_size,
             program_rom_capacity: cartidge_header.pgr_rom_size,
@@ -83,7 +83,12 @@ impl Cartidge {
         Self {
             name: game_name,
             mapper,
+            header: cartidge_header,
         }
+    }
+
+    pub fn mirroring(&self) -> Mirroring {
+        self.header.mirroring
     }
 }
 
@@ -91,15 +96,6 @@ impl std::fmt::Display for Cartidge {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.name)
     }
-}
-
-#[derive(Debug)]
-enum Mirroring {
-    /// Vertical arrangement (CIRAM A10 = PPU A11)
-    Horizontal,
-
-    /// Horizontal arrangement (CIRAM A10 = PPU A10)
-    Vertical,
 }
 
 #[derive(Debug)]

@@ -154,6 +154,114 @@ impl Memory for MirroredRom {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
+pub enum Mirroring {
+    /// Vertical arrangement (CIRAM A10 = PPU A11)
+    Horizontal,
+
+    /// Horizontal arrangement (CIRAM A10 = PPU A10)
+    Vertical,
+}
+
+/// CIRAM memory is divided in 4 logical cells where the half is a mirror of the
+/// other half.
+#[derive(Clone)]
+pub struct Ciram {
+    memory: Ram,
+    mirroring: Mirroring,
+    cell_size: usize,
+}
+
+impl Ciram {
+    pub fn new(cell_size: usize) -> Self {
+        Self {
+            memory: Ram::new(cell_size * 2),
+            mirroring: Mirroring::Horizontal,
+            cell_size,
+        }
+    }
+
+    pub fn set_mirroring(&mut self, mirroring: Mirroring) {
+        self.mirroring = mirroring;
+    }
+
+    fn compute_offset(&self, address: u16) -> u16 {
+        // Nametables
+        // (0,0)     (256,0)     (511,0)
+        //        +-----------+-----------+
+        //        |           |           |
+        //        |           |           |
+        //        |   $2000   |   $2400   |
+        //        |           |           |
+        //        |         0 | 1         |
+        // (0,240)+-----------+-----------+(511,240)
+        //        |         2 | 3         |
+        //        |           |           |
+        //        |   $2800   |   $2C00   |
+        //        |           |           |
+        //        |           |           |
+        //        +-----------+-----------+
+        //      (0,479)   (256,479)   (511,479)
+
+        let cell_size = self.cell_size as u16;
+        let cell = match address as usize {
+            a if a < self.cell_size => 0,
+            a if self.cell_size <= a && a < 2 * self.cell_size => 1,
+            a if self.cell_size * 2 <= a && a < 3 * self.cell_size => 2,
+            a if self.cell_size * 3 <= a && a < 4 * self.cell_size => 3,
+            _ => panic!("Impossible CIRAM address {}", address),
+        };
+
+        let offset = match (cell, self.mirroring) {
+            // Horizontal
+            // +---+---+
+            // | A | A |
+            // +---+---+
+            // | B | B |
+            // +---+---+
+            (0, Mirroring::Horizontal) => 0,
+            (1, Mirroring::Horizontal) => cell_size,
+            (2, Mirroring::Horizontal) => cell_size,
+            (3, Mirroring::Horizontal) => 2 * cell_size,
+
+            // Vertical
+            // +---+---+
+            // | A | B |
+            // +---+---+
+            // | A | B |
+            // +---+---+
+            (0, Mirroring::Vertical) => 0,
+            (1, Mirroring::Vertical) => 0,
+            (2, Mirroring::Vertical) => 2 * cell_size,
+            (3, Mirroring::Vertical) => 2 * cell_size,
+
+            _ => panic!(
+                "Impossible CIRAM cell-mirroring combination: {} {:?}",
+                cell, self.mirroring
+            ),
+        };
+
+        offset
+    }
+}
+
+impl Memory for Ciram {
+    fn read(&self, address: u16) -> u8 {
+        let offset = self.compute_offset(address);
+        self.memory.read(address - offset)
+    }
+
+    fn write(&mut self, address: u16, data: u8) {
+        let offset = self.compute_offset(address);
+        println!("Writing to  {address:0>4X} - {offset:0>4X} -> {data:0>4X}");
+        self.memory.write(address - offset, data);
+    }
+
+    fn size(&self) -> usize {
+        self.cell_size * 4
+    }
+}
+
 // Sprite memory
 pub struct PatternMemory {
     // 0x0000 - 0x1FFF (ppu bus)

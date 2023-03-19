@@ -1,5 +1,4 @@
 /// NES emulator
-
 mod cartidge;
 mod graphics;
 mod interfaces;

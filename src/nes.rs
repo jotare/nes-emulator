@@ -19,9 +19,9 @@ use crate::graphics::ui::{Frame, Pixel, ORIGINAL_SCREEN_HEIGHT, ORIGINAL_SCREEN_
 use crate::interfaces::AddressRange;
 use crate::interfaces::Bus as BusTrait;
 use crate::processor::bus::Bus;
-use crate::processor::cpu::Cpu;
-use crate::processor::memory::{MirroredRam, Ram};
-use crate::types::{SharedBus, SharedMemory, SharedPpu};
+use crate::processor::cpu::{Cpu, Interrupt};
+use crate::processor::memory::{Ciram, MirroredRam, Ram};
+use crate::types::{SharedBus, SharedCiram, SharedMemory, SharedPpu};
 
 pub struct Nes {
     // XXX: change to u128 if overflow occur
@@ -36,7 +36,7 @@ pub struct Nes {
     graphics_bus: SharedBus,
 
     ram: SharedMemory,
-    name_table: SharedMemory,
+    nametable: SharedCiram,
     palettes: SharedMemory,
 
     ui: GtkUi,
@@ -44,7 +44,6 @@ pub struct Nes {
 
 impl Nes {
     pub fn new() -> Self {
-
         let main_bus = Rc::new(RefCell::new(Bus::new()));
         let graphics_bus = Rc::new(RefCell::new(Bus::new()));
 
@@ -53,6 +52,9 @@ impl Nes {
 
         let graphics_bus_ptr = Rc::clone(&graphics_bus);
         let ppu = Rc::new(RefCell::new(Ppu::new(graphics_bus_ptr)));
+
+        // Main Bus
+        // ----------------------------------------------------------------------------------------
 
         // Memory - 2 kB RAM mirrored 3 times. It's used by the CPU
         let ram = Rc::new(RefCell::new(MirroredRam::new(0x0800, 3)));
@@ -65,46 +67,13 @@ impl Nes {
             },
         );
 
-        // Name table memory - also known as VRAM
-        let name_table_memory = Rc::new(RefCell::new(Ram::new(0x3EFF - 0x2000 + 1)));
-        let name_table_memory_ptr = Rc::clone(&name_table_memory);
-        graphics_bus.borrow_mut().attach(
-            name_table_memory_ptr,
-            AddressRange {
-                start: 0x2000,
-                end: 0x3EFF,
-            },
-        );
-
-        // Palette memory - 256-byte memory. It stores which colors should be
-        // displayed on the screen when spites and background are combined
-        let palette_memory = Rc::new(RefCell::new(Ram::new(0x3FFF - 0x3F00 + 1)));
-        let palette_memory_ptr = Rc::clone(&palette_memory);
-        graphics_bus.borrow_mut().attach(
-            palette_memory_ptr,
-            AddressRange {
-                start: 0x3F00,
-                end: 0x3FFF,
-            },
-        );
-
-        // ----------------------------------------------------------------------------------------
-
-        // let fake_ppu = Box::new(MirroredRam::new(8, 1023)); // 8 B mirrored RAM
-        // main_bus.borrow_mut().attach(
-        //     fake_ppu,
-        //     AddressRange {
-        //         start: 0x2000,
-        //         end: 0x3FFF,
-        //     },
-        // );
-
-        let ppu_ptr = Rc::clone(&ppu);
+        let ppu_ptr = Rc::clone(&ppu); // The 8 PPU registers are mirrored 1023 times
         main_bus.borrow_mut().attach(
             ppu_ptr,
             AddressRange {
                 start: 0x2000,
                 end: 0x2007,
+                // end: 0x3FFF,
             },
         );
 
@@ -118,6 +87,36 @@ impl Nes {
             },
         );
 
+        // Graphics Bus
+        // ----------------------------------------------------------------------------------------
+
+        // Pattern tables - attached from cartidge from 0x0000 to 0x1FFF
+
+        // Name table memory - also known as VRAM
+        let nametable = Rc::new(RefCell::new(Ciram::new(0x0400))); // 2 kB mirrored
+        let name_table_memory_ptr = Rc::clone(&nametable);
+        graphics_bus.borrow_mut().attach(
+            name_table_memory_ptr,
+            AddressRange {
+                start: 0x2000,
+                end: 0x2FFF,
+            },
+        );
+
+        // Palette memory - 256-byte memory. It stores which colors should be
+        // displayed on the screen when spites and background are combined
+        let palette_memory = Rc::new(RefCell::new(MirroredRam::new(0x3F1F - 0x3F00 + 1, 7)));
+        let palette_memory_ptr = Rc::clone(&palette_memory);
+        graphics_bus.borrow_mut().attach(
+            palette_memory_ptr,
+            AddressRange {
+                start: 0x3F00,
+                end: 0x3FFF,
+            },
+        );
+
+        // ----------------------------------------------------------------------------------------
+
         let ui = GtkUi::default();
 
         Self {
@@ -128,7 +127,7 @@ impl Nes {
             ppu,
             graphics_bus,
             ram,
-            name_table: name_table_memory,
+            nametable,
             palettes: palette_memory,
             ui,
         }
@@ -171,6 +170,11 @@ impl Nes {
             },
         );
 
+        self.ppu.borrow_mut().set_mirroring(cartidge.mirroring());
+        self.nametable
+            .borrow_mut()
+            .set_mirroring(cartidge.mirroring());
+
         self.cartidge = Some(cartidge);
         self.cpu.reset();
     }
@@ -179,32 +183,33 @@ impl Nes {
     pub fn run(&mut self) -> Result<(), String> {
         info!("NES indefinedly running game");
 
-
         self.ui.start();
 
         loop {
             self.clock()?;
         }
-
-        Ok(())
     }
 
     /// NES system clocks runs at ~21.47 MHz
     fn clock(&mut self) -> Result<(), String> {
-        self.system_clock += 1;
+        self.system_clock += 4;
 
         // PPU clock runs every 4 system clocks
         if self.system_clock % 4 == 0 {
-            self.ppu.borrow_mut().clock();
+            let mut ppu = self.ppu.borrow_mut();
+            ppu.clock();
 
-            {
-                let ppu = self.ppu.borrow();
-                if ppu.frame_ready() {
-                    let color = (self.system_clock / 4 % (u8::MAX as u64 + 1)) as u8;
-                    let frame = ppu.get_frame(color);
-                    self.ui.render(frame);
-                    std::thread::sleep(std::time::Duration::from_millis(16));
-                }
+            if ppu.is_nmi_requested() {
+                self.cpu.interrupt(Interrupt::NonMaskableInterrupt);
+                ppu.nmi_accepted();
+            }
+
+            if ppu.frame_ready() {
+                // let color = (self.system_clock / 4 % (u8::MAX as u64 + 1)) as u8;
+                let color = 0;
+                let frame = ppu.take_frame(color);
+                self.ui.render(frame);
+                std::thread::sleep(std::time::Duration::from_millis(16));
             }
         }
 
