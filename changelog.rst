@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.38.1
+------
+- Further implement and fix CPU interrupts
+
 0.38.0
 ------
 - Add CPU interruption capabilities

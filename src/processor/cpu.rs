@@ -70,10 +70,13 @@ impl Cpu {
             return Ok(());
         }
 
-        match self.interrupt_request {
+        match self.interrupt_request.take() {
             Some(interrupt) => {
                 self.execute_interrupt(interrupt);
-                self.interrupt_request.take();
+                // Attending an interrupt takes 7 clocks: 2 for internal
+                // operations, 2 to push the return address, 1 for the status
+                // register, and 2 more to get the interrupt begin address
+                self.clocks_before_next_execution = 7;
                 Ok(())
             }
             None => {
@@ -162,6 +165,38 @@ impl Cpu {
         }
 
         Ok(())
+    }
+
+    fn execute_interrupt(&mut self, interrupt: Interrupt) {
+        let (lb, hb) = match interrupt {
+            Interrupt::NonMaskableInterrupt => {
+                println!("CPU executing NMI");
+                (0xFFFA, 0xFFFB)
+            }
+            Interrupt::Reset => (0xFFFC, 0xFFFD),
+            Interrupt::InterruptRequest => {
+                // IRQ is not executed if Interrupt disable flag is active
+                if self.cpu.sr.get(InterruptDisable) {
+                    return;
+                }
+                (0xFFFE, 0xFFFF)
+            }
+        };
+
+        // Push PC and SR to stack
+        let pch = ((self.cpu.pc & 0xFF00) >> 8) as u8;
+        let pcl = (self.cpu.pc & 0x00FF) as u8;
+        let sr: u8 = self.cpu.sr.into();
+        instruction_set::push(&mut self.cpu, pch, &self.bus);
+        instruction_set::push(&mut self.cpu, pcl, &self.bus);
+        instruction_set::push(&mut self.cpu, sr, &self.bus);
+
+        // Fetch interrupt vector address
+        let pcl = self.bus_read(lb) as u16;
+        let pch = self.bus_read(hb) as u16;
+
+        // Go to interrupt handler
+        self.cpu.pc = (pch << 8) | pcl;
     }
 
     fn load(&mut self, addr_mode: AddressingMode) -> (u16, u8) {
