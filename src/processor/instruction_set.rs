@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use log::trace;
+
 use crate::interfaces::Bus as _;
 use crate::processor::instruction::{
     AddressingMode, Instruction, InstructionKind, MiscInstructionKind, Opcode,
@@ -1468,7 +1470,7 @@ pub fn tya(cpu: &mut InternalCpu) {
 
 pub fn push(cpu: &mut InternalCpu, data: u8, memory: &SharedBus) {
     let address = 0x0100 + (cpu.sp as u16);
-    println!("Push to SP 0x{:X} - 0x{:X}", cpu.sp, data);
+    trace!("Push to SP 0x{:X} - 0x{:X}", cpu.sp, data);
     memory.borrow_mut().write(address, data);
     cpu.sp -= 1;
 }
@@ -1477,7 +1479,7 @@ pub fn pull(cpu: &mut InternalCpu, memory: &SharedBus) -> u8 {
     cpu.sp += 1;
     let address = 0x0100 + (cpu.sp as u16);
     let data = memory.borrow().read(address);
-    println!("Pull from SP 0x{:X} - 0x{:X}", cpu.sp, data);
+    trace!("Pull from SP 0x{:X} - 0x{:X}", cpu.sp, data);
     data
 }
 
