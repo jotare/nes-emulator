@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.43.0
+------
+- Implement controllers using crossbeam mspc channels
+
 0.42.0
 ------
 - Add a Bus id

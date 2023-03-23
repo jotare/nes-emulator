@@ -9,7 +9,10 @@
 ///
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::sync::mpsc;
+use std::sync::mpsc::Receiver;
 
+use crossbeam::channel;
 use log::{error, info};
 
 use crate::cartidge::Cartidge;
@@ -23,7 +26,8 @@ use crate::interfaces::Bus as BusTrait;
 use crate::processor::bus::Bus;
 use crate::processor::cpu::{Cpu, Interrupt};
 use crate::processor::memory::{Ciram, MirroredRam, Ram};
-use crate::types::{SharedBus, SharedCiram, SharedMemory, SharedPpu};
+use crate::types::{SharedBus, SharedCiram, SharedMemory, SharedPpu, SharedController};
+use crate::controller::Controller;
 
 pub struct Nes {
     // XXX: change to u128 if overflow occur
@@ -42,6 +46,9 @@ pub struct Nes {
     palettes: SharedMemory,
 
     ui: GtkUi,
+
+    controller_one: SharedController,
+    controller_two: SharedController,
 }
 
 impl Nes {
@@ -54,6 +61,13 @@ impl Nes {
 
         let graphics_bus_ptr = Rc::clone(&graphics_bus);
         let ppu = Rc::new(RefCell::new(Ppu::new(graphics_bus_ptr)));
+
+        let (sender, receiver_one) = channel::unbounded();
+        let receiver_two = receiver_one.clone();
+
+        let ui = GtkUi::builder()
+            .keyboard_channel(sender)
+            .build();
 
         // Main Bus
         // ----------------------------------------------------------------------------------------
@@ -85,7 +99,37 @@ impl Nes {
             fake_apu_ptr,
             AddressRange {
                 start: 0x4000,
+                end: 0x4015,
+            },
+        );
+
+        let controller_one = Rc::new(RefCell::new(Controller::new(receiver_one, false)));
+        let controller_one_ptr = Rc::clone(&controller_one);
+        main_bus.borrow_mut().attach(
+            controller_one_ptr,
+            AddressRange {
+                start: 0x4016,
+                end: 0x4016,
+            }
+        );
+
+        let controller_two = Rc::new(RefCell::new(Controller::new(receiver_two, false)));
+        let controller_two_ptr = Rc::clone(&controller_two);
+        main_bus.borrow_mut().attach(
+            controller_two_ptr,
+            AddressRange {
+                start: 0x4017,
                 end: 0x4017,
+            }
+        );
+
+        let cartidge_expansion_rom = Rc::new(RefCell::new(Ram::new(0x18))); // 0x18 B RAM - NES APU and I/O registers
+        let cartidge_expansion_rom_ptr = Rc::clone(&cartidge_expansion_rom);
+        main_bus.borrow_mut().attach(
+            cartidge_expansion_rom_ptr,
+            AddressRange {
+                start: 0x4020,
+                end: 0x5FFF,
             },
         );
 
@@ -119,8 +163,6 @@ impl Nes {
 
         // ----------------------------------------------------------------------------------------
 
-        let ui = GtkUi::default();
-
         Self {
             system_clock: 0,
             cartidge: None,
@@ -132,6 +174,8 @@ impl Nes {
             nametable,
             palettes: palette_memory,
             ui,
+            controller_one,
+            controller_two,
         }
     }
 
@@ -179,6 +223,15 @@ impl Nes {
 
         self.cartidge = Some(cartidge);
         self.cpu.reset();
+    }
+
+    // TODO: add controller specs as argument
+    pub fn connect_controller_one(&mut self) {
+        self.controller_one.borrow_mut().connect();
+    }
+
+    pub fn disconnect_controller_one(&mut self) {
+        self.controller_one.borrow_mut().disconnect();
     }
 
     /// Blocking NES run
