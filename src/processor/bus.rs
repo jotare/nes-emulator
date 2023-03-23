@@ -54,11 +54,17 @@ impl BusTrait for Bus {
             if address >= addr_range.start && address <= addr_range.end {
                 let virtual_address = address - addr_range.start;
                 let data = device.borrow().read(virtual_address);
-                debug!("Bus ({0}) read from: {address:0>4X} <- {data:0>2X}", self.id);
+                debug!(
+                    "Bus ({0}) read from: {address:0>4X} <- {data:0>2X}",
+                    self.id
+                );
                 return data;
             }
         }
-        panic!("Bus '{0}' doesn't have an attached device for address: '0x{address:x}'", self.id);
+        panic!(
+            "Bus '{0}' doesn't have an attached device for address: '0x{address:x}'",
+            self.id
+        );
     }
 
     fn write(&self, address: u16, data: u8) {
@@ -70,7 +76,10 @@ impl BusTrait for Bus {
                 return;
             }
         }
-        panic!("Bus '{0}' doesn't have an attached device for address: '0x{address:x}'", self.id);
+        panic!(
+            "Bus '{0}' doesn't have an attached device for address: '0x{address:x}'",
+            self.id
+        );
     }
 }
 

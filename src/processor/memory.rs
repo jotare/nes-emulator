@@ -212,7 +212,7 @@ impl Ciram {
             _ => panic!("Impossible CIRAM address {}", address),
         };
 
-        let offset = match (cell, self.mirroring) {
+        match (cell, self.mirroring) {
             // Horizontal
             // +---+---+
             // | A | A |
@@ -239,9 +239,7 @@ impl Ciram {
                 "Impossible CIRAM cell-mirroring combination: {} {:?}",
                 cell, self.mirroring
             ),
-        };
-
-        offset
+        }
     }
 }
 

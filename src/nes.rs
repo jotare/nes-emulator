@@ -9,13 +9,12 @@
 ///
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::sync::mpsc;
-use std::sync::mpsc::Receiver;
 
-use crossbeam::channel;
+use crossbeam_channel::unbounded;
 use log::{error, info};
 
 use crate::cartidge::Cartidge;
+use crate::controller::Controller;
 use crate::graphics::palette_memory::PaletteMemory;
 use crate::graphics::ppu::Ppu;
 use crate::graphics::ui::gtk_ui::GtkUi;
@@ -26,8 +25,7 @@ use crate::interfaces::Bus as BusTrait;
 use crate::processor::bus::Bus;
 use crate::processor::cpu::{Cpu, Interrupt};
 use crate::processor::memory::{Ciram, MirroredRam, Ram};
-use crate::types::{SharedBus, SharedCiram, SharedMemory, SharedPpu, SharedController};
-use crate::controller::Controller;
+use crate::types::{SharedBus, SharedCiram, SharedController, SharedMemory, SharedPpu};
 
 pub struct Nes {
     // XXX: change to u128 if overflow occur
@@ -62,12 +60,10 @@ impl Nes {
         let graphics_bus_ptr = Rc::clone(&graphics_bus);
         let ppu = Rc::new(RefCell::new(Ppu::new(graphics_bus_ptr)));
 
-        let (sender, receiver_one) = channel::unbounded();
+        let (sender, receiver_one) = unbounded();
         let receiver_two = receiver_one.clone();
 
-        let ui = GtkUi::builder()
-            .keyboard_channel(sender)
-            .build();
+        let ui = GtkUi::builder().keyboard_channel(sender).build();
 
         // Main Bus
         // ----------------------------------------------------------------------------------------
@@ -110,7 +106,7 @@ impl Nes {
             AddressRange {
                 start: 0x4016,
                 end: 0x4016,
-            }
+            },
         );
 
         let controller_two = Rc::new(RefCell::new(Controller::new(receiver_two, false)));
@@ -120,7 +116,7 @@ impl Nes {
             AddressRange {
                 start: 0x4017,
                 end: 0x4017,
-            }
+            },
         );
 
         let cartidge_expansion_rom = Rc::new(RefCell::new(Ram::new(0x18))); // 0x18 B RAM - NES APU and I/O registers
@@ -260,9 +256,7 @@ impl Nes {
             }
 
             if ppu.frame_ready() {
-                // let color = (self.system_clock / 4 % (u8::MAX as u64 + 1)) as u8;
-                let color = 0;
-                let frame = ppu.take_frame(color);
+                let frame = ppu.take_frame();
                 self.ui.render(frame);
                 std::thread::sleep(std::time::Duration::from_millis(16));
             }

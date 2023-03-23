@@ -1,11 +1,10 @@
 use std::cell::RefCell;
 
 use bitflags::bitflags;
-use crossbeam::channel::{TryRecvError, Receiver};
+use crossbeam_channel::{Receiver, TryRecvError};
 
-use crate::utils;
 use crate::interfaces::Memory;
-
+use crate::utils;
 
 bitflags! {
     struct InnerController: u8 {
@@ -44,7 +43,6 @@ impl Controller {
     }
 }
 
-
 impl Memory for Controller {
     fn read(&self, _address: u16) -> u8 {
         if !self.enabled {
@@ -52,7 +50,8 @@ impl Memory for Controller {
         }
 
         let data = utils::bv(self.controller_snapshot.borrow().bits(), 7);
-        let updated = InnerController::from_bits(self.controller_snapshot.borrow().bits() << 1).unwrap();
+        let updated =
+            InnerController::from_bits(self.controller_snapshot.borrow().bits() << 1).unwrap();
         *self.controller_snapshot.borrow_mut() = updated;
         // println!("[controller] read: {data:0>8b} updated: {updated:0>8b}");
         data
@@ -85,14 +84,14 @@ impl Memory for Controller {
         for c in buffer.chars() {
             match c {
                 's' | 'S' => input.insert(InnerController::LEFT),
-                'd' | 'd' => input.insert(InnerController::DOWN),
-                'f' | 'f' => input.insert(InnerController::RIGHT),
-                'e' | 'e' => input.insert(InnerController::UP),
+                'd' | 'D' => input.insert(InnerController::DOWN),
+                'f' | 'F' => input.insert(InnerController::RIGHT),
+                'e' | 'E' => input.insert(InnerController::UP),
                 'g' | 'G' => input.insert(InnerController::SELECT),
                 'h' | 'H' => input.insert(InnerController::START),
                 'j' | 'J' => input.insert(InnerController::A),
                 'k' | 'K' => input.insert(InnerController::B),
-                _ => {}         // ignore
+                _ => {} // ignore
             }
         }
         println!();
@@ -101,31 +100,7 @@ impl Memory for Controller {
         // println!("[controller] New controller: {:0>8b}", input.bits());
     }
 
-    fn size(&self) -> usize { 1 }
-}
-
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_char() {
-        let mut s = String::new();
-        s.push('A');
-        s.push('B');
-        s.push('C');
-
-        for (i, c) in s.chars().enumerate() {
-            if i == 0 {
-                assert_eq!(c, 'A');
-            }
-            if i == 1 {
-                assert_eq!(c, 'B');
-            }
-            if i == 2 {
-                assert_eq!(c, 'C');
-            }
-        }
+    fn size(&self) -> usize {
+        1
     }
 }

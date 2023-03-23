@@ -1,4 +1,4 @@
-use log::{debug, info, trace, warn};
+use log::{debug, info, warn};
 
 use crate::interfaces::Bus as _;
 use crate::processor::instruction::{

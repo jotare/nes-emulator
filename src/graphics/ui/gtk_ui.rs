@@ -7,7 +7,7 @@ use std::sync::Arc;
 use std::sync::RwLock;
 use std::thread::{spawn, JoinHandle};
 
-use crossbeam::channel::Sender;
+use crossbeam_channel::Sender;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::{gdk, glib, graphene};
@@ -57,9 +57,9 @@ impl GtkUi {
         let keyboard_channel = self.keyboard_channel.take();
 
         let join_handle = spawn(move || {
-            KEYBOARD_CHANNEL.with(|cell| {
-                cell.set(keyboard_channel)
-            });
+            KEYBOARD_CHANNEL
+                .with(|cell| cell.set(keyboard_channel))
+                .expect("Unreachable error initializing keboard channel thread local");
 
             let app = Application::builder().application_id(APP_ID).build();
 
@@ -139,7 +139,10 @@ impl GtkUi {
         // TODO: gracefully quit on C-q
 
         // We only handle lowercase and uppercase chars and ignore other combinations (C-, M-, ...)
-        if !(modifier_type == gdk::ModifierType::empty() || modifier_type == gdk::ModifierType::SHIFT_MASK || modifier_type == gdk::ModifierType::LOCK_MASK) {
+        if !(modifier_type == gdk::ModifierType::empty()
+            || modifier_type == gdk::ModifierType::SHIFT_MASK
+            || modifier_type == gdk::ModifierType::LOCK_MASK)
+        {
             return Inhibit(false);
         }
 
@@ -149,21 +152,21 @@ impl GtkUi {
         };
 
         KEYBOARD_CHANNEL.with(|cell| {
-            match cell.get().expect("Keyboard channel once cell should be initialized by now") {
+            match cell
+                .get()
+                .expect("Keyboard channel once cell should be initialized by now")
+            {
                 Some(sender) => {
                     sender.send(character);
                     Inhibit(true)
-                },
-                None => {
-                    Inhibit(false)
                 }
+                None => Inhibit(false),
             }
         })
     }
 }
 
 impl Ui for GtkUi {}
-
 
 #[derive(Default)]
 pub struct GtkUiBuilder {
@@ -204,7 +207,6 @@ impl GtkUiBuilder {
         self
     }
 }
-
 
 struct RenderSignaler {
     screen_frame: Option<Frame>,

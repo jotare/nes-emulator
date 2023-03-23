@@ -94,7 +94,6 @@ pub struct Ppu {
 
 impl Ppu {
     pub fn new(bus: SharedBus) -> Self {
-        let bus_ptr = Rc::clone(&bus);
         Self {
             registers: RefCell::new(PpuRegisters {
                 ctrl: PpuCtrl::empty(),
@@ -150,7 +149,7 @@ impl Ppu {
         self.frame_completed
     }
 
-    pub fn take_frame(&mut self, color: u8) -> Frame {
+    pub fn take_frame(&mut self) -> Frame {
         self.frame_completed = false;
 
         println!("PPU rendering a frame");
@@ -181,7 +180,6 @@ impl Ppu {
         let height = 240;
 
         let mut frame = vec![vec![Pixel::new_rgb(0.0, 0.0, 0.0); width]; height];
-        let palette = Palette::new();
 
         for pattern_table in [0, 1] {
             let (palette_address, offset) = match pattern_table {
@@ -210,7 +208,7 @@ impl Ppu {
                             .bus
                             .borrow()
                             .read(0x3F00 + ((palette_number << 2) | pattern) as u16);
-                        let pixel = palette.decode_pixel(color);
+                        let pixel = self.palette.decode_pixel(color);
 
                         let row = (tile_number / 16) * 8 + y;
                         let col = ((tile_number % 16) + offset) * 8 + (7 - x);
@@ -392,7 +390,7 @@ impl Memory for Ppu {
             PPUCTRL => {
                 println!("Write to PPUCTRL: {data:0>8b}");
                 regs.ctrl = PpuCtrl::from_bits(data)
-                    .expect(&format!("Invalid PPUCTRL write value: 0b{data:0>8b}"));
+                    .unwrap_or_else(|| panic!("Invalid PPUCTRL write value: 0b{data:0>8b}"));
             }
             PPUMASK => regs.mask = data,
             PPUADDR => {
