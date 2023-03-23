@@ -427,7 +427,7 @@ mod tests {
         //     .try_init()
         //     .unwrap_or_default();
 
-        let bus = Rc::new(RefCell::new(Bus::new()));
+        let bus = Rc::new(RefCell::new(Bus::new("test-bus")));
         let bus_ptr = Rc::clone(&bus);
 
         let cpu = Cpu::new(bus_ptr);

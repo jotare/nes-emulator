@@ -58,7 +58,7 @@ impl BusTrait for Bus {
                 return data;
             }
         }
-        panic!("Bus doesn't have an attached device for address: '0x{address:x}'");
+        panic!("Bus '{0}' doesn't have an attached device for address: '0x{address:x}'", self.id);
     }
 
     fn write(&self, address: u16, data: u8) {
@@ -70,7 +70,7 @@ impl BusTrait for Bus {
                 return;
             }
         }
-        panic!("Bus doesn't have an attached device for address: '0x{address:x}'");
+        panic!("Bus '{0}' doesn't have an attached device for address: '0x{address:x}'", self.id);
     }
 }
 
@@ -81,7 +81,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_bus_read_without_attached_devices() {
-        let bus = Bus::new();
+        let bus = Bus::new("test-bus");
 
         bus.read(0x1234);
     }
@@ -89,7 +89,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_bus_write_without_attached_devices() {
-        let bus = Bus::new();
+        let bus = Bus::new("test-bus");
 
         bus.write(0x1234, 0xf0);
     }

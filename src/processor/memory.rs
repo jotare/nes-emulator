@@ -253,7 +253,6 @@ impl Memory for Ciram {
 
     fn write(&mut self, address: u16, data: u8) {
         let offset = self.compute_offset(address);
-        println!("Writing to  {address:0>4X} - {offset:0>4X} -> {data:0>4X}");
         self.memory.write(address - offset, data);
     }
 
