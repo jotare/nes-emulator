@@ -1,6 +1,9 @@
 CHANGELOG
 =========
 
+0.44.0
+------
+- Add quit functionality to GTK UI using C-q
 0.43.0
 ------
 - Implement controllers using crossbeam mspc channels

@@ -10,7 +10,7 @@ use std::thread::{spawn, JoinHandle};
 use crossbeam_channel::Sender;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
-use gtk::{gdk, glib, graphene};
+use gtk::{gdk, glib, graphene, gio};
 use gtk::{Application, ApplicationWindow, Inhibit};
 use log::debug;
 use once_cell::sync::OnceCell;
@@ -70,9 +70,16 @@ impl GtkUi {
                     .title(APP_NAME)
                     .build();
 
+                let quit_action = gio::SimpleAction::new("quit", None);
+                quit_action.connect_activate(glib::clone!(@weak window => move |_, _| {
+                    window.close();
+                }));
+                window.add_action(&quit_action);
+
                 let event_controller = gtk::EventControllerKey::builder()
                     .name("NES Keyboard Controller")
                     .build();
+
                 event_controller.connect_key_pressed(
                     |event_controller, keyval, keycode, state| {
                         Self::on_key_pressed(event_controller, keyval, keycode, state)
@@ -107,6 +114,8 @@ impl GtkUi {
                 window.present();
             });
 
+            app.set_accels_for_action("win.quit", &["<Ctrl>Q"]);
+
             app.run();
         });
 
@@ -136,7 +145,6 @@ impl GtkUi {
     ) -> Inhibit {
         println!("KEY PRESSED: {keyval} {modifier_type:?}");
 
-        // TODO: gracefully quit on C-q
 
         // We only handle lowercase and uppercase chars and ignore other combinations (C-, M-, ...)
         if !(modifier_type == gdk::ModifierType::empty()
