@@ -423,7 +423,7 @@ impl Memory for Ppu {
 
     fn size(&self) -> usize {
         // TODO: change number of mirrors to real number
-        let mirrors = 1;
+        let mirrors = (0x3FFF - 0x2008 + 1) / 8;
         (0x2007 - 0x2000 + 1) * mirrors
     }
 }

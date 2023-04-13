@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.45.0
+------
+- Bus specifies a unique id per attached device. Interface and log improvements
+
 0.44.0
 ------
 - Add quit functionality to GTK UI using C-q
