@@ -6,6 +6,13 @@ use crossbeam_channel::{Receiver, TryRecvError};
 use crate::interfaces::Memory;
 use crate::utils;
 
+pub struct Controller {
+    enabled: bool,
+    buttons: ControllerButtons,
+    keyboard_channel: Receiver<char>,
+    controller_snapshot: RefCell<InnerController>,
+}
+
 bitflags! {
     struct InnerController: u8 {
         const A = 0b1000_0000;
@@ -19,23 +26,28 @@ bitflags! {
     }
 }
 
-pub struct Controller {
-    enabled: bool,
-    keyboard_channel: Receiver<char>,
-    controller_snapshot: RefCell<InnerController>,
-}
-
 impl Controller {
     pub fn new(keyboard: Receiver<char>, enabled: bool) -> Self {
         Self {
             enabled,
+            buttons: ControllerButtons::default(),
             keyboard_channel: keyboard,
             controller_snapshot: RefCell::new(InnerController::empty()),
         }
     }
 
-    pub fn connect(&mut self) {
+    pub fn connect(&mut self, buttons: ControllerButtons) {
         self.enabled = true;
+        self.buttons = ControllerButtons {
+            left: buttons.left.to_uppercase().next().unwrap(),
+            down: buttons.down.to_uppercase().next().unwrap(),
+            right: buttons.right.to_uppercase().next().unwrap(),
+            up: buttons.up.to_uppercase().next().unwrap(),
+            select: buttons.select.to_uppercase().next().unwrap(),
+            start: buttons.start.to_uppercase().next().unwrap(),
+            a: buttons.a.to_uppercase().next().unwrap(),
+            b: buttons.b.to_uppercase().next().unwrap(),
+        }
     }
 
     pub fn disconnect(&mut self) {
@@ -82,16 +94,25 @@ impl Memory for Controller {
 
         let mut input = InnerController::empty();
         for c in buffer.chars() {
-            match c {
-                's' | 'S' => input.insert(InnerController::LEFT),
-                'd' | 'D' => input.insert(InnerController::DOWN),
-                'f' | 'F' => input.insert(InnerController::RIGHT),
-                'e' | 'E' => input.insert(InnerController::UP),
-                'g' | 'G' => input.insert(InnerController::SELECT),
-                'h' | 'H' => input.insert(InnerController::START),
-                'j' | 'J' => input.insert(InnerController::A),
-                'k' | 'K' => input.insert(InnerController::B),
-                _ => {} // ignore
+            let c = c.to_uppercase().next().unwrap();
+            if c == self.buttons.left {
+                input.insert(InnerController::LEFT);
+            } else if c == self.buttons.down {
+                input.insert(InnerController::DOWN);
+            } else if c == self.buttons.right {
+                input.insert(InnerController::RIGHT);
+            } else if c == self.buttons.up {
+                input.insert(InnerController::UP);
+            } else if c == self.buttons.select {
+                input.insert(InnerController::SELECT);
+            } else if c == self.buttons.start {
+                input.insert(InnerController::START);
+            } else if c == self.buttons.a {
+                input.insert(InnerController::A);
+            } else if c == self.buttons.b {
+                input.insert(InnerController::B);
+            } else {
+                // ignore
             }
         }
         println!();
@@ -102,5 +123,31 @@ impl Memory for Controller {
 
     fn size(&self) -> usize {
         1
+    }
+}
+
+pub struct ControllerButtons {
+    pub left: char,
+    pub down: char,
+    pub right: char,
+    pub up: char,
+    pub select: char,
+    pub start: char,
+    pub a: char,
+    pub b: char,
+}
+
+impl Default for ControllerButtons {
+    fn default() -> Self {
+        Self {
+            left: 'S',
+            down: 'D',
+            right: 'F',
+            up: 'E',
+            select: 'G',
+            start: 'H',
+            a: 'J',
+            b: 'K',
+        }
     }
 }

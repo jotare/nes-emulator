@@ -11,4 +11,5 @@ mod types;
 mod utils;
 
 pub use cartidge::Cartidge;
+pub use controller::ControllerButtons;
 pub use nes::Nes;

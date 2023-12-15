@@ -1,12 +1,12 @@
 // use std::path::Path;
 
-use nes_emulator::{Cartidge, Nes};
+use nes_emulator::{Cartidge, ControllerButtons, Nes};
 
 fn main() {
     env_logger::init();
 
-    let mut nes = Nes::default();
-    nes.connect_controller_one();
+    let mut nes = Nes::new();
+    nes.connect_controller_one(ControllerButtons::default());
     // let cartidge = Cartidge::new(Path::new("/path/to/cartidge"));
     let cartidge = Cartidge::new("roms/Super Mario Bros. (World).nes");
     // let cartidge = Cartidge::new("roms/Galaga - Demons of Death (USA).nes");

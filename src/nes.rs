@@ -15,6 +15,7 @@ use log::{error, info};
 
 use crate::cartidge::Cartidge;
 use crate::controller::Controller;
+use crate::controller::ControllerButtons;
 use crate::graphics::palette_memory::PaletteMemory;
 use crate::graphics::ppu::Ppu;
 use crate::graphics::ui::gtk_ui::GtkUi;
@@ -232,9 +233,8 @@ impl Nes {
         self.cpu.reset();
     }
 
-    // TODO: add controller specs as argument
-    pub fn connect_controller_one(&mut self) {
-        self.controller_one.borrow_mut().connect();
+    pub fn connect_controller_one(&mut self, buttons: ControllerButtons) {
+        self.controller_one.borrow_mut().connect(buttons);
     }
 
     pub fn disconnect_controller_one(&mut self) {
