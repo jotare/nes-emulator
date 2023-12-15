@@ -59,3 +59,16 @@ documentation](https://gtk-rs.org/gtk4-rs/stable/latest/book/installation.html).
 For Linux users based on Debian and derivates, install the following libraries:
 - libgtk-4-dev
 - build-essential
+
+
+## Contributing
+
+Contributions are more than welcome. However, to make code more standard,
+[`pre-commit`](https://pre-commit.com/) is used. Please, install it and run it
+before submitting any code to this repo. Thanks!
+
+To install the `pre-commit` hooks, execute:
+
+``` shell
+pre-commit install
+```
