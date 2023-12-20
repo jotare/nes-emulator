@@ -10,12 +10,12 @@ use std::thread::{spawn, JoinHandle};
 use crossbeam_channel::Sender;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
-use gtk::{gdk, glib, graphene, gio};
+use gtk::{gdk, gio, glib, graphene};
 use gtk::{Application, ApplicationWindow, Inhibit};
 use log::debug;
 use once_cell::sync::OnceCell;
 
-use crate::graphics::ui::*;
+use crate::ui::{Frame, Ui, ORIGINAL_SCREEN_HEIGHT, ORIGINAL_SCREEN_WIDTH, PIXEL_SCALE_FACTOR};
 
 const APP_ID: &str = "jotare-nes-emulator";
 const APP_NAME: &str = "NES Emulator (by jotare)";
@@ -80,11 +80,9 @@ impl GtkUi {
                     .name("NES Keyboard Controller")
                     .build();
 
-                event_controller.connect_key_pressed(
-                    |event_controller, keyval, keycode, state| {
-                        Self::on_key_pressed(event_controller, keyval, keycode, state)
-                    },
-                );
+                event_controller.connect_key_pressed(|event_controller, keyval, keycode, state| {
+                    Self::on_key_pressed(event_controller, keyval, keycode, state)
+                });
                 window.add_controller(event_controller);
 
                 // Screen
@@ -102,7 +100,7 @@ impl GtkUi {
 
                 // Signal a re-render every time we have a new frame to paint
                 picture.add_tick_callback(|area, _clock| {
-                    let signaler = RENDER_SIGNALER.get().unwrap().write().unwrap();
+                    let signaler = RENDER_SIGNALER.get().unwrap().read().unwrap();
                     if signaler.should_render() {
                         area.queue_draw();
                     }
@@ -132,11 +130,6 @@ impl GtkUi {
         debug!("UI thread ended correctly");
     }
 
-    pub fn render(&self, frame: Frame) {
-        let mut writer = RENDER_SIGNALER.get().unwrap().write().unwrap();
-        writer.set_frame(frame);
-    }
-
     fn on_key_pressed(
         event_controller: &gtk::EventControllerKey,
         keyval: gdk::Key,
@@ -144,7 +137,6 @@ impl GtkUi {
         modifier_type: gdk::ModifierType,
     ) -> Inhibit {
         println!("KEY PRESSED: {keyval} {modifier_type:?}");
-
 
         // We only handle lowercase and uppercase chars and ignore other combinations (C-, M-, ...)
         if !(modifier_type == gdk::ModifierType::empty()
@@ -174,7 +166,13 @@ impl GtkUi {
     }
 }
 
-impl Ui for GtkUi {}
+impl Ui for GtkUi {
+    fn render(&self, frame: Frame) {
+        if let Some(signaler) = RENDER_SIGNALER.get() {
+            signaler.write().unwrap().set_frame(frame);
+        }
+    }
+}
 
 #[derive(Default)]
 pub struct GtkUiBuilder {
@@ -338,7 +336,7 @@ impl PaintableImpl for PaintableScreen {
             self.intrinsic_width() as f32,
             self.intrinsic_height() as f32,
         ));
-        let pixel_size = 0.9;
+        let pixel_size = 0.95;
 
         for (h, row) in frame.iter().enumerate().take(height) {
             for (w, pixel) in row.iter().enumerate().take(width) {

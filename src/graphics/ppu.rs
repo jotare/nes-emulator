@@ -10,13 +10,13 @@
 ///
 ///
 use std::cell::RefCell;
-use std::rc::Rc;
 
 use bitflags::bitflags;
 
-use crate::graphics::palette::Palette;
-use crate::graphics::ui::Frame;
-use crate::graphics::ui::Pixel;
+use crate::graphics::Frame;
+use crate::graphics::FramePixel;
+use crate::graphics::Pixel;
+use crate::hardware::SCREEN_WIDTH;
 use crate::interfaces::{Bus, Memory};
 use crate::processor::memory::Mirroring;
 use crate::types::SharedBus;
@@ -26,7 +26,7 @@ const PPUCTRL: u16 = 0x2000;
 
 bitflags! {
     struct PpuCtrl: u8 {
-        /// Generate an NMI ate the start of the vertical blanking interval
+        /// Generate an NMI at the start of the vertical blanking interval
         const NMI_ENABLE = 0b1000_0000;
 
         // TODO: PPU master/slave select
@@ -179,7 +179,7 @@ impl Ppu {
         let width = 256;
         let height = 240;
 
-        let mut frame = vec![vec![Pixel::new_rgb(0.0, 0.0, 0.0); width]; height];
+        let mut frame = Frame::black();
 
         for pattern_table in [0, 1] {
             let (palette_address, offset) = match pattern_table {
@@ -212,7 +212,7 @@ impl Ppu {
 
                         let row = (tile_number / 16) * 8 + y;
                         let col = ((tile_number % 16) + offset) * 8 + (7 - x);
-                        frame[row][col] = pixel;
+                        frame.set_pixel(pixel, FramePixel { row, col });
                     }
                 }
             }
@@ -222,10 +222,7 @@ impl Ppu {
     }
 
     fn render_nametable(&self) -> Frame {
-        let width = 256;
-        let height = 240;
-        let mut screen = vec![vec![Pixel::new_rgb(0.0, 0.0, 0.0); width]; height];
-        let palette = Palette::new();
+        let mut screen = Frame::black();
 
         let pattern_table = self
             .registers
@@ -296,7 +293,13 @@ impl Ppu {
                         // let mcol = ((tile_number % 16) + offset) * 8 + (7 - x);
                         let mrow = (row as usize * 8 + y) as usize;
                         let mcol = (col as usize * 8 + (7 - x)) as usize;
-                        screen[mrow][mcol] = pixel;
+                        screen.set_pixel(
+                            pixel,
+                            FramePixel {
+                                row: mrow,
+                                col: mcol,
+                            },
+                        );
                     }
                 }
             }
@@ -304,21 +307,25 @@ impl Ppu {
         screen
     }
 
+    // TODO move to an example
     fn render_palettes(&self) -> Frame {
-        let width = 256;
-        let height = 240;
-        let default_pixel = Pixel::new_rgb_byte(0, 0, 0);
-
-        let mut frame = vec![vec![default_pixel; width]; height];
+        let mut frame = Frame::default();
 
         let mut row = 0;
         for address in 0x3F00..0x3F20 {
             let palette = self.bus.borrow().read(address);
             let color = self.palette.decode_pixel(palette);
             for i in 0..4 {
-                frame[row + i] = vec![color; width];
+                for col in 0..SCREEN_WIDTH {
+                    frame.set_pixel(
+                        color,
+                        FramePixel {
+                            row: row + i,
+                            col,
+                        },
+                    );
+                }
             }
-
             row += 4;
         }
 

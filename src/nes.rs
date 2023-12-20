@@ -18,8 +18,6 @@ use crate::controller::Controller;
 use crate::controller::ControllerButtons;
 use crate::graphics::palette_memory::PaletteMemory;
 use crate::graphics::ppu::Ppu;
-use crate::graphics::ui::gtk_ui::GtkUi;
-use crate::graphics::ui::{Frame, Pixel, ORIGINAL_SCREEN_HEIGHT, ORIGINAL_SCREEN_WIDTH};
 use crate::hardware::*;
 use crate::interfaces::AddressRange;
 use crate::interfaces::Bus as BusTrait;
@@ -27,6 +25,7 @@ use crate::processor::bus::Bus;
 use crate::processor::cpu::{Cpu, Interrupt};
 use crate::processor::memory::{Ciram, MirroredRam, Ram};
 use crate::types::{SharedBus, SharedCiram, SharedController, SharedMemory, SharedPpu};
+use crate::ui::{GtkUi, Ui};
 
 pub struct Nes {
     // XXX: change to u128 if overflow occur
