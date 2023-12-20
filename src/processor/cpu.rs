@@ -253,7 +253,8 @@ impl Cpu {
             AbsoluteY => {
                 let bal = self.bus_read(self.cpu.pc + 1) as u16;
                 let bah = self.bus_read(self.cpu.pc + 2) as u16;
-                let addr = ((bah << 8) | bal) + self.cpu.y_reg as u16;
+                // ignore overflow while computing address
+                let addr = (((bah << 8) | bal) as u32 + self.cpu.y_reg as u32) as u16;
                 let data = self.bus_read(addr);
                 (addr, data)
             }
@@ -276,7 +277,8 @@ impl Cpu {
                 let bal = self.bus_read(ial) as u16;
                 let bah = self.bus_read(ial + 1) as u16;
                 let base_addr = (bah << 8) | bal;
-                let addr = base_addr + self.cpu.y_reg as u16;
+                // ignore overflow while computing address
+                let addr = (base_addr as u32 + self.cpu.y_reg as u32) as u16;
                 let mut data = self.bus_read(addr);
 
                 let page_boundary_crossed = (ial & 0xFF00) != ((ial + 1) & 0xFF00);
@@ -340,9 +342,16 @@ impl Cpu {
                 let ial = self.bus_read(self.cpu.pc + 1) as u16;
                 let bal = self.bus_read(ial) as u16;
                 let bah = self.bus_read(ial + 1) as u16;
-                let adl = (bal + (self.cpu.y_reg as u16)) & 0x00FF;
-                let adh = bah;
-                (adh << 8) | adl
+                let base_addr = (bah << 8) | bal;
+                let mut addr = base_addr + self.cpu.y_reg as u16;
+
+                let page_boundary_crossed = (ial & 0xFF00) != ((ial + 1) & 0xFF00);
+                if page_boundary_crossed {
+                    // Fetch data from next page
+                    addr = addr + 0x0100;
+                }
+
+                addr
             }
             _ => {
                 panic!("Invalid store addressing mode: {addr_mode:?}");
