@@ -68,102 +68,123 @@ impl Nes {
         // Main Bus
         // ----------------------------------------------------------------------------------------
 
-        // Memory - 2 kB RAM mirrored 3 times. It's used by the CPU
-        let ram = Rc::new(RefCell::new(MirroredRam::new(0x0800, 3)));
+        let ram = Rc::new(RefCell::new(MirroredRam::new(
+            (RAM_SIZE / (RAM_MIRRORS + 1)).into(),
+            RAM_MIRRORS.into(),
+        )));
         let ram_ptr = Rc::clone(&ram);
-        main_bus.borrow_mut().attach(
-            "RAM",
-            ram_ptr,
-            AddressRange {
-                start: 0,
-                end: 0x1FFF,
-            },
-        ).unwrap();
+        main_bus
+            .borrow_mut()
+            .attach(
+                "RAM",
+                ram_ptr,
+                AddressRange {
+                    start: RAM_START,
+                    end: RAM_END,
+                },
+            )
+            .unwrap();
 
         let ppu_ptr = Rc::clone(&ppu); // The 8 PPU registers are mirrored 1023 times
-        main_bus.borrow_mut().attach(
-            "PPU registers",
-            ppu_ptr,
-            AddressRange {
-                start: 0x2000,
-                // end: 0x2007,
-                end: 0x3FFF,
-            },
-        ).unwrap();
+        main_bus
+            .borrow_mut()
+            .attach(
+                "PPU registers",
+                ppu_ptr,
+                AddressRange {
+                    start: PPU_REGISTERS_START,
+                    end: PPU_REGISTERS_END,
+                },
+            )
+            .unwrap();
 
-        let fake_apu = Rc::new(RefCell::new(Ram::new(0x18))); // 0x18 B RAM - NES APU and I/O registers
+        let fake_apu = Rc::new(RefCell::new(Ram::new(APU_AND_IO_REGISTERS_SIZE.into())));
         let fake_apu_ptr = Rc::clone(&fake_apu);
-        main_bus.borrow_mut().attach(
-            "Fake APU",
-            fake_apu_ptr,
-            AddressRange {
-                start: 0x4000,
-                end: 0x4015,
-            },
-        ).unwrap();
+        main_bus
+            .borrow_mut()
+            .attach(
+                "Fake APU",
+                fake_apu_ptr,
+                AddressRange {
+                    start: APU_AND_IO_REGISTERS_START,
+                    end: APU_AND_IO_REGISTERS_END,
+                },
+            )
+            .unwrap();
 
         let controller_one = Rc::new(RefCell::new(Controller::new(receiver_one, false)));
         let controller_one_ptr = Rc::clone(&controller_one);
-        main_bus.borrow_mut().attach(
-            "Controller 1",
-            controller_one_ptr,
-            AddressRange {
-                start: 0x4016,
-                end: 0x4016,
-            },
-        ).unwrap();
+        main_bus
+            .borrow_mut()
+            .attach(
+                "Controller 1",
+                controller_one_ptr,
+                AddressRange {
+                    start: CONTROLLER_PORT_1,
+                    end: CONTROLLER_PORT_1,
+                },
+            )
+            .unwrap();
 
         let controller_two = Rc::new(RefCell::new(Controller::new(receiver_two, false)));
         let controller_two_ptr = Rc::clone(&controller_two);
-        main_bus.borrow_mut().attach(
-            "Controller 2",
-            controller_two_ptr,
-            AddressRange {
-                start: 0x4017,
-                end: 0x4017,
-            },
-        ).unwrap();
+        main_bus
+            .borrow_mut()
+            .attach(
+                "Controller 2",
+                controller_two_ptr,
+                AddressRange {
+                    start: CONTROLLER_PORT_2,
+                    end: CONTROLLER_PORT_2,
+                },
+            )
+            .unwrap();
 
-        let cartidge_expansion_rom = Rc::new(RefCell::new(Ram::new(0x5FFF - 0x4020 + 1)));
+        let cartidge_expansion_rom =
+            Rc::new(RefCell::new(Ram::new(CARTIDGE_EXPANSION_ROM_SIZE.into())));
         let cartidge_expansion_rom_ptr = Rc::clone(&cartidge_expansion_rom);
-        main_bus.borrow_mut().attach(
-            "Cartidge Expansion ROM",
-            cartidge_expansion_rom_ptr,
-            AddressRange {
-                start: 0x4020,
-                end: 0x5FFF,
-            },
-        ).unwrap();
+        main_bus
+            .borrow_mut()
+            .attach(
+                "Cartidge Expansion ROM",
+                cartidge_expansion_rom_ptr,
+                AddressRange {
+                    start: CARTIDGE_EXPANSION_ROM_START,
+                    end: CARTIDGE_EXPANSION_ROM_END,
+                },
+            )
+            .unwrap();
 
         // Graphics Bus
         // ----------------------------------------------------------------------------------------
 
-        // Pattern tables - attached from cartidge from 0x0000 to 0x1FFF
-
-        // Name table memory - also known as VRAM
         let nametable = Rc::new(RefCell::new(Ciram::new(0x0400))); // 2 kB mirrored
         let name_table_memory_ptr = Rc::clone(&nametable);
-        graphics_bus.borrow_mut().attach(
-            "Nametables",
-            name_table_memory_ptr,
-            AddressRange {
-                start: 0x2000,
-                end: 0x2FFF,
-            },
-        ).unwrap();
+        graphics_bus
+            .borrow_mut()
+            .attach(
+                "Nametables",
+                name_table_memory_ptr,
+                AddressRange {
+                    start: NAMETABLES_START,
+                    end: NAMETABLES_END,
+                },
+            )
+            .unwrap();
 
-        // Palette memory - 256-byte memory. It stores which colors should be
-        // displayed on the screen when spites and background are combined
         let palette_memory = Rc::new(RefCell::new(PaletteMemory::new()));
         let palette_memory_ptr = Rc::clone(&palette_memory);
-        graphics_bus.borrow_mut().attach(
-            "Palettes",
-            palette_memory_ptr,
-            AddressRange {
-                start: PALETTE_MEMORY_START,
-                end: PALETTE_MEMORY_END,
-            },
-        ).unwrap();
+        graphics_bus
+            .borrow_mut()
+            .attach(
+                "Palettes",
+                palette_memory_ptr,
+                AddressRange {
+                    start: PALETTE_MEMORY_START,
+                    end: PALETTE_MEMORY_END,
+                },
+            )
+            .unwrap();
 
         // ----------------------------------------------------------------------------------------
 
@@ -190,23 +211,29 @@ impl Nes {
         let rom = cartidge.mapper.program_rom_ref();
         let chr = cartidge.mapper.character_memory_ref();
 
-        self.main_bus.borrow_mut().attach(
-            "Cartidge RAM",
-            ram,
-            AddressRange {
-                start: 0x6000,
-                end: 0x7FFF,
-            },
-        ).unwrap();
+        self.main_bus
+            .borrow_mut()
+            .attach(
+                "Cartidge RAM",
+                ram,
+                AddressRange {
+                    start: CARTIDGE_RAM_START,
+                    end: CARTIDGE_RAM_END,
+                },
+            )
+            .unwrap();
 
-        self.main_bus.borrow_mut().attach(
-            "Cartidge ROM",
-            rom,
-            AddressRange {
-                start: 0x8000,
-                end: 0xFFFF,
-            },
-        ).unwrap();
+        self.main_bus
+            .borrow_mut()
+            .attach(
+                "Cartidge ROM",
+                rom,
+                AddressRange {
+                    start: CARTIDGE_ROM_START,
+                    end: CARTIDGE_ROM_END,
+                },
+            )
+            .unwrap();
 
         // Pattern memory - also known as CHR ROM is a 8 kB memory where two
         // pattern tables are stored. It contains all graphical information the
@@ -214,14 +241,17 @@ impl Nes {
         //
         // It can be split into two 4 kB (0x1000) sections containing the
         // pattern tables 0 and 1
-        self.graphics_bus.borrow_mut().attach(
-            "CHR ROM (pattern memories)",
-            chr,
-            AddressRange {
-                start: 0x0000,
-                end: 0x1FFF,
-            },
-        ).unwrap();
+        self.graphics_bus
+            .borrow_mut()
+            .attach(
+                "CHR ROM (pattern memories)",
+                chr,
+                AddressRange {
+                    start: PATTERN_TABLES_START,
+                    end: PATTERN_TABLES_END,
+                },
+            )
+            .unwrap();
 
         self.ppu.borrow_mut().set_mirroring(cartidge.mirroring());
         self.nametable
