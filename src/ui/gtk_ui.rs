@@ -15,7 +15,8 @@ use gtk::{Application, ApplicationWindow, Inhibit};
 use log::debug;
 use once_cell::sync::OnceCell;
 
-use crate::ui::{Frame, Ui, ORIGINAL_SCREEN_HEIGHT, ORIGINAL_SCREEN_WIDTH, PIXEL_SCALE_FACTOR};
+use crate::ui::{Frame, Ui, PIXEL_SCALE_FACTOR};
+use crate::hardware::{SCREEN_HEIGHT, SCREEN_WIDTH};
 
 const APP_ID: &str = "jotare-nes-emulator";
 const APP_NAME: &str = "NES Emulator (by jotare)";
@@ -185,8 +186,8 @@ pub struct GtkUiBuilder {
 impl GtkUiBuilder {
     pub fn build(self) -> GtkUi {
         GtkUi {
-            screen_width: self.screen_width.unwrap_or(ORIGINAL_SCREEN_WIDTH),
-            screen_height: self.screen_height.unwrap_or(ORIGINAL_SCREEN_HEIGHT),
+            screen_width: self.screen_width.unwrap_or(SCREEN_WIDTH),
+            screen_height: self.screen_height.unwrap_or(SCREEN_HEIGHT),
             pixel_scale_factor: self.pixel_scale_factor.unwrap_or(PIXEL_SCALE_FACTOR),
             handle: None,
             keyboard_channel: self.keyboard_channel,
@@ -267,8 +268,8 @@ struct PaintableScreenInner {
 impl Default for PaintableScreenInner {
     fn default() -> Self {
         Self {
-            width: ORIGINAL_SCREEN_WIDTH,
-            height: ORIGINAL_SCREEN_HEIGHT,
+            width: SCREEN_WIDTH,
+            height: SCREEN_HEIGHT,
             pixel_scale_factor: PIXEL_SCALE_FACTOR,
         }
     }
