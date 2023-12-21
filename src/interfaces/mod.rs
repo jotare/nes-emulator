@@ -1,8 +1,4 @@
-use std::cell::RefCell;
-use std::rc::Rc;
-
 use crate::types::SharedMemory;
-
 
 #[derive(Debug)]
 pub struct AddressRange {
@@ -15,7 +11,12 @@ pub type DeviceId = &'static str;
 pub trait Bus {
     /// Attach a new device to the bus to further read/write from
     /// it. Return an UUID to uniquely refer to `device`.
-    fn attach(&mut self, id: DeviceId, device: SharedMemory, addr_range: AddressRange) -> Result<(), String>;
+    fn attach(
+        &mut self,
+        id: DeviceId,
+        device: SharedMemory,
+        addr_range: AddressRange,
+    ) -> Result<(), String>;
 
     /// Detach a device from the bus
     fn detach(&mut self, id: DeviceId);

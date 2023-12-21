@@ -1,15 +1,12 @@
-use std::collections::HashMap;
 use std::cell::RefCell;
-use std::rc::Rc;
+use std::collections::HashMap;
 
 use log::debug;
 
 use crate::interfaces::AddressRange;
 use crate::interfaces::Bus as BusTrait;
-use crate::interfaces::Memory;
 use crate::interfaces::DeviceId;
 use crate::types::SharedMemory;
-
 
 pub struct Bus {
     id: &'static str,
@@ -21,7 +18,6 @@ struct Device {
     addr_range: AddressRange,
 }
 
-
 impl Bus {
     pub fn new(id: &'static str) -> Self {
         Self {
@@ -32,16 +28,25 @@ impl Bus {
 }
 
 impl BusTrait for Bus {
-    fn attach(&mut self, id: DeviceId, memory: SharedMemory, addr_range: AddressRange) -> Result<(), String> {
+    fn attach(
+        &mut self,
+        id: DeviceId,
+        memory: SharedMemory,
+        addr_range: AddressRange,
+    ) -> Result<(), String> {
         if self.devices.borrow().contains_key(id) {
             return Err(format!("Device '{id}' already exists on bus '{}'", self.id));
         }
 
         // TODO: return error on overlapping address ranges
 
-        self.devices
-            .borrow_mut()
-            .insert(id, Device { device: memory, addr_range });
+        self.devices.borrow_mut().insert(
+            id,
+            Device {
+                device: memory,
+                addr_range,
+            },
+        );
         Ok(())
     }
 
@@ -56,7 +61,9 @@ impl BusTrait for Bus {
                 let data = match device.borrow().try_read(virtual_address) {
                     Ok(data) => data,
                     Err(e) => {
-                        let error = format!("Error while reading '{device_id}' on address ${address:0>4X}: {e}");
+                        let error = format!(
+                            "Error while reading '{device_id}' on address ${address:0>4X}: {e}"
+                        );
                         panic!("{}", error);
                     }
                 };

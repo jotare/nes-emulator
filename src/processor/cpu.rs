@@ -445,13 +445,16 @@ mod tests {
         memory.borrow_mut().load(0, &program);
 
         let memory_ptr = Rc::clone(&memory);
-        bus.borrow_mut().attach(
-            memory_ptr,
-            AddressRange {
-                start: 0,
-                end: 0xFFFF,
-            },
-        );
+        bus.borrow_mut()
+            .attach(
+                "Test Memory",
+                memory_ptr,
+                AddressRange {
+                    start: 0,
+                    end: 0xFFFF,
+                },
+            )
+            .unwrap();
 
         cpu
     }
