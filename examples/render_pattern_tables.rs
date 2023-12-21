@@ -8,7 +8,7 @@
 //! https://www.nesdev.org/wiki/PPU_palettes
 //!
 
-use nes_emulator::graphics::{Frame, Pixel, FramePixel};
+use nes_emulator::graphics::{Frame, FramePixel, Pixel};
 use nes_emulator::hardware::PALETTE_MEMORY_START;
 use nes_emulator::interfaces::Bus;
 use nes_emulator::ui::{GtkUi, Ui};
@@ -91,10 +91,7 @@ fn render_pattern_tables(nes: &Nes, palette: u8) -> Frame {
 
                     let palette_offset = ((palette << 2) | pattern) as u16;
                     let palette_address = PALETTE_MEMORY_START + palette_offset;
-                    let color = nes
-                        .graphics_bus
-                        .borrow()
-                        .read(palette_address);
+                    let color = nes.graphics_bus.borrow().read(palette_address);
 
                     let pixel = Pixel::from(color);
 

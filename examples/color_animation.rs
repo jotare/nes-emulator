@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use crossbeam_channel::{self, TryRecvError};
 
-use nes_emulator::graphics::{Frame, Pixel, FramePixel};
+use nes_emulator::graphics::{Frame, FramePixel, Pixel};
 use nes_emulator::hardware::{SCREEN_HEIGHT, SCREEN_WIDTH};
 use nes_emulator::ui::{GtkUi, Ui};
 
@@ -44,7 +44,10 @@ fn colors_animation_frame(step: usize, forwards: bool) -> Frame {
             } else {
                 frame.set_pixel(
                     compute_coloured_pixel(x, y, step as f64, forwards),
-                    FramePixel { row: SCREEN_HEIGHT - y - 1, col: SCREEN_WIDTH - x - 1 }
+                    FramePixel {
+                        row: SCREEN_HEIGHT - y - 1,
+                        col: SCREEN_WIDTH - x - 1,
+                    },
                 )
             }
         }

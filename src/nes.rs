@@ -24,9 +24,9 @@ use crate::interfaces::Bus as BusTrait;
 use crate::processor::bus::Bus;
 use crate::processor::cpu::{Cpu, Interrupt};
 use crate::processor::memory::{Ciram, MirroredRam, Ram};
+use crate::settings::NesSettings;
 use crate::types::{SharedBus, SharedCiram, SharedController, SharedMemory, SharedPpu};
 use crate::ui::{GtkUi, Ui};
-use crate::settings::NesSettings;
 
 pub struct Nes {
     // XXX: change to u128 if overflow occur
