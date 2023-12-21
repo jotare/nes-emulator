@@ -87,7 +87,6 @@ pub struct Ppu {
     cycle: u16,
     scan_line: i16,
     frame_completed: bool,
-    palette: Palette,
     mirroring: Mirroring,
     nmi_request: bool,
 }
@@ -111,7 +110,6 @@ impl Ppu {
             cycle: 0,
             scan_line: 0,
             frame_completed: false,
-            palette: Palette::new(),
             mirroring: Mirroring::Horizontal,
             nmi_request: false,
         }
@@ -203,12 +201,12 @@ impl Ppu {
                             | (utils::bv(bit_planes[y], x as u8));
                         let palette_number = 0;
                         // let color = (palette_number << 2) + pattern;
-                        // let pixel = palette.decode_pixel(color);
+                        // let pixel = Pixel::from(color);
                         let color = self
                             .bus
                             .borrow()
                             .read(0x3F00 + ((palette_number << 2) | pattern) as u16);
-                        let pixel = self.palette.decode_pixel(color);
+                        let pixel = Pixel::from(color);
 
                         let row = (tile_number / 16) * 8 + y;
                         let col = ((tile_number % 16) + offset) * 8 + (7 - x);
@@ -287,7 +285,7 @@ impl Ppu {
                             .bus
                             .borrow()
                             .read(0x3F00 + ((palette_number << 2) | pattern) as u16);
-                        let pixel = palette.decode_pixel(color);
+                        let pixel = Pixel::from(color);
 
                         // let mrow = (tile_number / 16) * 8 + y;
                         // let mcol = ((tile_number % 16) + offset) * 8 + (7 - x);
@@ -314,7 +312,7 @@ impl Ppu {
         let mut row = 0;
         for address in 0x3F00..0x3F20 {
             let palette = self.bus.borrow().read(address);
-            let color = self.palette.decode_pixel(palette);
+            let color = Pixel::from(palette);
             for i in 0..4 {
                 for col in 0..SCREEN_WIDTH {
                     frame.set_pixel(
