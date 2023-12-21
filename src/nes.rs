@@ -204,6 +204,11 @@ impl Nes {
         }
     }
 
+    /// Insert a [`Cartidge`] into the NES. If there was already a cartidge,
+    /// replace it.
+    ///
+    /// Remember, to run the NES, you must insert a cartidge on it. What would
+    /// you play otherwise?
     pub fn load_cartidge(&mut self, cartidge: Cartidge) {
         info!("Cartidge inserted: {}", cartidge);
 
@@ -272,8 +277,13 @@ impl Nes {
 
     /// Blocking NES run
     pub fn run(&mut self) -> Result<(), String> {
+        if self.cartidge.is_none() {
+            return Err("NES can't run without a cartidge!".to_string());
+        }
+
         info!("NES indefinedly running game");
 
+        // self.cpu_execute_forever();
         self.ui.start();
 
         loop {
@@ -281,8 +291,17 @@ impl Nes {
         }
     }
 
-    /// NES system clocks runs at ~21.47 MHz
-    fn clock(&mut self) -> Result<(), String> {
+    /// Execute a NES simulated system clock.
+    ///
+    /// In the NES NTSC (2C02), this clock runs at ~21.47 MHz.
+    ///
+    /// NES components run at certain system clock divisions:
+    /// - CPU clocks every 12 system clocks
+    /// - PPU clocks every 4 system clocks
+    ///
+    /// See more information:
+    /// https://www.nesdev.org/wiki/Cycle_reference_chart#Clock_rates
+    pub fn clock(&mut self) -> Result<(), String> {
         self.system_clock += 4;
 
         // PPU clock runs every 4 system clocks
