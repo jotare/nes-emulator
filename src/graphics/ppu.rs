@@ -315,13 +315,7 @@ impl Ppu {
             let color = Pixel::from(palette);
             for i in 0..4 {
                 for col in 0..SCREEN_WIDTH {
-                    frame.set_pixel(
-                        color,
-                        FramePixel {
-                            row: row + i,
-                            col,
-                        },
-                    );
+                    frame.set_pixel(color, FramePixel { row: row + i, col });
                 }
             }
             row += 4;

@@ -71,17 +71,14 @@ impl Mapper for Mapper0 {
     }
 
     fn program_ram_ref(&self) -> SharedMemory {
-        let shared = Rc::clone(&self.program_ram);
-        shared
+        Rc::clone(&self.program_ram) as _
     }
 
     fn program_rom_ref(&self) -> SharedMemory {
-        let shared = Rc::clone(&self.program_rom);
-        shared
+        Rc::clone(&self.program_rom) as _
     }
 
     fn character_memory_ref(&self) -> SharedMemory {
-        let shared = Rc::clone(&self.character_memory);
-        shared
+        Rc::clone(&self.character_memory) as _
     }
 }

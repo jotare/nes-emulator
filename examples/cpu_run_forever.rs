@@ -7,7 +7,6 @@
 use std::thread;
 use std::time::Duration;
 
-
 use log::{error, LevelFilter};
 
 use nes_emulator::{Cartidge, Nes};

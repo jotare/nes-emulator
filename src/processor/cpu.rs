@@ -348,7 +348,7 @@ impl Cpu {
                 let page_boundary_crossed = (ial & 0xFF00) != ((ial + 1) & 0xFF00);
                 if page_boundary_crossed {
                     // Fetch data from next page
-                    addr = addr + 0x0100;
+                    addr += 0x0100;
                 }
 
                 addr
