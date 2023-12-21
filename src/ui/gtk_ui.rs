@@ -15,8 +15,9 @@ use gtk::{Application, ApplicationWindow, Inhibit};
 use log::debug;
 use once_cell::sync::OnceCell;
 
-use crate::ui::{Frame, Ui, PIXEL_SCALE_FACTOR};
 use crate::hardware::{SCREEN_HEIGHT, SCREEN_WIDTH};
+use crate::settings::DEFAULT_PIXEL_SCALE_FACTOR;
+use crate::ui::{Frame, Ui};
 
 const APP_ID: &str = "jotare-nes-emulator";
 const APP_NAME: &str = "NES Emulator (by jotare)";
@@ -38,7 +39,7 @@ pub struct GtkUi {
 
 impl GtkUi {
     pub fn builder() -> GtkUiBuilder {
-        GtkUiBuilder::default()
+        GtkUiBuilder::new()
     }
 
     /// Starts GtkUi a running GUI. It should only be called once
@@ -175,42 +176,44 @@ impl Ui for GtkUi {
     }
 }
 
-#[derive(Default)]
 pub struct GtkUiBuilder {
-    screen_width: Option<usize>,
-    screen_height: Option<usize>,
-    pixel_scale_factor: Option<usize>,
-    keyboard_channel: Option<Sender<char>>,
+    build: GtkUi,
 }
 
 impl GtkUiBuilder {
-    pub fn build(self) -> GtkUi {
-        GtkUi {
-            screen_width: self.screen_width.unwrap_or(SCREEN_WIDTH),
-            screen_height: self.screen_height.unwrap_or(SCREEN_HEIGHT),
-            pixel_scale_factor: self.pixel_scale_factor.unwrap_or(PIXEL_SCALE_FACTOR),
-            handle: None,
-            keyboard_channel: self.keyboard_channel,
+    pub fn new() -> Self {
+        Self {
+            build: GtkUi {
+                screen_height: SCREEN_HEIGHT,
+                screen_width: SCREEN_WIDTH,
+                pixel_scale_factor: DEFAULT_PIXEL_SCALE_FACTOR,
+                handle: None,
+                keyboard_channel: None,
+            },
         }
     }
 
+    pub fn build(self) -> GtkUi {
+        self.build
+    }
+
     pub fn screen_width(mut self, width: usize) -> Self {
-        self.screen_width.replace(width);
+        self.build.screen_width = width;
         self
     }
 
     pub fn screen_height(mut self, height: usize) -> Self {
-        self.screen_height.replace(height);
+        self.build.screen_height = height;
         self
     }
 
     pub fn pixel_scale_factor(mut self, factor: usize) -> Self {
-        self.pixel_scale_factor.replace(factor);
+        self.build.pixel_scale_factor = factor;
         self
     }
 
     pub fn keyboard_channel(mut self, sender: Sender<char>) -> Self {
-        self.keyboard_channel.replace(sender);
+        self.build.keyboard_channel = Some(sender);
         self
     }
 }
@@ -270,7 +273,7 @@ impl Default for PaintableScreenInner {
         Self {
             width: SCREEN_WIDTH,
             height: SCREEN_HEIGHT,
-            pixel_scale_factor: PIXEL_SCALE_FACTOR,
+            pixel_scale_factor: DEFAULT_PIXEL_SCALE_FACTOR,
         }
     }
 }
