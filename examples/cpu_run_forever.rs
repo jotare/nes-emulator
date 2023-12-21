@@ -20,7 +20,7 @@ fn main() {
         .filter(Some("nes_emulator::processor::cpu"), LevelFilter::Debug)
         .init();
 
-    let mut nes = Nes::new();
+    let mut nes = Nes::default();
     let cartidge = Cartidge::new(CARTIDGE_PATH);
 
     nes.load_cartidge(cartidge);

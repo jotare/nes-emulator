@@ -20,7 +20,7 @@ use nes_emulator::{Cartidge, Nes};
 const CARTIDGE_PATH: &str = "roms/Super Mario Bros. (World).nes";
 
 fn main() {
-    let mut nes = Nes::new();
+    let mut nes = Nes::default();
     let cartidge = Cartidge::new(CARTIDGE_PATH);
 
     nes.load_cartidge(cartidge);

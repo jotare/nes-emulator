@@ -26,6 +26,7 @@ use crate::processor::cpu::{Cpu, Interrupt};
 use crate::processor::memory::{Ciram, MirroredRam, Ram};
 use crate::types::{SharedBus, SharedCiram, SharedController, SharedMemory, SharedPpu};
 use crate::ui::{GtkUi, Ui};
+use crate::settings::NesSettings;
 
 pub struct Nes {
     // XXX: change to u128 if overflow occur
@@ -49,8 +50,14 @@ pub struct Nes {
     controller_two: SharedController,
 }
 
+impl Default for Nes {
+    fn default() -> Self {
+        Nes::new(NesSettings::default())
+    }
+}
+
 impl Nes {
-    pub fn new() -> Self {
+    pub fn new(settings: NesSettings) -> Self {
         let main_bus = Rc::new(RefCell::new(Bus::new("CPU")));
         let graphics_bus = Rc::new(RefCell::new(Bus::new("PPU")));
 
@@ -63,7 +70,10 @@ impl Nes {
         let (sender, receiver_one) = unbounded();
         let receiver_two = receiver_one.clone();
 
-        let ui = GtkUi::builder().keyboard_channel(sender).build();
+        let ui = GtkUi::builder()
+            .keyboard_channel(sender)
+            .pixel_scale_factor(settings.pixel_scale_factor)
+            .build();
 
         // Main Bus
         // ----------------------------------------------------------------------------------------
