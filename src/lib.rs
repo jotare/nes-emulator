@@ -4,15 +4,15 @@
 #![allow(dead_code, unused_variables)]
 mod cartidge;
 mod controller;
-mod graphics;
-mod hardware;
-mod interfaces;
+pub mod graphics;
+pub mod hardware;
+pub mod interfaces;
 mod mappers;
 mod nes;
 mod processor;
 mod types;
-mod utils;
 pub mod ui;
+pub mod utils;
 
 pub use cartidge::Cartidge;
 pub use controller::ControllerButtons;

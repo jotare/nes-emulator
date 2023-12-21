@@ -11,7 +11,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use crossbeam_channel::unbounded;
-use log::{error, info};
+use log::info;
 
 use crate::cartidge::Cartidge;
 use crate::controller::Controller;
@@ -33,11 +33,11 @@ pub struct Nes {
 
     cartidge: Option<Cartidge>,
 
-    cpu: Cpu,
-    main_bus: SharedBus,
+    pub cpu: Cpu,
+    pub main_bus: SharedBus,
 
     ppu: SharedPpu,
-    graphics_bus: SharedBus,
+    pub graphics_bus: SharedBus,
 
     ram: SharedMemory,
     nametable: SharedCiram,
