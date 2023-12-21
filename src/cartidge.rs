@@ -27,9 +27,17 @@ impl Cartidge {
     ///
     /// *Panic*
     ///
-    /// iNES file format is expected and can panic if a different file format is
-    /// used.
+    /// - iNES file format is expected and can panic if a different file format
+    /// is used.
+    /// - It can also panics if an invalid path is provided
     pub fn new<P: AsRef<Path>>(path: P) -> Self {
+        if !path.as_ref().exists() {
+            panic!(
+                "Game {:?} not found. Make sure the path is correct",
+                path.as_ref().as_os_str()
+            );
+        }
+
         let game_name = path
             .as_ref()
             .file_name()
