@@ -328,10 +328,5 @@ impl Nes {
 
         Ok(())
     }
-}
 
-impl Default for Nes {
-    fn default() -> Self {
-        Self::new()
-    }
 }
