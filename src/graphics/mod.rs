@@ -2,6 +2,7 @@
 
 pub mod palette;
 pub mod palette_memory;
+pub mod pattern_table;
 pub mod ppu;
 
 use crate::hardware::{SCREEN_HEIGHT, SCREEN_WIDTH};

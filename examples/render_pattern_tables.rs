@@ -8,6 +8,7 @@
 //! https://www.nesdev.org/wiki/PPU_palettes
 //!
 
+use nes_emulator::graphics::pattern_table::PatternTableAddress;
 use nes_emulator::graphics::{Frame, FramePixel, Pixel};
 use nes_emulator::hardware::PALETTE_MEMORY_START;
 use nes_emulator::interfaces::Bus;
@@ -65,42 +66,42 @@ fn main() {
 /// As pattern tables are square, some margin will be shown black at the bottom.
 fn render_pattern_tables(nes: &Nes, palette: u8) -> Frame {
     const TILES_PER_PATTERN_TABLE: usize = 256;
+    const PATTERN_TABLE_WIDTH: usize = 128;
 
     let mut frame = Frame::black();
 
-    for pattern_table in [0, 1] {
-        let (palette_address, offset) = match pattern_table {
-            0 => (0x0000, 0),
-            1 => (0x1000, 16),
-            _ => panic!("There's no pattern table {pattern_table}"),
-        };
+    for (pattern_table, offset) in [(0, 0), (1, PATTERN_TABLE_WIDTH)] {
+        let mut pattern_table_address = PatternTableAddress::new(pattern_table);
 
         for tile_number in 0..TILES_PER_PATTERN_TABLE {
-            let mut bit_planes = [0; 16];
-            for i in 0..16 {
-                bit_planes[i] = nes
-                    .graphics_bus
-                    .borrow()
-                    .read(palette_address + (tile_number * 16 + i) as u16);
-            }
+            pattern_table_address.set(PatternTableAddress::TILE_NUMBER, tile_number as u8);
 
-            for x in 0..8 {
-                for y in 0..8 {
-                    let pattern = (utils::bv(bit_planes[y + 8], x as u8) << 1)
-                        | (utils::bv(bit_planes[y], x as u8));
+            for x in 0..8usize {
+                for y in 0..8usize {
+                    pattern_table_address.set(PatternTableAddress::FINE_Y_OFFSET, y as u8);
 
-                    let palette_offset = ((palette << 2) | pattern) as u16;
-                    let palette_address = PALETTE_MEMORY_START + palette_offset;
-                    let color = nes.graphics_bus.borrow().read(palette_address);
+                    pattern_table_address.set(PatternTableAddress::BIT_PLANE, 0);
+                    let low = nes.graphics_bus.borrow().read(pattern_table_address.into());
 
-                    let pixel = Pixel::from(color);
+                    pattern_table_address.set(PatternTableAddress::BIT_PLANE, 1);
+                    let high = nes.graphics_bus.borrow().read(pattern_table_address.into());
+
+                    let palette_offset =
+                        (palette << 2) | utils::bv(high, x as u8) << 1 | utils::bv(low, x as u8);
+                    let palette_color = nes
+                        .graphics_bus
+                        .borrow()
+                        .read(PALETTE_MEMORY_START + palette_offset as u16);
+                    let color = Pixel::from(palette_color);
 
                     let row = (tile_number / 16) * 8 + y;
-                    let col = ((tile_number % 16) + offset) * 8 + (7 - x);
-                    frame.set_pixel(pixel, FramePixel { row, col });
+                    let col = (tile_number % 16) * 8 + (7 - x) + offset;
+
+                    frame.set_pixel(color, FramePixel { row, col });
                 }
             }
         }
     }
+
     frame
 }
