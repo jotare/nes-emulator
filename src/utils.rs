@@ -17,6 +17,47 @@ pub fn clear_bit(byte: u8, bit: u8) -> u8 {
     byte & (!(1 << bit))
 }
 
+/// Single or group of bits that represent some kind of flag or restricted set of
+/// values. A group **must** be a consecutive group of 1s!
+#[derive(Copy, Clone)]
+pub struct BitGroup<T> {
+    group: T,
+}
+
+impl BitGroup<u16> {
+    pub fn new(value: u16) -> Self {
+        Self { group: value }
+    }
+
+    pub fn get(&self, group: impl Into<BitGroup<u16>>) -> u16 {
+        let group: u16 = group.into().into();
+        (self.group & group) >> group.trailing_zeros()
+    }
+
+    pub fn set(&mut self, group: impl Into<BitGroup<u16>>, value: u16) {
+        let group: u16 = group.into().into();
+        self.clear(group);
+        self.group |= value << group.trailing_zeros();
+    }
+
+    pub fn clear(&mut self, group: impl Into<BitGroup<u16>>) {
+        let group: u16 = group.into().into();
+        self.group = self.group & (!group);
+    }
+}
+
+impl From<u16> for BitGroup<u16> {
+    fn from(value: u16) -> Self {
+        Self { group: value }
+    }
+}
+
+impl From<BitGroup<u16>> for u16 {
+    fn from(value: BitGroup<u16>) -> Self {
+        value.group
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -50,5 +91,23 @@ mod tests {
         assert_eq!(clear_bit(0b0000_0001, 0), 0b0000_0000);
         assert_eq!(clear_bit(0b1001_0001, 7), 0b0001_0001);
         assert_eq!(clear_bit(0b0010_0011, 5), 0b0000_0011);
+    }
+
+    #[test]
+    fn test_bit_group() {
+        let mut g = BitGroup::new(0b1011_1010);
+
+        assert_eq!(g.get(0b1111_1111), g.group);
+        assert_eq!(g.get(0b0000_1111), 0b1010);
+        assert_eq!(g.get(0b1111_0000), 0b1011);
+
+        g.clear(0b1111_0000);
+        assert_eq!(g.get(0b0000_1111), 0b1010);
+        assert_eq!(g.get(0b1111_0000), 0b0000);
+
+        g.set(0b1111_0000, 5);
+        assert_eq!(g.get(0b1111_1111), 0b0101_1010);
+        assert_eq!(g.get(0b0000_1111), 0b0000_1010);
+        assert_eq!(g.get(0b1111_0000), 5);
     }
 }
