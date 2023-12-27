@@ -305,25 +305,6 @@ impl Ppu {
         screen
     }
 
-    // TODO move to an example
-    fn render_palettes(&self) -> Frame {
-        let mut frame = Frame::default();
-
-        let mut row = 0;
-        for address in 0x3F00..0x3F20 {
-            let palette = self.bus.borrow().read(address);
-            let color = Pixel::from(palette);
-            for i in 0..4 {
-                for col in 0..SCREEN_WIDTH {
-                    frame.set_pixel(color, FramePixel { row: row + i, col });
-                }
-            }
-            row += 4;
-        }
-
-        frame
-    }
-
     fn address_to_pattern_table(&self, address: u16) {
         let hi_address = ((address & 0xFF00) >> 8) as u8;
         let lo_address = (address & 0x00FF) as u8;
