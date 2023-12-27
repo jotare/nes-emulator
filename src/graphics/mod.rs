@@ -4,6 +4,7 @@ pub mod palette;
 pub mod palette_memory;
 pub mod pattern_table;
 pub mod ppu;
+mod ppu_registers;
 
 use crate::hardware::{SCREEN_HEIGHT, SCREEN_WIDTH};
 
@@ -74,6 +75,7 @@ pub struct FramePixel {
 
 /// NES screen frame representation. It sizes are the same as the NES screen
 /// (see hardware module)
+#[derive(Clone)]
 pub struct Frame {
     pub inner: InnerFrame,
 }
