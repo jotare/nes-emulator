@@ -37,8 +37,6 @@
 
 use std::cell::RefCell;
 
-use bitflags::bitflags;
-
 use crate::graphics::Frame;
 use crate::graphics::FramePixel;
 use crate::graphics::Pixel;
@@ -49,6 +47,7 @@ use crate::interfaces::{Bus, Memory};
 use crate::processor::memory::Mirroring;
 use crate::types::SharedBus;
 use crate::utils;
+use crate::utils::BitGroup;
 
 use super::pattern_table::PatternTableAddress;
 use super::ppu_registers::{PpuCtrl, PpuStatus};
@@ -90,22 +89,47 @@ struct PpuRegisters {
     data_buffer: u8,
 }
 
-bitflags! {
-    struct RenderAddr: u16 {
-        const FINE_Y_SCROLL    = 0b0111_0000_0000_0000;
-        const NAMETABLE_SELECT = 0b0000_1100_0000_0000;
-        const COARSE_Y_SCROLL  = 0b0000_0011_1110_0000;
-        const COARSE_X_SCROLL  = 0b0000_0000_0001_1111;
+#[derive(Clone, Copy)]
+pub struct RenderAddress {
+    value: BitGroup<u16>,
+}
+
+impl RenderAddress {
+    pub const FINE_Y_SCROLL: u16 = 0b0111_0000_0000_0000;
+    pub const NAMETABLE_SELECT: u16 = 0b0000_1100_0000_0000;
+    pub const COARSE_Y_SCROLL: u16 = 0b0000_0011_1110_0000;
+    pub const COARSE_X_SCROLL: u16 = 0b0000_0000_0001_1111;
+
+    pub fn set(&mut self, group: u16, value: u8) {
+        self.value.set(group, value.into());
+    }
+
+    pub fn value(&self) -> u16 {
+        self.value.into()
+    }
+}
+
+impl From<RenderAddress> for u16 {
+    fn from(value: RenderAddress) -> Self {
+        value.value.into()
+    }
+}
+
+impl From<u16> for RenderAddress {
+    fn from(value: u16) -> Self {
+        Self {
+            value: BitGroup::new(value),
+        }
     }
 }
 
 struct PpuInternalRegisters {
     /// Current VRAM address (15 bits)
-    vram_addr: RenderAddr,
+    vram_addr: RenderAddress,
 
     /// Temporary VRAM address, can also be thought of as the address of the top
     /// left onscreen tile
-    temp_vram_addr: RenderAddr,
+    temp_vram_addr: RenderAddress,
 
     /// Fine X scroll (3 bits)
     fine_x_scroll: u8,
@@ -137,8 +161,8 @@ impl Ppu {
                 data_buffer: 0,
             }),
             internal: RefCell::new(PpuInternalRegisters {
-                vram_addr: RenderAddr::empty(),
-                temp_vram_addr: RenderAddr::empty(),
+                vram_addr: RenderAddress::from(0),
+                temp_vram_addr: RenderAddress::from(0),
                 fine_x_scroll: 0,
                 write_toggle: WriteToggle::First,
             }),
@@ -605,8 +629,8 @@ impl PpuInternalRegisters {
     #[inline]
     fn ppuctrl_write(&mut self, data: u8) {
         let temp_vram_addr =
-            (self.temp_vram_addr.bits() & !(0b11 << 10)) | ((data as u16 & 0b0000_0011) << 10);
-        self.temp_vram_addr = RenderAddr::from_bits_truncate(temp_vram_addr);
+            (self.temp_vram_addr.value() & !(0b11 << 10)) | ((data as u16 & 0b0000_0011) << 10);
+        self.temp_vram_addr = RenderAddress::from(temp_vram_addr);
     }
 
     #[inline]
@@ -618,15 +642,18 @@ impl PpuInternalRegisters {
     fn ppuscroll_write(&mut self, data: u8) {
         match self.write_toggle {
             WriteToggle::First => {
-                self.temp_vram_addr.bits =
-                    (self.temp_vram_addr.bits & !0b0001_1111) | (data as u16 & 0b1111_1000);
+                self.temp_vram_addr = RenderAddress::from(
+                    (self.temp_vram_addr.value() & !0b0001_1111) | (data as u16 & 0b1111_1000),
+                );
                 self.fine_x_scroll = data & 0b0000_0111;
                 self.write_toggle = WriteToggle::Second;
             }
             WriteToggle::Second => {
-                self.temp_vram_addr.bits = (self.temp_vram_addr.bits & !0b0111_0011_1110_0000)
-                    | (((data & 0b0000_0111) as u16) << 12)
-                    | (((data & 0b1111_1000) as u16) << 5);
+                self.temp_vram_addr = RenderAddress::from(
+                    (self.temp_vram_addr.value() & !0b0111_0011_1110_0000)
+                        | (((data & 0b0000_0111) as u16) << 12)
+                        | (((data & 0b1111_1000) as u16) << 5),
+                );
                 self.write_toggle = WriteToggle::First;
             }
         }
@@ -636,14 +663,16 @@ impl PpuInternalRegisters {
     fn ppuaddr_write(&mut self, data: u8) {
         match self.write_toggle {
             WriteToggle::First => {
-                self.temp_vram_addr.bits =
-                    (self.temp_vram_addr.bits & 0x3F00) | (((data & 0x3F) as u16) << 8);
+                self.temp_vram_addr = RenderAddress::from(
+                    (self.temp_vram_addr.value() & 0x3F00) | (((data & 0x3F) as u16) << 8),
+                );
                 // XXX according to nesdev, t (bit 15) = Z and bit Z is
                 // cleared. What's bit Z?
                 self.write_toggle = WriteToggle::Second;
             }
             WriteToggle::Second => {
-                self.temp_vram_addr.bits = (self.temp_vram_addr.bits & 0x00FF) | data as u16;
+                self.temp_vram_addr =
+                    RenderAddress::from((self.temp_vram_addr.value() & 0x00FF) | data as u16);
                 self.vram_addr = self.temp_vram_addr;
                 self.write_toggle = WriteToggle::First;
             }
