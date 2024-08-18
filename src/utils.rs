@@ -40,6 +40,24 @@ impl BitGroup<u16> {
         self.group |= value << group.trailing_zeros();
     }
 
+    pub fn overflowing_add(&mut self, group: impl Into<BitGroup<u16>>, increment: u16) -> bool {
+        let group: u16 = group.into().into();
+        let value = self.get(group);
+
+        let modulo = (group >> group.trailing_zeros()) + 1;
+        let overflow = value + increment >= modulo;
+        self.set(group, value + increment % modulo);
+
+        overflow
+    }
+
+    pub fn toggle(&mut self, group: impl Into<BitGroup<u16>>) {
+        let group: u16 = group.into().into();
+        let value = self.get(group);
+        let toggled = (!value) & (group >> group.trailing_zeros());
+        self.set(group, toggled);
+    }
+
     pub fn clear(&mut self, group: impl Into<BitGroup<u16>>) {
         let group: u16 = group.into().into();
         self.group = self.group & (!group);
@@ -109,5 +127,35 @@ mod tests {
         assert_eq!(g.get(0b1111_1111), 0b0101_1010);
         assert_eq!(g.get(0b0000_1111), 0b0000_1010);
         assert_eq!(g.get(0b1111_0000), 5);
+    }
+
+    #[test]
+    fn test_bit_group_overflowing_add() {
+        let mut g = BitGroup::new(0b1011_1010);
+        let group = 0b1111_0000;
+
+        assert_eq!(g.get(0b1111_1111), 0b1011_1010);
+
+        let overflow = g.overflowing_add(group, 4);
+        assert!(!overflow);
+        assert_eq!(g.get(0b1111_1111), 0b1111_1010);
+
+        let overflow = g.overflowing_add(group, 2);
+        assert!(overflow);
+        assert_eq!(g.get(0b1111_1111), 0b0001_1010);
+    }
+
+    #[test]
+    fn test_bit_group_toggle() {
+        let mut g = BitGroup::new(0b1011_1010);
+
+        g.toggle(0b1111_0000);
+        assert_eq!(g.get(0b1111_1111), 0b0100_1010);
+
+        g.toggle(0b0010_0000);
+        assert_eq!(g.get(0b1111_1111), 0b0110_1010);
+
+        g.toggle(0b1111_1111);
+        assert_eq!(g.get(0b1111_1111), 0b1001_0101);
     }
 }
