@@ -426,7 +426,7 @@ mod tests {
     use std::cell::RefCell;
     use std::rc::Rc;
 
-    use crate::interfaces::AddressRange;
+    use crate::interfaces::{AddressRange, LoadableMemory};
     use crate::processor::bus::Bus;
     use crate::processor::memory::Ram;
 

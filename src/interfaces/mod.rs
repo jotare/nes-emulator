@@ -63,3 +63,8 @@ pub trait Memory {
     /// Memory size in bytes
     fn size(&self) -> usize;
 }
+
+pub trait LoadableMemory {
+    /// Load `contents` array starting on `address`.
+    fn load(&mut self, address: u16, contents: &[u8]);
+}

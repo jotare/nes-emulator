@@ -23,7 +23,8 @@ use crate::interfaces::AddressRange;
 use crate::interfaces::Bus as BusTrait;
 use crate::processor::bus::Bus;
 use crate::processor::cpu::{Cpu, Interrupt};
-use crate::processor::memory::{Ciram, MirroredRam, Ram};
+use crate::processor::memory::MirroredMemory;
+use crate::processor::memory::{Ciram, Ram};
 use crate::settings::NesSettings;
 use crate::types::{SharedBus, SharedCiram, SharedController, SharedMemory, SharedPpu};
 use crate::ui::{GtkUi, Ui};
@@ -78,8 +79,8 @@ impl Nes {
         // Main Bus
         // ----------------------------------------------------------------------------------------
 
-        let ram = Rc::new(RefCell::new(MirroredRam::new(
-            (RAM_SIZE / (RAM_MIRRORS + 1)).into(),
+        let ram = Rc::new(RefCell::new(MirroredMemory::new(
+            Ram::new((RAM_SIZE / (RAM_MIRRORS + 1)).into()),
             RAM_MIRRORS.into(),
         )));
         let ram_ptr = Rc::clone(&ram);

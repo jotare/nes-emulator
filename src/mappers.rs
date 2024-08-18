@@ -1,7 +1,8 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::processor::memory::{MirroredRom, Ram};
+use crate::interfaces::LoadableMemory;
+use crate::processor::memory::{MirroredMemory, Ram, Rom};
 use crate::types::{SharedMemory, SharedMirroredRom, SharedRam};
 
 pub trait Mapper {
@@ -40,12 +41,12 @@ pub struct Mapper0 {
 impl Mapper0 {
     pub fn new(specs: MapperSpecs) -> Self {
         let program_rom = match specs.program_rom_capacity {
-            16384 => Rc::new(RefCell::new(MirroredRom::new(
-                specs.program_rom_capacity,
+            16384 => Rc::new(RefCell::new(MirroredMemory::new(
+                Rom::new(specs.program_rom_capacity),
                 1,
             ))),
-            32768 => Rc::new(RefCell::new(MirroredRom::new(
-                specs.program_rom_capacity,
+            32768 => Rc::new(RefCell::new(MirroredMemory::new(
+                Rom::new(specs.program_rom_capacity),
                 0,
             ))),
             _ => panic!(

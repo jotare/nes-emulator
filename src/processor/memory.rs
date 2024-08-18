@@ -1,4 +1,4 @@
-use crate::interfaces::Memory;
+use crate::interfaces::{LoadableMemory, Memory};
 
 const RAM_SIZE: usize = 2 * 1024; // 2 kB RAM
 
@@ -11,16 +11,6 @@ impl Ram {
     pub fn new(size: usize) -> Self {
         Self {
             memory: vec![0; size],
-        }
-    }
-}
-
-impl Ram {
-    /// Load `contents` array starting on `address`.
-    pub fn load(&mut self, address: u16, contents: &[u8]) {
-        for (i, byte) in contents.iter().enumerate() {
-            let i = i as u16;
-            self.write(address + i, *byte);
         }
     }
 }
@@ -39,34 +29,12 @@ impl Memory for Ram {
     }
 }
 
-#[derive(Clone)]
-pub struct MirroredRam {
-    memory: Ram,
-    mirrors: usize,
-}
-
-impl MirroredRam {
-    pub fn new(size: usize, mirrors: usize) -> Self {
-        Self {
-            memory: Ram::new(size),
-            mirrors,
+impl LoadableMemory for Ram {
+    fn load(&mut self, address: u16, contents: &[u8]) {
+        for (i, byte) in contents.iter().enumerate() {
+            let i = i as u16;
+            self.write(address + i, *byte);
         }
-    }
-}
-
-impl Memory for MirroredRam {
-    fn read(&self, address: u16) -> u8 {
-        let address = ((address as usize) % self.memory.size()) as u16;
-        self.memory.read(address)
-    }
-
-    fn write(&mut self, address: u16, data: u8) {
-        let address = ((address as usize) % self.memory.size()) as u16;
-        self.memory.write(address, data);
-    }
-
-    fn size(&self) -> usize {
-        self.memory.size() * (self.mirrors + 1)
     }
 }
 
@@ -84,21 +52,6 @@ impl Rom {
             memory: vec![0; size],
             write_count: 0,
         }
-    }
-
-    /// Perform a memory load to the ROM. As it's intended to be
-    /// read-only, this method can be used one time. Any other call
-    /// will panic.
-    pub fn load(&mut self, address: u16, contents: &[u8]) {
-        if self.write_count > 0 {
-            panic!("ROM memory can be written only once");
-        }
-
-        for (i, byte) in contents.iter().enumerate() {
-            let i = i as u16;
-            self.memory[(address + i) as usize] = *byte;
-        }
-        self.write_count += 1;
     }
 }
 
@@ -120,25 +73,36 @@ impl Memory for Rom {
     }
 }
 
+impl LoadableMemory for Rom {
+    /// Perform a memory load to the ROM. As it's intended to be
+    /// read-only, this method can be used one time. Any other call
+    /// will panic.
+    fn load(&mut self, address: u16, contents: &[u8]) {
+        if self.write_count > 0 {
+            panic!("ROM memory can be written only once");
+        }
+
+        for (i, byte) in contents.iter().enumerate() {
+            let i = i as u16;
+            self.memory[(address + i) as usize] = *byte;
+        }
+        self.write_count += 1;
+    }
+}
+
 #[derive(Clone)]
-pub struct MirroredRom {
-    memory: Rom,
+pub struct MirroredMemory<T> {
+    memory: T,
     mirrors: usize,
 }
 
-impl MirroredRom {
-    pub fn new(size: usize, mirrors: usize) -> Self {
-        Self {
-            memory: Rom::new(size),
-            mirrors,
-        }
-    }
-    pub fn load(&mut self, address: u16, contents: &[u8]) {
-        self.memory.load(address, contents);
+impl<T: Memory> MirroredMemory<T> {
+    pub fn new(memory: T, mirrors: usize) -> Self {
+        Self { memory, mirrors }
     }
 }
 
-impl Memory for MirroredRom {
+impl<T: Memory> Memory for MirroredMemory<T> {
     fn read(&self, address: u16) -> u8 {
         let address = ((address as usize) % self.memory.size()) as u16;
         self.memory.read(address)
@@ -151,6 +115,12 @@ impl Memory for MirroredRom {
 
     fn size(&self) -> usize {
         self.memory.size() * (self.mirrors + 1)
+    }
+}
+
+impl<T: LoadableMemory> LoadableMemory for MirroredMemory<T> {
+    fn load(&mut self, address: u16, contents: &[u8]) {
+        self.memory.load(address, contents);
     }
 }
 

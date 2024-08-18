@@ -2,6 +2,7 @@
 //!
 
 #![allow(dead_code, unused_variables)]
+
 mod cartidge;
 mod controller;
 pub mod graphics;
