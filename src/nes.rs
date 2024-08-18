@@ -183,7 +183,10 @@ impl Nes {
             )
             .unwrap();
 
-        let palette_memory = Rc::new(RefCell::new(PaletteMemory::new()));
+        let palette_memory = Rc::new(RefCell::new(MirroredMemory::new(
+            PaletteMemory::new(),
+            PALETTE_MIRRORS.into(),
+        )));
         let palette_memory_ptr = Rc::clone(&palette_memory);
         graphics_bus
             .borrow_mut()
@@ -192,7 +195,7 @@ impl Nes {
                 palette_memory_ptr,
                 AddressRange {
                     start: PALETTE_MEMORY_START,
-                    end: PALETTE_MEMORY_END,
+                    end: PALETTE_MEMORY_MIRRORS_END,
                 },
             )
             .unwrap();
