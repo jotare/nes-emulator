@@ -37,6 +37,8 @@
 
 use std::cell::RefCell;
 
+use crate::graphics::pattern_table::PatternTableAddress;
+use crate::graphics::ppu_registers::{PpuCtrl, PpuMask, PpuStatus};
 use crate::graphics::render_address::RenderAddress;
 use crate::graphics::Frame;
 use crate::graphics::FramePixel;
@@ -48,10 +50,6 @@ use crate::interfaces::{Bus, Memory};
 use crate::processor::memory::Mirroring;
 use crate::types::SharedBus;
 use crate::utils;
-use crate::utils::BitGroup;
-
-use super::pattern_table::PatternTableAddress;
-use super::ppu_registers::{PpuCtrl, PpuStatus};
 
 // PPU background scrolling functionality is implemented using nesdev loopy
 // contributor design.
@@ -79,7 +77,7 @@ pub struct Ppu {
 
 struct PpuRegisters {
     ctrl: PpuCtrl,
-    mask: u8,
+    mask: PpuMask,
     status: PpuStatus,
 
     // TODO
@@ -105,7 +103,7 @@ struct PpuInternalRegisters {
     write_toggle: WriteToggle,
 }
 
-#[derive(Default, Eq, PartialEq)]
+#[derive(Default, Debug, Eq, PartialEq)]
 enum WriteToggle {
     #[default]
     First,
@@ -117,7 +115,7 @@ impl Ppu {
         Self {
             registers: RefCell::new(PpuRegisters {
                 ctrl: PpuCtrl::empty(),
-                mask: 0,
+                mask: PpuMask::empty(),
                 status: PpuStatus::empty(),
 
                 // TODO
@@ -485,17 +483,14 @@ impl Memory for Ppu {
                 registers.ongoing_address_write = false;
 
                 ppustatus | 0b1000_0000
-                // ppustatus
             }
 
             PPUMASK => {
                 // Registers
-                self.registers.borrow().mask
+                self.registers.borrow().mask.bits()
             }
 
             PPUDATA => {
-                // Internal
-
                 // Registers
                 let mut regs = self.registers.borrow_mut();
                 regs.data = regs.data_buffer;
@@ -514,7 +509,13 @@ impl Memory for Ppu {
                 };
                 regs.address += increment;
 
+                // Internal
+                let vram_addr = self.internal.borrow().vram_addr.value();
+                self.internal.borrow_mut().vram_addr = RenderAddress::from(vram_addr + increment);
+
                 regs.data
+
+                // self.bus.borrow().read(vram_addr)
             }
             _ => panic!("PPU read not implemented for address: {address:0>4X}"),
         };
@@ -533,12 +534,11 @@ impl Memory for Ppu {
                 self.internal.borrow_mut().ppuctrl_write(data);
 
                 // Registers
-                regs.ctrl = PpuCtrl::from_bits(data)
-                    .unwrap_or_else(|| panic!("Invalid PPUCTRL write value: 0b{data:0>8b}"));
+                regs.ctrl = PpuCtrl::from_bits_truncate(data);
             }
             PPUMASK => {
                 // Registers
-                regs.mask = data
+                regs.mask = PpuMask::from_bits_truncate(data);
             }
 
             PPUADDR => {
@@ -569,8 +569,6 @@ impl Memory for Ppu {
             }
 
             PPUDATA => {
-                // Internal
-
                 // Registers
                 self.bus.borrow_mut().write(regs.address, data);
 
@@ -579,6 +577,11 @@ impl Memory for Ppu {
                     true => 32, // going down
                 };
                 regs.address += increment;
+
+                // Internal
+
+                let vram_addr = self.internal.borrow().vram_addr.value();
+                self.internal.borrow_mut().vram_addr = RenderAddress::from(vram_addr + increment);
             }
 
             _ => panic!("PPU write not implemented for address: {address:0>4X}"),
@@ -593,56 +596,300 @@ impl Memory for Ppu {
 }
 
 impl PpuInternalRegisters {
-    #[inline]
     fn ppuctrl_write(&mut self, data: u8) {
-        let temp_vram_addr =
-            (self.temp_vram_addr.value() & !(0b11 << 10)) | ((data as u16 & 0b0000_0011) << 10);
-        self.temp_vram_addr = RenderAddress::from(temp_vram_addr);
+        self.temp_vram_addr
+            .set(RenderAddress::NAMETABLES_SELECT, data & 0b00000011);
     }
 
-    #[inline]
     fn ppustatus_read(&mut self) {
         self.write_toggle = WriteToggle::First;
     }
 
-    #[inline]
     fn ppuscroll_write(&mut self, data: u8) {
         match self.write_toggle {
             WriteToggle::First => {
-                self.temp_vram_addr = RenderAddress::from(
-                    (self.temp_vram_addr.value() & !0b0001_1111) | (data as u16 & 0b1111_1000),
-                );
+                self.temp_vram_addr
+                    .set(RenderAddress::COARSE_X_SCROLL, data >> 3);
                 self.fine_x_scroll = data & 0b0000_0111;
                 self.write_toggle = WriteToggle::Second;
             }
             WriteToggle::Second => {
-                self.temp_vram_addr = RenderAddress::from(
-                    (self.temp_vram_addr.value() & !0b0111_0011_1110_0000)
-                        | (((data & 0b0000_0111) as u16) << 12)
-                        | (((data & 0b1111_1000) as u16) << 5),
-                );
+                // println!("Set ppuscroll 2 to temp_vram_addr to {:08b}", data);
+                self.temp_vram_addr
+                    .set(RenderAddress::FINE_Y_SCROLL, data & 0b0000_0111);
+                self.temp_vram_addr
+                    .set(RenderAddress::COARSE_Y_SCROLL, data >> 3);
                 self.write_toggle = WriteToggle::First;
             }
         }
     }
 
-    #[inline]
     fn ppuaddr_write(&mut self, data: u8) {
         match self.write_toggle {
             WriteToggle::First => {
                 self.temp_vram_addr = RenderAddress::from(
-                    (self.temp_vram_addr.value() & 0x3F00) | (((data & 0x3F) as u16) << 8),
+                    (
+                        (self.temp_vram_addr.value() & 0b1100_0000_1111_1111)
+                            | ((data as u16 & 0b0011_1111) << 8)
+                    )
+                    // XXX according to nesdev, t (bit 15) = Z and bit Z is cleared.
+                    // What's bit Z?
+                        & 0b0011_1111_1111_1111,
                 );
-                // XXX according to nesdev, t (bit 15) = Z and bit Z is
-                // cleared. What's bit Z?
                 self.write_toggle = WriteToggle::Second;
             }
             WriteToggle::Second => {
                 self.temp_vram_addr =
-                    RenderAddress::from((self.temp_vram_addr.value() & 0x00FF) | data as u16);
-                self.vram_addr = self.temp_vram_addr;
+                    RenderAddress::from((self.temp_vram_addr.value() & 0xFF00) | data as u16);
+                self.vram_addr = self.temp_vram_addr.clone();
                 self.write_toggle = WriteToggle::First;
             }
         }
+    }
+
+    #[cfg(test)]
+    fn reset(&mut self) {
+        self.vram_addr = RenderAddress::from(0);
+        self.temp_vram_addr = RenderAddress::from(0);
+        self.fine_x_scroll = 0;
+        self.write_toggle = WriteToggle::First;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::rc::Rc;
+
+    use crate::{hardware::PPU_REGISTERS_START, processor::bus::Bus};
+
+    use super::*;
+
+    #[test]
+    fn test_loopy_scrolling_registers_read_and_write() {
+        // Test inspired by example in:
+        // https://www.nesdev.org/wiki/PPU_scrolling#Summary
+
+        let graphics_bus = Rc::new(RefCell::new(Bus::new("PPU")));
+        let mut ppu = Ppu::new(graphics_bus);
+
+        // LDA $00
+        // STA $2000
+        ppu.write(PPUCTRL - PPU_REGISTERS_START, 0);
+        assert_eq!(ppu.internal.borrow().temp_vram_addr.value(), 0);
+
+        // LDA $2002 -- resets write latch to 0
+        ppu.read(PPUSTATUS - PPU_REGISTERS_START);
+        assert_eq!(ppu.internal.borrow().write_toggle, WriteToggle::First);
+
+        // LDA $7D
+        // STA $2005 -- PPUSCROLL write 1
+        // LDA $5E
+        // STA $2005 -- PPUSCROLL write 2
+        ppu.write(PPUSCROLL - PPU_REGISTERS_START, 0x7D);
+        assert_eq!(
+            ppu.internal.borrow().temp_vram_addr.value(),
+            0b0000000_00001111
+        );
+        assert_eq!(ppu.internal.borrow().vram_addr.value(), 0);
+        assert_eq!(ppu.internal.borrow().fine_x_scroll, 0b101);
+        assert_eq!(ppu.internal.borrow().write_toggle, WriteToggle::Second);
+
+        ppu.write(PPUSCROLL - PPU_REGISTERS_START, 0x5E);
+        assert_eq!(
+            ppu.internal.borrow().temp_vram_addr.value(),
+            0b1100001_01101111
+        );
+        assert_eq!(ppu.internal.borrow().vram_addr.value(), 0);
+        assert_eq!(ppu.internal.borrow().fine_x_scroll, 0b101);
+        assert_eq!(ppu.internal.borrow().write_toggle, WriteToggle::First);
+
+        // LDA $3D
+        // STA $2006 -- PPUADDR write 1
+        // LDA $F0
+        // STA $2006 -- PPUADDR write 2
+        ppu.write(PPUADDR - PPU_REGISTERS_START, 0x3D);
+        assert_eq!(
+            ppu.internal.borrow().temp_vram_addr.value(),
+            0b0111101_01101111
+        );
+        assert_eq!(ppu.internal.borrow().vram_addr.value(), 0);
+        assert_eq!(ppu.internal.borrow().fine_x_scroll, 0b101);
+        assert_eq!(ppu.internal.borrow().write_toggle, WriteToggle::Second);
+
+        ppu.write(PPUADDR - PPU_REGISTERS_START, 0xF0);
+        assert_eq!(
+            ppu.internal.borrow().temp_vram_addr.value(),
+            0b0111101_11110000
+        );
+        assert_eq!(ppu.internal.borrow().vram_addr.value(), 0b0111101_11110000);
+        assert_eq!(ppu.internal.borrow().fine_x_scroll, 0b101);
+        assert_eq!(ppu.internal.borrow().write_toggle, WriteToggle::First);
+    }
+
+    // See https://www.nesdev.org/wiki/PPU_scrolling#Register_controls
+    // for further reference
+    mod test_ppu_internal_registers {
+        use super::*;
+
+        #[test]
+        fn test_ppuctrl_write() {
+            let graphics_bus = Rc::new(RefCell::new(Bus::new("PPU")));
+            let mut ppu = Ppu::new(graphics_bus);
+
+            ppu.write(PPUCTRL - PPU_REGISTERS_START, 0b1111_1111);
+            let regs = ppu.internal.borrow();
+            assert_eq!(regs.vram_addr.value(), 0);
+            assert_eq!(regs.temp_vram_addr.value(), 0b000_1100_0000_0000);
+            assert_eq!(regs.fine_x_scroll, 0);
+            assert_eq!(regs.write_toggle, WriteToggle::First);
+        }
+
+        #[test]
+        fn test_ppustatus_read() {
+            let graphics_bus = Rc::new(RefCell::new(Bus::new("PPU")));
+            let ppu = Ppu::new(graphics_bus);
+
+            ppu.internal.borrow_mut().write_toggle = WriteToggle::First;
+            ppu.read(PPUSTATUS - PPU_REGISTERS_START);
+            {
+                let regs = ppu.internal.borrow();
+                assert_eq!(regs.vram_addr.value(), 0);
+                assert_eq!(regs.temp_vram_addr.value(), 0);
+                assert_eq!(regs.fine_x_scroll, 0);
+                assert_eq!(regs.write_toggle, WriteToggle::First);
+            }
+
+            ppu.internal.borrow_mut().write_toggle = WriteToggle::Second;
+            ppu.read(PPUSTATUS - PPU_REGISTERS_START);
+            {
+                let regs = ppu.internal.borrow();
+                assert_eq!(regs.vram_addr.value(), 0);
+                assert_eq!(regs.temp_vram_addr.value(), 0);
+                assert_eq!(regs.fine_x_scroll, 0);
+                assert_eq!(regs.write_toggle, WriteToggle::First);
+            }
+        }
+    }
+
+    #[test]
+    fn test_ppuscroll_writes() {
+        let graphics_bus = Rc::new(RefCell::new(Bus::new("PPU")));
+        let mut ppu = Ppu::new(graphics_bus);
+
+        // first write
+
+        ppu.write(PPUSCROLL - PPU_REGISTERS_START, 0b1111_1000);
+        {
+            let regs = ppu.internal.borrow();
+            assert_eq!(regs.vram_addr.value(), 0);
+            assert_eq!(regs.temp_vram_addr.value(), 0b0000_0000_0001_1111);
+            assert_eq!(regs.fine_x_scroll, 0);
+            assert_eq!(regs.write_toggle, WriteToggle::Second);
+        }
+
+        ppu.internal.borrow_mut().reset();
+
+        ppu.write(PPUSCROLL - PPU_REGISTERS_START, 0b0000_0111);
+        {
+            let regs = ppu.internal.borrow();
+            assert_eq!(regs.vram_addr.value(), 0);
+            assert_eq!(regs.temp_vram_addr.value(), 0);
+            assert_eq!(regs.fine_x_scroll, 0b111);
+            assert_eq!(regs.write_toggle, WriteToggle::Second);
+        }
+
+        // second write
+
+        ppu.internal.borrow_mut().reset();
+        ppu.internal.borrow_mut().write_toggle = WriteToggle::Second;
+        ppu.write(PPUSCROLL - PPU_REGISTERS_START, 0b1111_1000);
+        {
+            let regs = ppu.internal.borrow();
+            assert_eq!(regs.vram_addr.value(), 0);
+            assert_eq!(regs.temp_vram_addr.value(), 0b0000_0011_1110_0000);
+            assert_eq!(regs.fine_x_scroll, 0);
+            assert_eq!(regs.write_toggle, WriteToggle::First);
+        }
+
+        ppu.internal.borrow_mut().reset();
+        ppu.internal.borrow_mut().write_toggle = WriteToggle::Second;
+        ppu.write(PPUSCROLL - PPU_REGISTERS_START, 0b0000_0111);
+        {
+            let regs = ppu.internal.borrow();
+            assert_eq!(regs.vram_addr.value(), 0);
+            assert_eq!(regs.temp_vram_addr.value(), 0b0111_0000_0000_0000);
+            assert_eq!(regs.fine_x_scroll, 0);
+            assert_eq!(regs.write_toggle, WriteToggle::First);
+        }
+    }
+
+    #[test]
+    fn test_ppuaddr_writes() {
+        let graphics_bus = Rc::new(RefCell::new(Bus::new("PPU")));
+        let mut ppu = Ppu::new(graphics_bus);
+
+        // first write
+
+        // bit Z (15) is cleared
+        ppu.internal.borrow_mut().temp_vram_addr = RenderAddress::from(0b0100_0000_0000_0000);
+        ppu.write(PPUADDR - PPU_REGISTERS_START, 0);
+        {
+            let regs = ppu.internal.borrow();
+            assert_eq!(regs.vram_addr.value(), 0);
+            assert_eq!(regs.temp_vram_addr.value(), 0);
+            assert_eq!(regs.fine_x_scroll, 0);
+            assert_eq!(regs.write_toggle, WriteToggle::Second);
+        }
+
+        // First two bits of data are unused
+        ppu.internal.borrow_mut().reset();
+        ppu.write(PPUADDR - PPU_REGISTERS_START, 0b1100_0000);
+        {
+            let regs = ppu.internal.borrow();
+            assert_eq!(regs.vram_addr.value(), 0);
+            assert_eq!(regs.temp_vram_addr.value(), 0);
+            assert_eq!(regs.fine_x_scroll, 0);
+            assert_eq!(regs.write_toggle, WriteToggle::Second);
+        }
+
+        // set value into temp_vram_addr
+        ppu.internal.borrow_mut().reset();
+        ppu.write(PPUADDR - PPU_REGISTERS_START, 0b0011_1111);
+        {
+            let regs = ppu.internal.borrow();
+            assert_eq!(regs.vram_addr.value(), 0);
+            assert_eq!(regs.temp_vram_addr.value(), 0b0011_1111_0000_0000);
+            assert_eq!(regs.fine_x_scroll, 0);
+            assert_eq!(regs.write_toggle, WriteToggle::Second);
+        }
+
+        // second write
+
+        ppu.internal.borrow_mut().reset();
+        ppu.internal.borrow_mut().write_toggle = WriteToggle::Second;
+        ppu.write(PPUADDR - PPU_REGISTERS_START, 0b1111_1111);
+        {
+            let regs = ppu.internal.borrow();
+            assert_eq!(regs.temp_vram_addr.value(), 0b0000_0000_1111_1111);
+            assert_eq!(regs.vram_addr.value(), 0b0000_0000_1111_1111);
+            assert_eq!(regs.fine_x_scroll, 0);
+            assert_eq!(regs.write_toggle, WriteToggle::First);
+        }
+
+        ppu.internal.borrow_mut().write_toggle = WriteToggle::Second;
+        ppu.write(PPUADDR - PPU_REGISTERS_START, 0b1010_1010);
+        {
+            let regs = ppu.internal.borrow();
+            assert_eq!(regs.temp_vram_addr.value(), 0b0000_0000_1010_1010);
+            assert_eq!(regs.vram_addr.value(), 0b0000_0000_1010_1010);
+            assert_eq!(regs.fine_x_scroll, 0);
+            assert_eq!(regs.write_toggle, WriteToggle::First);
+        }
+    }
+
+    #[test]
+    fn test_ppudata_reads_and_writes() {
+        // TODO
+        todo!()
     }
 }

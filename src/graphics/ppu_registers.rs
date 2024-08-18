@@ -32,6 +32,14 @@ bitflags! {
 }
 
 bitflags! {
+    pub struct PpuMask: u8 {
+        const BACKGROUND_RENDERING_ENABLE = 0b0000_1000;
+
+        // TODO
+    }
+}
+
+bitflags! {
     pub struct PpuStatus: u8 {
         // PPU is in VBL status
         const VERTICAL_BLANK = 0b1000_0000;
