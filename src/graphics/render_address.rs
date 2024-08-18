@@ -5,7 +5,7 @@ use crate::utils::BitGroup;
 ///
 /// It's a 15-bit address used for both reading and writing PPU memory through
 /// PPUDATA ($2007) register
-#[derive(Clone)]
+#[derive(Copy, Clone)]
 pub struct RenderAddress {
     value: BitGroup<u16>,
 }

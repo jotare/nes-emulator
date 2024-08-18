@@ -37,6 +37,7 @@
 
 use std::cell::RefCell;
 
+use crate::graphics::render_address::RenderAddress;
 use crate::graphics::Frame;
 use crate::graphics::FramePixel;
 use crate::graphics::Pixel;
@@ -55,7 +56,7 @@ use super::ppu_registers::{PpuCtrl, PpuStatus};
 // PPU background scrolling functionality is implemented using nesdev loopy
 // contributor design.
 //
-// Initial implementations of NES PPU emulations used and address register, a
+// Initial implementations of NES PPU emulations used an address register, a
 // data and data buffer and a flag to indicate which byte was written in 16-bit
 // writes.
 //
@@ -87,40 +88,6 @@ struct PpuRegisters {
 
     data: u8,
     data_buffer: u8,
-}
-
-#[derive(Clone, Copy)]
-pub struct RenderAddress {
-    value: BitGroup<u16>,
-}
-
-impl RenderAddress {
-    pub const FINE_Y_SCROLL: u16 = 0b0111_0000_0000_0000;
-    pub const NAMETABLE_SELECT: u16 = 0b0000_1100_0000_0000;
-    pub const COARSE_Y_SCROLL: u16 = 0b0000_0011_1110_0000;
-    pub const COARSE_X_SCROLL: u16 = 0b0000_0000_0001_1111;
-
-    pub fn set(&mut self, group: u16, value: u8) {
-        self.value.set(group, value.into());
-    }
-
-    pub fn value(&self) -> u16 {
-        self.value.into()
-    }
-}
-
-impl From<RenderAddress> for u16 {
-    fn from(value: RenderAddress) -> Self {
-        value.value.into()
-    }
-}
-
-impl From<u16> for RenderAddress {
-    fn from(value: u16) -> Self {
-        Self {
-            value: BitGroup::new(value),
-        }
-    }
 }
 
 struct PpuInternalRegisters {
