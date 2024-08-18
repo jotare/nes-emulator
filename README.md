@@ -74,6 +74,15 @@ cargo test
 ```
 
 
+## Debugging
+
+*nes-emulator* library uses logging as observability/debugging tool. Some
+modules can export verbose logs, so it's recommended to customize `RUST_LOG` to
+print only the logs needed.
+
+For example, to log CPU instructions being executed, run with `RUST_LOG="nes_emulator::processor::cpu=DEBUG"`
+
+
 ## Contributing
 
 Contributions are more than welcome. However, to make code more standard,
