@@ -159,7 +159,9 @@ impl GtkUi {
                 .expect("Keyboard channel once cell should be initialized by now")
             {
                 Some(sender) => {
-                    sender.send(character);
+                    sender
+                        .send(character)
+                        .expect("Unable to send character through channel");
                     Inhibit(true)
                 }
                 None => Inhibit(false),
