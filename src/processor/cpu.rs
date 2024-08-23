@@ -172,7 +172,7 @@ impl Cpu {
     fn execute_interrupt(&mut self, interrupt: Interrupt) {
         let (lb, hb) = match interrupt {
             Interrupt::NonMaskableInterrupt => {
-                println!("CPU executing NMI");
+                // println!("CPU executing NMI");
                 (0xFFFA, 0xFFFB)
             }
             Interrupt::Reset => (0xFFFC, 0xFFFD),
