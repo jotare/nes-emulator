@@ -15,7 +15,7 @@ bitflags! {
         /// 0: 8x8 pixels; 1: 8x16 pixels
         const SPRITE_SIZE = 0b0010_0000;
 
-        /// Backgroun pattern table address (0 = $0000; 1 = $1000)
+        /// Background pattern table address (0 = $0000; 1 = $1000)
         const BACKGROUND_PATTERN_TABLE = 0b0001_0000;
 
         /// Sprite pattern table address for 8x8 sprites (0: $0000; 1: $1000;
@@ -34,6 +34,8 @@ bitflags! {
 bitflags! {
     pub struct PpuMask: u8 {
         const BACKGROUND_RENDERING_ENABLE = 0b0000_1000;
+
+        const SPRITE_RENDERING_ENABLED = 0b0001_0000;
 
         // TODO
     }
