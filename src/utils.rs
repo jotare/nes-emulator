@@ -3,6 +3,10 @@ pub fn bv(value: u8, bit: u8) -> u8 {
     value.rotate_right(bit.into()) & 1
 }
 
+pub fn bv_16(value: u16, bit: u8) -> u16 {
+    value.rotate_right(bit.into()) & 1
+}
+
 /// Return the value from `value` between bit positions `major_bit` and
 /// `minor_bit`
 pub fn bvs_8(value: u8, major_bit: u8, minor_bit: u8) -> u8 {
@@ -86,6 +90,14 @@ mod tests {
         assert_eq!(bv(0b0000_0001, 0), 1);
         assert_eq!(bv(0b0001_0000, 4), 1);
         assert_eq!(bv(0b1110_1111, 4), 0);
+    }
+
+    #[test]
+    fn test_bv_16() {
+        assert_eq!(bv_16(0b0000_0000_0000_0000, 7), 0);
+        assert_eq!(bv_16(0b0000_0000_1000_0000, 7), 1);
+        assert_eq!(bv_16(0b1111_1111_0111_1111, 7), 0);
+        assert_eq!(bv_16(0b1111_1111_1111_1111, 7), 1);
     }
 
     #[test]
