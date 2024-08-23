@@ -157,5 +157,16 @@ mod tests {
 
         g.toggle(0b1111_1111);
         assert_eq!(g.get(0b1111_1111), 0b1001_0101);
+
+        let mut g = BitGroup::new(0b0001_0000);
+        let flag = 0b0001_0000;
+
+        g.toggle(flag);
+        assert_eq!(g.get(flag), 0);
+        assert_eq!(g.get(0xFFFF), 0);
+
+        g.toggle(flag);
+        assert_eq!(g.get(flag), 1);
+        assert_eq!(g.get(0xFFFF), flag);
     }
 }
