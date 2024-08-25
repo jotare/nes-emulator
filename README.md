@@ -89,13 +89,13 @@ For example, to log CPU instructions being executed, run with `RUST_LOG="nes_emu
 Let's see some nice screenshots of things working right now :)
 
 Donkey Kong:
-![Donkey Kong](./assets/bg-rendering/Donkey Kong.png)
+![Donkey Kong](<./assets/bg-rendering/Donkey Kong.png>)
 
 Donkey Kong 3:
-![Donkey Kong 3](./assets/bg-rendering/Donkey Kong 3.png)
+![Donkey Kong 3](<./assets/bg-rendering/Donkey Kong 3.png>)
 
 Ice Climber:
-![Ice Climber](./assets/bg-rendering/Ice Climber.png)
+![Ice Climber](<./assets/bg-rendering/Ice Climber.png>)
 
 ## Contributing
 
