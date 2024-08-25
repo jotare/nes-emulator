@@ -37,9 +37,10 @@
 
 use std::cell::RefCell;
 
-use log::debug;
+use log::{debug, trace};
 
 use crate::graphics::pattern_table::PatternTableAddress;
+use crate::graphics::ppu_registers::PpuRegisters;
 use crate::graphics::ppu_registers::{PpuCtrl, PpuMask, PpuStatus};
 use crate::graphics::render_address::RenderAddress;
 use crate::graphics::Frame;
@@ -49,7 +50,6 @@ use crate::hardware::{
     OAMADDR, PALETTE_MEMORY_START, PPUADDR, PPUCTRL, PPUDATA, PPUMASK, PPUSCROLL, PPUSTATUS,
 };
 use crate::interfaces::{Bus, Memory};
-use crate::processor::memory::Mirroring;
 use crate::types::SharedBus;
 use crate::utils;
 
@@ -73,7 +73,6 @@ pub struct Ppu {
     scan_line: u16,
     frame: Frame,
     frame_completed: bool,
-    mirroring: Mirroring,
     nmi_request: bool,
 
     buffers: Buffers,
@@ -106,19 +105,6 @@ struct PixelData {
     attributes: (u8, u8),
 }
 
-struct PpuRegisters {
-    ctrl: PpuCtrl,
-    mask: PpuMask,
-    status: PpuStatus,
-
-    // TODO
-    address: u16,
-    ongoing_address_write: bool,
-
-    data: u8,
-    data_buffer: u8,
-}
-
 struct PpuInternalRegisters {
     /// Current VRAM address (15 bits)
     vram_addr: RenderAddress,
@@ -144,18 +130,7 @@ enum WriteToggle {
 impl Ppu {
     pub fn new(bus: SharedBus) -> Self {
         Self {
-            registers: RefCell::new(PpuRegisters {
-                ctrl: PpuCtrl::empty(),
-                mask: PpuMask::empty(),
-                status: PpuStatus::empty(),
-
-                // TODO
-                address: 0,
-                ongoing_address_write: false,
-
-                data: 0,
-                data_buffer: 0,
-            }),
+            registers: RefCell::new(PpuRegisters::default()),
             internal: RefCell::new(PpuInternalRegisters {
                 vram_addr: RenderAddress::from(0),
                 temp_vram_addr: RenderAddress::from(0),
@@ -167,7 +142,6 @@ impl Ppu {
             scan_line: 0,
             frame: Frame::black(),
             frame_completed: false,
-            mirroring: Mirroring::Horizontal,
             nmi_request: false,
 
             buffers: Buffers::default(),
@@ -202,7 +176,7 @@ impl Ppu {
                 // makes the same memory accesses it would for a regular
                 // scanline
                 if self.scan_line == 261 && self.cycle == 1 {
-                    self.unset_vertical_blank();
+                    self.registers.borrow_mut().unset_vertical_blank();
                 }
 
                 match self.cycle {
@@ -277,7 +251,6 @@ impl Ppu {
 
                         if self.cycle == 256 {
                             if self.bg_rendering_enabled() {
-                                // println!("Increment Y in {} {}", self.cycle, self.scan_line);
                                 self.internal.borrow_mut().vram_addr.increment_y();
                             }
                         }
@@ -313,8 +286,8 @@ impl Ppu {
             }
 
             241 if self.cycle == 1 => {
-                self.set_vertical_blank();
-                if self.registers.borrow().ctrl.contains(PpuCtrl::NMI_ENABLE) {
+                self.registers.borrow_mut().set_vertical_blank();
+                if self.registers.borrow().nmi_enabled() {
                     self.request_nmi();
                 }
             }
@@ -359,17 +332,8 @@ impl Ppu {
         // the high 2 CR address lines to 0x2000 region and use the remaining 12
         // bits from v. High bits of v are used for fine Y during rendering, so
         // we aren't interested in them during nametable fetch
-        let nametable = self
-            .registers
-            .borrow()
-            .ctrl
-            .intersection(PpuCtrl::BACKGROUND_PATTERN_TABLE)
-            .bits()
-            >> PpuCtrl::BACKGROUND_PATTERN_TABLE.bits().trailing_zeros();
         let tile_number_address = 0x2000 | (self.internal.borrow().vram_addr.value() & 0x0FFF);
-        let tile_number = self.bus.borrow().read(tile_number_address);
-        // print!("Nametable: {nametable} -- Tile: {tile_number} ");
-        tile_number
+        self.bus.borrow().read(tile_number_address)
     }
 
     /// Fetch the attributes data corresponding to the next tile to render
@@ -388,26 +352,17 @@ impl Ppu {
             let v = self.internal.borrow().vram_addr.value();
             0x23C0 | (v & 0x0C00) | ((v >> 4) & 0x38) | ((v >> 2) & 0x07)
         };
-        // print!("-- Attributes addr {attributes_address:04X}");
         self.bus.borrow().read(attributes_address)
     }
 
     /// Fetch background pattern planes corresponding to the next tile to render
     fn fetch_pattern_planes(&self, tile_number: u8) -> (u8, u8) {
-        let pattern_table = self
-            .registers
-            .borrow()
-            .ctrl
-            .intersection(PpuCtrl::BACKGROUND_PATTERN_TABLE)
-            .bits()
-            >> PpuCtrl::BACKGROUND_PATTERN_TABLE.bits().trailing_zeros();
+        let pattern_table = self.registers.borrow().background_pattern_table();
         let fine_y = self
             .internal
             .borrow()
             .vram_addr
             .get(RenderAddress::FINE_Y_SCROLL) as u8;
-
-        // println!("  -- Pattern table: {pattern_table} -- Fine Y: {fine_y}");
 
         let mut pattern_table_address = PatternTableAddress::new(pattern_table);
         pattern_table_address.set(PatternTableAddress::TILE_NUMBER, tile_number);
@@ -476,26 +431,14 @@ impl Ppu {
         }
     }
 
+    // Reexport for readability
     fn rendering_enabled(&self) -> bool {
-        self.bg_rendering_enabled() || self.sprite_rendering_enabled()
+        self.registers.borrow().rendering_enabled()
     }
 
+    // Reexport for readability
     fn bg_rendering_enabled(&self) -> bool {
-        self.registers
-            .borrow()
-            .mask
-            .intersects(PpuMask::BACKGROUND_RENDERING_ENABLE)
-    }
-
-    fn sprite_rendering_enabled(&self) -> bool {
-        self.registers
-            .borrow()
-            .mask
-            .intersects(PpuMask::SPRITE_RENDERING_ENABLED)
-    }
-
-    pub fn set_mirroring(&mut self, mirroring: Mirroring) {
-        self.mirroring = mirroring;
+        self.registers.borrow().background_rendering_enabled()
     }
 
     pub fn frame_ready(&self) -> bool {
@@ -522,30 +465,10 @@ impl Ppu {
         self.nmi_request = true;
     }
 
-    fn set_vertical_blank(&mut self) {
-        self.registers
-            .borrow_mut()
-            .status
-            .set(PpuStatus::VERTICAL_BLANK, true);
-    }
-
-    fn unset_vertical_blank(&mut self) {
-        self.registers
-            .borrow_mut()
-            .status
-            .set(PpuStatus::VERTICAL_BLANK, false);
-    }
-
     fn render_nametable(&self) -> Frame {
         let mut screen = Frame::black();
 
-        let pattern_table = self
-            .registers
-            .borrow()
-            .ctrl
-            .intersection(PpuCtrl::BACKGROUND_PATTERN_TABLE)
-            .bits()
-            >> PpuCtrl::BACKGROUND_PATTERN_TABLE.bits().trailing_zeros();
+        let pattern_table = self.registers.borrow().background_pattern_table();
         let (pattern_table_address, offset) = match pattern_table {
             0 => (0x0000, 0),
             1 => (0x1000, 16),
@@ -653,7 +576,7 @@ impl Memory for Ppu {
                 let mut internal = self.internal.borrow_mut();
 
                 // Delayed read
-                regs.data = regs.data_buffer;
+                let mut data = regs.data_buffer;
 
                 // Update buffer for next read
                 let vram_address = internal.vram_addr.value();
@@ -663,28 +586,23 @@ impl Memory for Ppu {
                     // some addresses used combinatory logic to avoid one clock
                     // delay between reading and having data available (palettes
                     // for example)
-                    regs.data = regs.data_buffer;
+                    data = regs.data_buffer;
                 }
 
                 // Auto-increment vram address horizontally or vertically
-                // depending on PPUCTRL
-                let increment = match regs.ctrl.contains(PpuCtrl::VRAM_ADDRESS_INCREMENT) {
-                    false => 1, // going across
-                    true => 32, // going down
-                };
-
+                let increment = regs.vram_address_increment() as u16;
                 internal.vram_addr = RenderAddress::from(vram_address + increment);
 
-                regs.data
+                data
             }
             _ => panic!("PPU read not implemented for address: {address:0>4X}"),
         };
-        // println!("PPU read from: {address:0>4X} <- {data:0>2X}");
+        trace!("PPU read from: {address:0>4X} <- {data:0>2X}");
         data
     }
 
     fn write(&mut self, address: u16, data: u8) {
-        // println!("PPU write to: {address:0>4X} -> {data:0>2X}");
+        trace!("PPU write to: {address:0>4X} -> {data:0>2X}");
 
         let address = address + 0x2000;
         let mut regs = self.registers.borrow_mut();
@@ -704,7 +622,7 @@ impl Memory for Ppu {
             }
 
             OAMADDR => {
-                // println!("PPU ignored read to OAMADDR");
+                // Ignored read to OAMADDR (not implemented yet)
             }
 
             PPUSCROLL => {
@@ -718,7 +636,6 @@ impl Memory for Ppu {
                         internal.write_toggle = WriteToggle::Second;
                     }
                     WriteToggle::Second => {
-                        // println!("Set ppuscroll 2 to temp_vram_addr to {:08b}", data);
                         internal
                             .temp_vram_addr
                             .set(RenderAddress::FINE_Y_SCROLL, data & 0b0000_0111);
@@ -762,11 +679,7 @@ impl Memory for Ppu {
                 self.bus.borrow_mut().write(vram_address, data);
 
                 // Auto-increment vram address horizontally or vertically
-                // dependnig on PPUCTRL
-                let increment = match regs.ctrl.contains(PpuCtrl::VRAM_ADDRESS_INCREMENT) {
-                    false => 1, // going across
-                    true => 32, // going down
-                };
+                let increment = regs.vram_address_increment() as u16;
                 internal.vram_addr = RenderAddress::from(vram_address + increment);
             }
 

@@ -272,7 +272,6 @@ impl Nes {
             )
             .unwrap();
 
-        self.ppu.borrow_mut().set_mirroring(cartidge.mirroring());
         self.nametable
             .borrow_mut()
             .set_mirroring(cartidge.mirroring());
