@@ -79,8 +79,6 @@ pub const PALETTE_MEMORY_SIZE: u16 = PALETTE_MEMORY_END - PALETTE_MEMORY_START +
 pub const PALETTE_MIRRORS: u16 = 7;
 pub const PALETTE_MEMORY_MIRRORS_END: u16 = 0x3FFF;
 
-// TODO: palette mirrors
-
 // Screen
 // ------
 
