@@ -5,6 +5,85 @@
 
 use bitflags::bitflags;
 
+pub struct PpuRegisters {
+    pub ctrl: PpuCtrl,
+    pub mask: PpuMask,
+    pub status: PpuStatus,
+    pub data_buffer: u8,
+}
+
+impl Default for PpuRegisters {
+    fn default() -> Self {
+        Self {
+            ctrl: PpuCtrl::empty(),
+            mask: PpuMask::empty(),
+            status: PpuStatus::empty(),
+            data_buffer: 0,
+        }
+    }
+}
+
+impl PpuRegisters {
+    pub fn reset(&mut self) {
+        self.ctrl = PpuCtrl::empty();
+        self.mask = PpuMask::empty();
+        self.status = PpuStatus::empty();
+        self.data_buffer = 0;
+    }
+
+    // PPUCTRL
+
+    #[inline]
+    pub fn nmi_enabled(&self) -> bool {
+        self.ctrl.contains(PpuCtrl::NMI_ENABLE)
+    }
+
+    #[inline]
+    pub fn background_pattern_table(&self) -> u8 {
+        self.ctrl
+            .intersection(PpuCtrl::BACKGROUND_PATTERN_TABLE)
+            .bits()
+            >> PpuCtrl::BACKGROUND_PATTERN_TABLE.bits().trailing_zeros()
+    }
+
+    #[inline]
+    pub fn vram_address_increment(&self) -> usize {
+        match self.ctrl.contains(PpuCtrl::VRAM_ADDRESS_INCREMENT) {
+            false => 1, // going across
+            true => 32, // going down
+        }
+    }
+
+    // PPUMASK
+
+    #[inline]
+    pub fn rendering_enabled(&self) -> bool {
+        self.background_rendering_enabled() || self.sprite_rendering_enabled()
+    }
+
+    #[inline]
+    pub fn background_rendering_enabled(&self) -> bool {
+        self.mask.contains(PpuMask::BACKGROUND_RENDERING_ENABLE)
+    }
+
+    #[inline]
+    pub fn sprite_rendering_enabled(&self) -> bool {
+        self.mask.contains(PpuMask::SPRITE_RENDERING_ENABLED)
+    }
+
+    // PPUSTATUS
+
+    #[inline]
+    pub fn set_vertical_blank(&mut self) {
+        self.status.set(PpuStatus::VERTICAL_BLANK, true);
+    }
+
+    #[inline]
+    pub fn unset_vertical_blank(&mut self) {
+        self.status.set(PpuStatus::VERTICAL_BLANK, false);
+    }
+}
+
 bitflags! {
     pub struct PpuCtrl: u8 {
         /// Generate an NMI at the start of the vertical blanking interval
