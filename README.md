@@ -15,10 +15,11 @@ Although, any contribution is welcome.
 - Buses
 - GTK4 GUI capable to render frames
 - Partial Maper-0 support
+- PPU (Picture Processing Unit) background rendering
 
 ### Work in progress
 
-- PPU (Picture Processing Unit)
+- PPU (Picture Processing Unit) sprite rendering
 - Mapper-0 suppot
 - Support more mappers
 
