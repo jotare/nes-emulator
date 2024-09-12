@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+0.46.0
+------
+- PPU background rendering with scrolling
+- Add palette mirrors
+- Improve controllers
+
 0.45.0
 ------
 - Bus specifies a unique id per attached device. Interface and log improvements
