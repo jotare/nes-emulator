@@ -27,9 +27,9 @@ bitflags! {
 }
 
 impl Controller {
-    pub fn new(keyboard: Receiver<char>, enabled: bool) -> Self {
+    pub fn new(keyboard: Receiver<char>) -> Self {
         Self {
-            enabled,
+            enabled: false,
             buttons: ControllerButtons::default(),
             keyboard_channel: keyboard,
             controller_snapshot: RefCell::new(InnerController::empty()),

@@ -123,7 +123,7 @@ impl Nes {
             )
             .unwrap();
 
-        let controller_one = Rc::new(RefCell::new(Controller::new(receiver_one, false)));
+        let controller_one = Rc::new(RefCell::new(Controller::new(receiver_one)));
         let controller_one_ptr = Rc::clone(&controller_one);
         main_bus
             .borrow_mut()
@@ -137,7 +137,7 @@ impl Nes {
             )
             .unwrap();
 
-        let controller_two = Rc::new(RefCell::new(Controller::new(receiver_two, false)));
+        let controller_two = Rc::new(RefCell::new(Controller::new(receiver_two)));
         let controller_two_ptr = Rc::clone(&controller_two);
         main_bus
             .borrow_mut()
