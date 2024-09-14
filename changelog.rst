@@ -1,6 +1,14 @@
 CHANGELOG
 =========
 
+0.47.0
+------
+- Implement an event bus for inter-component communications (NMI, frame
+  ready...)
+- Better encapsulation of keyboard channel between UI and controllers
+- Add switch off event so the system can stop gracefully
+- Add nes function to setup TV (GUI + audio when implemented)
+
 0.46.0
 ------
 - PPU background rendering with scrolling

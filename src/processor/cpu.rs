@@ -25,6 +25,7 @@ pub struct Cpu {
 }
 
 #[derive(Copy, Clone)]
+#[allow(clippy::enum_variant_names)]
 pub enum Interrupt {
     NonMaskableInterrupt, // NMI
     Reset,                // RES

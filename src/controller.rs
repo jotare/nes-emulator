@@ -1,15 +1,15 @@
 use std::cell::RefCell;
 
 use bitflags::bitflags;
-use crossbeam_channel::{Receiver, TryRecvError};
 
+use crate::events::KeyboardListener;
 use crate::interfaces::Memory;
 use crate::utils;
 
 pub struct Controller {
     enabled: bool,
     buttons: ControllerButtons,
-    keyboard_channel: Receiver<char>,
+    keyboard_listener: KeyboardListener,
     controller_snapshot: RefCell<InnerController>,
 }
 
@@ -27,11 +27,11 @@ bitflags! {
 }
 
 impl Controller {
-    pub fn new(keyboard: Receiver<char>) -> Self {
+    pub fn new(keyboard: KeyboardListener) -> Self {
         Self {
             enabled: false,
             buttons: ControllerButtons::default(),
-            keyboard_channel: keyboard,
+            keyboard_listener: keyboard,
             controller_snapshot: RefCell::new(InnerController::empty()),
         }
     }
@@ -73,51 +73,45 @@ impl Memory for Controller {
         // TODO: if write = 1, signal the controller to poll it's input. write =
         // 0 to end polling. Read bit by bit
 
-        // Read PISO (Parallel-In Serial-Out)
-        let mut buffer = String::new();
-
-        loop {
-            match self.keyboard_channel.try_recv() {
-                Ok(c) => buffer.push(c),
-                Err(TryRecvError::Empty) => break,
-                Err(TryRecvError::Disconnected) => panic!("Keyboard channel disconnected!"),
-            }
-        }
-
         if !self.enabled {
+            // if controller not enabled, buffer will be emptied so we don't
+            // accumulate past inputs
+            self.keyboard_listener.flush();
             return;
         }
 
-        if buffer.is_empty() {
+        // Read PISO (Parallel-In Serial-Out)
+        let input = self.keyboard_listener.read();
+        if input.is_empty() {
             return;
         }
 
-        let mut input = InnerController::empty();
-        for c in buffer.chars() {
+        let mut state = InnerController::empty();
+        for c in input.chars() {
             let c = c.to_uppercase().next().unwrap();
             if c == self.buttons.left {
-                input.insert(InnerController::LEFT);
+                state.insert(InnerController::LEFT);
             } else if c == self.buttons.down {
-                input.insert(InnerController::DOWN);
+                state.insert(InnerController::DOWN);
             } else if c == self.buttons.right {
-                input.insert(InnerController::RIGHT);
+                state.insert(InnerController::RIGHT);
             } else if c == self.buttons.up {
-                input.insert(InnerController::UP);
+                state.insert(InnerController::UP);
             } else if c == self.buttons.select {
-                input.insert(InnerController::SELECT);
+                state.insert(InnerController::SELECT);
             } else if c == self.buttons.start {
-                input.insert(InnerController::START);
+                state.insert(InnerController::START);
             } else if c == self.buttons.a {
-                input.insert(InnerController::A);
+                state.insert(InnerController::A);
             } else if c == self.buttons.b {
-                input.insert(InnerController::B);
+                state.insert(InnerController::B);
             } else {
                 // ignore
             }
         }
         println!();
 
-        *self.controller_snapshot.borrow_mut() = input;
+        *self.controller_snapshot.borrow_mut() = state;
         // println!("[controller] New controller: {:0>8b}", input.bits());
     }
 

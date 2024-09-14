@@ -39,6 +39,8 @@ use std::cell::RefCell;
 
 use log::{debug, trace};
 
+use crate::events::Event;
+use crate::events::SharedEventBus;
 use crate::graphics::pattern_table::PatternTableAddress;
 use crate::graphics::ppu_registers::PpuRegisters;
 use crate::graphics::ppu_registers::{PpuCtrl, PpuMask, PpuStatus};
@@ -66,14 +68,16 @@ use crate::utils;
 // loopy registers are able to emulate more accurately the NES PPU. This
 // registers are implemented as [`InternalRegisters`].
 pub struct Ppu {
+    bus: SharedBus,
+    event_bus: SharedEventBus,
+
+    frame: Frame,
+
     registers: RefCell<PpuRegisters>,
     internal: RefCell<PpuInternalRegisters>,
-    bus: SharedBus,
+
     cycle: u16,
     scan_line: u16,
-    frame: Frame,
-    frame_completed: bool,
-    nmi_request: bool,
 
     buffers: Buffers,
     shifters: Shifters,
@@ -105,6 +109,7 @@ struct PixelData {
     attributes: (u8, u8),
 }
 
+#[derive(Default)]
 struct PpuInternalRegisters {
     /// Current VRAM address (15 bits)
     vram_addr: RenderAddress,
@@ -128,21 +133,18 @@ enum WriteToggle {
 }
 
 impl Ppu {
-    pub fn new(bus: SharedBus) -> Self {
+    pub fn new(bus: SharedBus, event_bus: SharedEventBus) -> Self {
         Self {
-            registers: RefCell::new(PpuRegisters::default()),
-            internal: RefCell::new(PpuInternalRegisters {
-                vram_addr: RenderAddress::from(0),
-                temp_vram_addr: RenderAddress::from(0),
-                fine_x_scroll: 0,
-                write_toggle: WriteToggle::First,
-            }),
             bus,
+            event_bus,
+
+            frame: Frame::black(),
+
+            registers: RefCell::new(PpuRegisters::default()),
+            internal: RefCell::new(PpuInternalRegisters::default()),
+
             cycle: 0,
             scan_line: 0,
-            frame: Frame::black(),
-            frame_completed: false,
-            nmi_request: false,
 
             buffers: Buffers::default(),
             shifters: Shifters::default(),
@@ -211,7 +213,7 @@ impl Ppu {
                                     & 0x02
                                     > 0
                                 {
-                                    next_attributes = next_attributes >> 4;
+                                    next_attributes >>= 4;
                                 }
                                 if self
                                     .internal
@@ -221,9 +223,9 @@ impl Ppu {
                                     & 0x02
                                     > 0
                                 {
-                                    next_attributes = next_attributes >> 2;
+                                    next_attributes >>= 2;
                                 }
-                                next_attributes = next_attributes & 0x03;
+                                next_attributes &= 0x03;
 
                                 self.buffers.next_attributes = next_attributes;
                             }
@@ -249,10 +251,8 @@ impl Ppu {
                             _ => panic!("Impossible condition!"),
                         }
 
-                        if self.cycle == 256 {
-                            if self.bg_rendering_enabled() {
-                                self.internal.borrow_mut().vram_addr.increment_y();
-                            }
+                        if self.cycle == 256 && self.bg_rendering_enabled() {
+                            self.internal.borrow_mut().vram_addr.increment_y();
                         }
                     }
 
@@ -288,7 +288,7 @@ impl Ppu {
             241 if self.cycle == 1 => {
                 self.registers.borrow_mut().set_vertical_blank();
                 if self.registers.borrow().nmi_enabled() {
-                    self.request_nmi();
+                    self.event_bus.access().emit(Event::NMI)
                 }
             }
 
@@ -311,7 +311,7 @@ impl Ppu {
 
             if self.scan_line > 261 {
                 self.scan_line = 0;
-                self.frame_completed = true;
+                self.event_bus.access().emit(Event::FrameReady);
             }
         }
     }
@@ -424,7 +424,7 @@ impl Ppu {
             let color = Pixel::from(
                 self.bus
                     .borrow()
-                    .read(PALETTE_MEMORY_START + palette_offset as u16),
+                    .read(PALETTE_MEMORY_START + palette_offset),
             );
 
             self.frame.set_pixel(color, FramePixel { col, row });
@@ -441,28 +441,10 @@ impl Ppu {
         self.registers.borrow().background_rendering_enabled()
     }
 
-    pub fn frame_ready(&self) -> bool {
-        self.frame_completed
-    }
-
     pub fn take_frame(&mut self) -> Frame {
-        self.frame_completed = false;
-
         let frame = self.frame.clone();
         self.frame = Frame::black();
         frame
-    }
-
-    pub fn is_nmi_requested(&self) -> bool {
-        self.nmi_request
-    }
-
-    pub fn nmi_accepted(&mut self) {
-        self.nmi_request = false;
-    }
-
-    fn request_nmi(&mut self) {
-        self.nmi_request = true;
     }
 
     fn render_nametable(&self) -> Frame {
@@ -525,8 +507,8 @@ impl Ppu {
 
                         // let mrow = (tile_number / 16) * 8 + y;
                         // let mcol = ((tile_number % 16) + offset) * 8 + (7 - x);
-                        let mrow = (row as usize * 8 + y) as usize;
-                        let mcol = (col as usize * 8 + (7 - x)) as usize;
+                        let mrow = row as usize * 8 + y;
+                        let mcol = col as usize * 8 + (7 - x);
                         screen.set_pixel(
                             pixel,
                             FramePixel {
@@ -666,7 +648,7 @@ impl Memory for Ppu {
                         internal.temp_vram_addr = RenderAddress::from(
                             (internal.temp_vram_addr.value() & 0xFF00) | data as u16,
                         );
-                        internal.vram_addr = internal.temp_vram_addr.clone();
+                        internal.vram_addr = internal.temp_vram_addr;
                         internal.write_toggle = WriteToggle::First;
                     }
                 }
@@ -750,17 +732,23 @@ impl PpuInternalRegisters {
 mod tests {
     use std::rc::Rc;
 
-    use crate::{hardware::PPU_REGISTERS_START, processor::bus::Bus};
+    use crate::hardware::PPU_REGISTERS_START;
+    use crate::processor::bus::Bus;
 
     use super::*;
+
+    fn test_ppu() -> Ppu {
+        let graphics_bus = Rc::new(RefCell::new(Bus::new("PPU")));
+        let event_bus = SharedEventBus::new();
+        Ppu::new(graphics_bus, event_bus)
+    }
 
     #[test]
     fn test_loopy_scrolling_registers_read_and_write() {
         // Test inspired by example in:
         // https://www.nesdev.org/wiki/PPU_scrolling#Summary
 
-        let graphics_bus = Rc::new(RefCell::new(Bus::new("PPU")));
-        let mut ppu = Ppu::new(graphics_bus);
+        let mut ppu = test_ppu();
 
         // LDA $00
         // STA $2000
@@ -823,8 +811,7 @@ mod tests {
 
         #[test]
         fn test_ppuctrl_write() {
-            let graphics_bus = Rc::new(RefCell::new(Bus::new("PPU")));
-            let mut ppu = Ppu::new(graphics_bus);
+            let mut ppu = test_ppu();
 
             ppu.write(PPUCTRL - PPU_REGISTERS_START, 0b1111_1111);
             let regs = ppu.internal.borrow();
@@ -836,8 +823,7 @@ mod tests {
 
         #[test]
         fn test_ppustatus_read() {
-            let graphics_bus = Rc::new(RefCell::new(Bus::new("PPU")));
-            let ppu = Ppu::new(graphics_bus);
+            let ppu = test_ppu();
 
             ppu.internal.borrow_mut().write_toggle = WriteToggle::First;
             ppu.read(PPUSTATUS - PPU_REGISTERS_START);
@@ -863,8 +849,7 @@ mod tests {
 
     #[test]
     fn test_ppuscroll_writes() {
-        let graphics_bus = Rc::new(RefCell::new(Bus::new("PPU")));
-        let mut ppu = Ppu::new(graphics_bus);
+        let mut ppu = test_ppu();
 
         // first write
 
@@ -915,8 +900,7 @@ mod tests {
 
     #[test]
     fn test_ppuaddr_writes() {
-        let graphics_bus = Rc::new(RefCell::new(Bus::new("PPU")));
-        let mut ppu = Ppu::new(graphics_bus);
+        let mut ppu = test_ppu();
 
         // first write
 

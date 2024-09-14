@@ -10,12 +10,14 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crossbeam_channel::unbounded;
 use log::info;
 
 use crate::cartidge::Cartidge;
 use crate::controller::Controller;
 use crate::controller::ControllerButtons;
+use crate::events::Event;
+use crate::events::KeyboardChannel;
+use crate::events::SharedEventBus;
 use crate::graphics::palette_memory::PaletteMemory;
 use crate::graphics::ppu::Ppu;
 use crate::hardware::*;
@@ -26,6 +28,7 @@ use crate::processor::cpu::{Cpu, Interrupt};
 use crate::processor::memory::MirroredMemory;
 use crate::processor::memory::{Ciram, Ram};
 use crate::settings::NesSettings;
+use crate::settings::UiKind;
 use crate::types::{SharedBus, SharedCiram, SharedController, SharedMemory, SharedPpu};
 use crate::ui::{GtkUi, Ui};
 
@@ -38,17 +41,22 @@ pub struct Nes {
     pub cpu: Cpu,
     pub main_bus: SharedBus,
 
-    ppu: SharedPpu,
+    pub ppu: SharedPpu,
     pub graphics_bus: SharedBus,
 
     ram: SharedMemory,
     nametable: SharedCiram,
     palettes: SharedMemory,
 
-    ui: GtkUi,
+    pub ui: Option<GtkUi>,
 
     controller_one: SharedController,
     controller_two: SharedController,
+
+    event_bus: SharedEventBus,
+    keyboard_channel: KeyboardChannel,
+
+    settings: NesSettings,
 }
 
 impl Default for Nes {
@@ -59,6 +67,9 @@ impl Default for Nes {
 
 impl Nes {
     pub fn new(settings: NesSettings) -> Self {
+        let event_bus = SharedEventBus::new();
+        let keyboard_channel = KeyboardChannel::default();
+
         let main_bus = Rc::new(RefCell::new(Bus::new("CPU")));
         let graphics_bus = Rc::new(RefCell::new(Bus::new("PPU")));
 
@@ -66,15 +77,7 @@ impl Nes {
         let cpu = Cpu::new(main_bus_ptr);
 
         let graphics_bus_ptr = Rc::clone(&graphics_bus);
-        let ppu = Rc::new(RefCell::new(Ppu::new(graphics_bus_ptr)));
-
-        let (sender, receiver_one) = unbounded();
-        let receiver_two = receiver_one.clone();
-
-        let ui = GtkUi::builder()
-            .keyboard_channel(sender)
-            .pixel_scale_factor(settings.pixel_scale_factor)
-            .build();
+        let ppu = Rc::new(RefCell::new(Ppu::new(graphics_bus_ptr, event_bus.clone())));
 
         // Main Bus
         // ----------------------------------------------------------------------------------------
@@ -123,7 +126,8 @@ impl Nes {
             )
             .unwrap();
 
-        let controller_one = Rc::new(RefCell::new(Controller::new(receiver_one)));
+        let keyboard_listener_one = keyboard_channel.listener();
+        let controller_one = Rc::new(RefCell::new(Controller::new(keyboard_listener_one)));
         let controller_one_ptr = Rc::clone(&controller_one);
         main_bus
             .borrow_mut()
@@ -137,7 +141,8 @@ impl Nes {
             )
             .unwrap();
 
-        let controller_two = Rc::new(RefCell::new(Controller::new(receiver_two)));
+        let keyboard_listener_two = keyboard_channel.listener();
+        let controller_two = Rc::new(RefCell::new(Controller::new(keyboard_listener_two)));
         let controller_two_ptr = Rc::clone(&controller_two);
         main_bus
             .borrow_mut()
@@ -212,9 +217,12 @@ impl Nes {
             ram,
             nametable,
             palettes: palette_memory,
-            ui,
+            ui: None,
             controller_one,
             controller_two,
+            event_bus,
+            keyboard_channel,
+            settings,
         }
     }
 
@@ -280,10 +288,13 @@ impl Nes {
         self.cpu.reset();
     }
 
+    /// Connect controller one to the NES and define its configuration
     pub fn connect_controller_one(&mut self, buttons: ControllerButtons) {
         self.controller_one.borrow_mut().connect(buttons);
     }
 
+    /// Diconnect controller one from the NES. After this action, the controls
+    /// defined for this controller won't do anything anymore
     pub fn disconnect_controller_one(&mut self) {
         self.controller_one.borrow_mut().disconnect();
     }
@@ -297,11 +308,20 @@ impl Nes {
         info!("NES indefinedly running game");
 
         // self.cpu_execute_forever();
-        self.ui.start();
+
+        if let Some(ui) = self.ui.as_mut() {
+            ui.start();
+        }
 
         loop {
+            if self.event_bus.access().emitted(Event::SwitchOff) {
+                break;
+            }
+
             self.clock()?;
         }
+
+        Ok(())
     }
 
     /// Execute a NES simulated system clock.
@@ -322,15 +342,21 @@ impl Nes {
             let mut ppu = self.ppu.borrow_mut();
             ppu.clock();
 
-            if ppu.is_nmi_requested() {
+            if self.event_bus.access().emitted(Event::NMI) {
                 self.cpu.interrupt(Interrupt::NonMaskableInterrupt);
-                ppu.nmi_accepted();
+                self.event_bus.access().mark_as_processed(Event::NMI);
             }
 
-            if ppu.frame_ready() {
+            if self.event_bus.access().emitted(Event::FrameReady) {
                 let frame = ppu.take_frame();
-                self.ui.render(frame);
-                std::thread::sleep(std::time::Duration::from_millis(16));
+                self.event_bus.access().mark_as_processed(Event::FrameReady);
+
+                if let Some(ui) = self.ui.as_mut() {
+                    ui.render(frame);
+                }
+                // std::thread::sleep(std::time::Duration::from_millis(33)); // ~30 FPS
+                // std::thread::sleep(std::time::Duration::from_millis(16)); // ~60 FPS
+                // std::thread::sleep(std::time::Duration::from_millis(8)); // ~120 FPS
             }
         }
 
@@ -340,5 +366,27 @@ impl Nes {
         }
 
         Ok(())
+    }
+
+    /// Creates a new TV (UI) to render NES picture data and play audio. It must
+    /// be called before running if one want to view and listen to the games
+    pub fn setup_tv(&mut self) {
+        let ui = match self.settings.ui_kind {
+            UiKind::None => None,
+
+            UiKind::Gtk => {
+                let gtk_ui = GtkUi::builder()
+                    .screen_size(SCREEN_WIDTH, SCREEN_HEIGHT)
+                    .pixel_scale_factor(self.settings.pixel_scale_factor)
+                    .with_keyboard_publisher(self.keyboard_channel.publisher())
+                    .with_event_bus(self.event_bus.clone())
+                    .build();
+                Some(gtk_ui)
+            }
+        };
+
+        if let Some(ui) = ui {
+            self.ui.replace(ui);
+        }
     }
 }

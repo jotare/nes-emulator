@@ -23,7 +23,7 @@ pub fn clear_bit(byte: u8, bit: u8) -> u8 {
 
 /// Single or group of bits that represent some kind of flag or restricted set of
 /// values. A group **must** be a consecutive group of 1s!
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct BitGroup<T> {
     group: T,
 }
@@ -64,7 +64,7 @@ impl BitGroup<u16> {
 
     pub fn clear(&mut self, group: impl Into<BitGroup<u16>>) {
         let group: u16 = group.into().into();
-        self.group = self.group & (!group);
+        self.group &= !group;
     }
 }
 

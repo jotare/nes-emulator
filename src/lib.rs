@@ -5,13 +5,14 @@
 
 mod cartidge;
 mod controller;
+pub mod events;
 pub mod graphics;
 pub mod hardware;
 pub mod interfaces;
 mod mappers;
 mod nes;
 mod processor;
-mod settings;
+pub mod settings;
 mod types;
 pub mod ui;
 pub mod utils;
@@ -19,4 +20,3 @@ pub mod utils;
 pub use cartidge::Cartidge;
 pub use controller::ControllerButtons;
 pub use nes::Nes;
-pub use settings::NesSettings;

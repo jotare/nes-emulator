@@ -1,7 +1,6 @@
 use std::time::Duration;
 
-use crossbeam_channel::{self, TryRecvError};
-
+use nes_emulator::events::{Event, SharedEventBus};
 use nes_emulator::graphics::{Frame, FramePixel, Pixel};
 use nes_emulator::hardware::{SCREEN_HEIGHT, SCREEN_WIDTH};
 use nes_emulator::ui::{GtkUi, Ui};
@@ -9,8 +8,8 @@ use nes_emulator::ui::{GtkUi, Ui};
 fn main() {
     const INTER_FRAME_DELAY: Duration = Duration::from_millis(16);
 
-    let (sender, receiver) = crossbeam_channel::unbounded();
-    let mut ui = GtkUi::builder().keyboard_channel(sender).build();
+    let event_bus = SharedEventBus::new();
+    let mut ui = GtkUi::builder().with_event_bus(event_bus.clone()).build();
     ui.start();
 
     'outer: loop {
@@ -20,8 +19,7 @@ fn main() {
                 ui.render(frame);
                 std::thread::sleep(INTER_FRAME_DELAY);
 
-                // TODO improve how we detect a window close event
-                if let Err(TryRecvError::Disconnected) = receiver.try_recv() {
+                if event_bus.access().emitted(Event::SwitchOff) {
                     break 'outer;
                 }
             }

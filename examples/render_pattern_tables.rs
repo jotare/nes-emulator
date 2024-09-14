@@ -12,6 +12,8 @@ use nes_emulator::graphics::pattern_table::PatternTableAddress;
 use nes_emulator::graphics::{Frame, FramePixel, Pixel};
 use nes_emulator::hardware::PALETTE_MEMORY_START;
 use nes_emulator::interfaces::Bus;
+use nes_emulator::settings::NesSettings;
+use nes_emulator::settings::UiKind;
 use nes_emulator::ui::{GtkUi, Ui};
 use nes_emulator::utils;
 use nes_emulator::{Cartidge, Nes};
@@ -21,7 +23,10 @@ use nes_emulator::{Cartidge, Nes};
 const CARTIDGE_PATH: &str = "roms/Super Mario Bros. (World).nes";
 
 fn main() {
-    let mut nes = Nes::default();
+    let mut nes = Nes::new(NesSettings {
+        ui_kind: UiKind::None,
+        ..Default::default()
+    });
     let cartidge = Cartidge::new(CARTIDGE_PATH);
 
     nes.load_cartidge(cartidge);
@@ -43,8 +48,7 @@ fn main() {
     const WIDTH: usize = HEIGHT * 2;
     const PIXEL_SCALE_FACTOR: usize = 7;
     let mut ui = GtkUi::builder()
-        .screen_height(HEIGHT)
-        .screen_width(WIDTH)
+        .screen_size(WIDTH, HEIGHT)
         .pixel_scale_factor(PIXEL_SCALE_FACTOR)
         .build();
 

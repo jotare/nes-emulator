@@ -7,7 +7,6 @@ use std::sync::Arc;
 use std::sync::RwLock;
 use std::thread::{spawn, JoinHandle};
 
-use crossbeam_channel::Sender;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::{gdk, gio, glib, graphene};
@@ -15,6 +14,8 @@ use gtk::{Application, ApplicationWindow, Inhibit};
 use log::debug;
 use once_cell::sync::OnceCell;
 
+use crate::events::KeyboardPublisher;
+use crate::events::SharedEventBus;
 use crate::hardware::{SCREEN_HEIGHT, SCREEN_WIDTH};
 use crate::settings::DEFAULT_PIXEL_SCALE_FACTOR;
 use crate::ui::{Frame, Ui};
@@ -26,7 +27,8 @@ static RENDER_SIGNALER: OnceCell<Arc<RwLock<RenderSignaler>>> = OnceCell::new();
 
 // Used only inside GtkUi thread
 thread_local! {
-    static KEYBOARD_CHANNEL: OnceCell<Option<Sender<char>>> = OnceCell::new();
+    static KEYBOARD_CHANNEL: OnceCell<Option<KeyboardPublisher>> = const { OnceCell::new() };
+    static EVENT_BUS: OnceCell<Option<SharedEventBus>> = const { OnceCell::new() };
 }
 
 pub struct GtkUi {
@@ -34,7 +36,8 @@ pub struct GtkUi {
     screen_height: usize,
     pixel_scale_factor: usize,
     handle: Option<JoinHandle<()>>,
-    keyboard_channel: Option<Sender<char>>,
+    keyboard_channel: Option<KeyboardPublisher>,
+    event_bus: Option<SharedEventBus>,
 }
 
 impl GtkUi {
@@ -57,11 +60,15 @@ impl GtkUi {
         let screen_height = self.screen_height;
         let pixel_scale_factor = self.pixel_scale_factor;
         let keyboard_channel = self.keyboard_channel.take();
+        let event_bus = self.event_bus.take();
 
         let join_handle = spawn(move || {
             KEYBOARD_CHANNEL
                 .with(|cell| cell.set(keyboard_channel))
-                .expect("Unreachable error initializing keboard channel thread local");
+                .expect("Unreachable error initializing KEYBOARD_CHANNEL thread local");
+            EVENT_BUS
+                .with(|cell| cell.set(event_bus))
+                .expect("Unreachable error initializing EVENT_BUS thread local");
 
             let app = Application::builder().application_id(APP_ID).build();
 
@@ -75,6 +82,15 @@ impl GtkUi {
                 let quit_action = gio::SimpleAction::new("quit", None);
                 quit_action.connect_activate(glib::clone!(@weak window => move |_, _| {
                     window.close();
+
+                    EVENT_BUS.with(|cell| {
+                        let event_bus = cell
+                            .get()
+                            .expect("Thread local once cell should be initialized by now");
+                        if let Some(event_bus) = event_bus {
+                            event_bus.access().emit(crate::events::Event::SwitchOff);
+                        }
+                    })
                 }));
                 window.add_action(&quit_action);
 
@@ -154,14 +170,13 @@ impl GtkUi {
         };
 
         KEYBOARD_CHANNEL.with(|cell| {
-            match cell
+            let publisher = cell
                 .get()
-                .expect("Keyboard channel once cell should be initialized by now")
-            {
-                Some(sender) => {
-                    sender
-                        .send(character)
-                        .expect("Unable to send character through channel");
+                .expect("Thread local once cell should be initialized by now");
+
+            match publisher {
+                Some(keyboard_publisher) => {
+                    keyboard_publisher.push_char(character);
                     Inhibit(true)
                 }
                 None => Inhibit(false),
@@ -179,43 +194,53 @@ impl Ui for GtkUi {
 }
 
 pub struct GtkUiBuilder {
-    build: GtkUi,
+    screen_width: usize,
+    screen_height: usize,
+    pixel_scale_factor: usize,
+    keyboard: Option<KeyboardPublisher>,
+    event_bus: Option<SharedEventBus>,
 }
 
 impl GtkUiBuilder {
     pub fn new() -> Self {
         Self {
-            build: GtkUi {
-                screen_height: SCREEN_HEIGHT,
-                screen_width: SCREEN_WIDTH,
-                pixel_scale_factor: DEFAULT_PIXEL_SCALE_FACTOR,
-                handle: None,
-                keyboard_channel: None,
-            },
+            screen_height: SCREEN_HEIGHT,
+            screen_width: SCREEN_WIDTH,
+            pixel_scale_factor: DEFAULT_PIXEL_SCALE_FACTOR,
+            keyboard: None,
+            event_bus: None,
         }
     }
 
     pub fn build(self) -> GtkUi {
-        self.build
+        GtkUi {
+            screen_width: self.screen_width,
+            screen_height: self.screen_height,
+            pixel_scale_factor: self.pixel_scale_factor,
+            handle: None,
+            keyboard_channel: self.keyboard,
+            event_bus: self.event_bus,
+        }
     }
 
-    pub fn screen_width(mut self, width: usize) -> Self {
-        self.build.screen_width = width;
-        self
-    }
-
-    pub fn screen_height(mut self, height: usize) -> Self {
-        self.build.screen_height = height;
+    pub fn screen_size(mut self, width: usize, height: usize) -> Self {
+        self.screen_width = width;
+        self.screen_height = height;
         self
     }
 
     pub fn pixel_scale_factor(mut self, factor: usize) -> Self {
-        self.build.pixel_scale_factor = factor;
+        self.pixel_scale_factor = factor;
         self
     }
 
-    pub fn keyboard_channel(mut self, sender: Sender<char>) -> Self {
-        self.build.keyboard_channel = Some(sender);
+    pub fn with_keyboard_publisher(mut self, keyboard_publisher: KeyboardPublisher) -> Self {
+        self.keyboard = Some(keyboard_publisher);
+        self
+    }
+
+    pub fn with_event_bus(mut self, event_bus: SharedEventBus) -> Self {
+        self.event_bus.replace(event_bus);
         self
     }
 }
