@@ -20,6 +20,8 @@ use crate::hardware::{SCREEN_HEIGHT, SCREEN_WIDTH};
 use crate::settings::DEFAULT_PIXEL_SCALE_FACTOR;
 use crate::ui::{Frame, Ui};
 
+use super::UiError;
+
 const APP_ID: &str = "jotare-nes-emulator";
 const APP_NAME: &str = "NES Emulator (by jotare)";
 
@@ -27,8 +29,7 @@ static RENDER_SIGNALER: OnceCell<Arc<RwLock<RenderSignaler>>> = OnceCell::new();
 
 // Used only inside GtkUi thread
 thread_local! {
-    static KEYBOARD_CHANNEL: OnceCell<Option<KeyboardPublisher>> = const { OnceCell::new() };
-    static EVENT_BUS: OnceCell<Option<SharedEventBus>> = const { OnceCell::new() };
+    static RENDER_THREAD_STATE: OnceCell<RenderThreadState> = const { OnceCell::new() };
 }
 
 pub struct GtkUi {
@@ -40,112 +41,109 @@ pub struct GtkUi {
     event_bus: Option<SharedEventBus>,
 }
 
+#[derive(Debug)]
+struct RenderThreadState {
+    keyboard: Option<KeyboardPublisher>,
+    event_bus: Option<SharedEventBus>,
+}
+
 impl GtkUi {
     pub fn builder() -> GtkUiBuilder {
         GtkUiBuilder::new()
     }
 
-    /// Starts GtkUi a running GUI. It should only be called once
-    /// during the whole program. If called more than once, it'll panic.
-    pub fn start(&mut self) {
-        let already_initialized = RENDER_SIGNALER
-            .set(Arc::new(RwLock::new(RenderSignaler::default())))
-            .is_err();
+    /// GTK UI is based in a secondary thread that listens for a render event and renders a Frame.
+    ///
+    /// Communication is done using a global variable that notifies the thread
+    /// when a new Frame can be drawn
+    ///
+    /// TODO: Some internal data is hold as thread locals as the current GTK
+    /// usage has some limitations on custom state. If a better way to handle
+    /// local state is found, it'd be welcomed :)
+    fn render_thread(
+        screen_size: (usize, usize),
+        pixel_scale_factor: usize,
+        event_bus: Option<SharedEventBus>,
+        keyboard: Option<KeyboardPublisher>,
+    ) {
+        let (screen_width, screen_height) = screen_size;
 
-        if already_initialized {
-            panic!("GtkUi should be initialized only once!");
-        }
+        // setup thread local variables
+        RENDER_THREAD_STATE
+            .with(|cell| {
+                cell.set(RenderThreadState {
+                    keyboard,
+                    event_bus,
+                })
+            })
+            .expect("Unreachable error initializing render thread state");
 
-        let screen_width = self.screen_width;
-        let screen_height = self.screen_height;
-        let pixel_scale_factor = self.pixel_scale_factor;
-        let keyboard_channel = self.keyboard_channel.take();
-        let event_bus = self.event_bus.take();
+        let app = Application::builder().application_id(APP_ID).build();
 
-        let join_handle = spawn(move || {
-            KEYBOARD_CHANNEL
-                .with(|cell| cell.set(keyboard_channel))
-                .expect("Unreachable error initializing KEYBOARD_CHANNEL thread local");
-            EVENT_BUS
-                .with(|cell| cell.set(event_bus))
-                .expect("Unreachable error initializing EVENT_BUS thread local");
+        app.connect_activate(move |app| {
+            // Create main window
+            let window = ApplicationWindow::builder()
+                .application(app)
+                .title(APP_NAME)
+                .build();
 
-            let app = Application::builder().application_id(APP_ID).build();
+            // Setup a quit hook that sends a shutdown event to the NES
+            let quit_action = gio::SimpleAction::new("quit", None);
+            quit_action.connect_activate(glib::clone!(@weak window => move |_, _| {
+                window.close();
 
-            app.connect_activate(move |app| {
-                // Create main window
-                let window = ApplicationWindow::builder()
-                    .application(app)
-                    .title(APP_NAME)
-                    .build();
-
-                let quit_action = gio::SimpleAction::new("quit", None);
-                quit_action.connect_activate(glib::clone!(@weak window => move |_, _| {
-                    window.close();
-
-                    EVENT_BUS.with(|cell| {
-                        let event_bus = cell
-                            .get()
-                            .expect("Thread local once cell should be initialized by now");
-                        if let Some(event_bus) = event_bus {
-                            event_bus.access().emit(crate::events::Event::SwitchOff);
-                        }
-                    })
-                }));
-                window.add_action(&quit_action);
-
-                let event_controller = gtk::EventControllerKey::builder()
-                    .name("NES Keyboard Controller")
-                    .build();
-
-                event_controller.connect_key_pressed(|event_controller, keyval, keycode, state| {
-                    Self::on_key_pressed(event_controller, keyval, keycode, state)
-                });
-                window.add_controller(event_controller);
-
-                // Screen
-                let paintable = NesScreen::new();
-                paintable.setup(screen_width, screen_height, pixel_scale_factor);
-
-                let picture = gtk::Picture::builder()
-                    .width_request((screen_width * pixel_scale_factor) as i32)
-                    .height_request((screen_height * pixel_scale_factor) as i32)
-                    .halign(gtk::Align::Center)
-                    .valign(gtk::Align::Center)
-                    .paintable(&paintable)
-                    .build();
-                window.set_child(Some(&picture));
-
-                // Signal a re-render every time we have a new frame to paint
-                picture.add_tick_callback(|area, _clock| {
-                    let signaler = RENDER_SIGNALER.get().unwrap().read().unwrap();
-                    if signaler.should_render() {
-                        area.queue_draw();
+                RENDER_THREAD_STATE.with(|cell| {
+                    let state = cell.get()
+                        .expect("Thread local once cell should be initialized by now");
+                    if let Some(ref event_bus) = state.event_bus {
+                        event_bus.access().emit(crate::events::Event::SwitchOff);
                     }
+                })
+            }));
+            window.add_action(&quit_action);
 
-                    Continue(true)
-                });
+            // Keyboard controll so the GUI can forward key presses to the
+            // controllers
+            let event_controller = gtk::EventControllerKey::builder()
+                .name("NES Keyboard Controller")
+                .build();
 
-                // Present window
-                window.present();
+            event_controller.connect_key_pressed(|event_controller, keyval, keycode, state| {
+                Self::on_key_pressed(event_controller, keyval, keycode, state)
+            });
+            window.add_controller(event_controller);
+
+            // Screen
+            let paintable = NesScreen::new();
+            paintable.setup(screen_width, screen_height, pixel_scale_factor);
+
+            let picture = gtk::Picture::builder()
+                .width_request((screen_width * pixel_scale_factor) as i32)
+                .height_request((screen_height * pixel_scale_factor) as i32)
+                .halign(gtk::Align::Center)
+                .valign(gtk::Align::Center)
+                .paintable(&paintable)
+                .build();
+            window.set_child(Some(&picture));
+
+            // Signal a re-render every time we have a new frame to paint
+            picture.add_tick_callback(|area, _clock| {
+                let signaler = RENDER_SIGNALER.get().unwrap().read().unwrap();
+                if signaler.should_render() {
+                    area.queue_draw();
+                }
+
+                Continue(true)
             });
 
-            app.set_accels_for_action("win.quit", &["<Ctrl>Q"]);
-
-            app.run();
+            // Present window
+            window.present();
         });
 
-        self.handle.replace(join_handle);
-    }
+        // Standard C-q to quit the GUI window
+        app.set_accels_for_action("win.quit", &["<Ctrl>Q"]);
 
-    pub fn join(&mut self) {
-        let handle = self
-            .handle
-            .take()
-            .expect("Can't join an uninitialized GtkUi");
-        debug!("Waiting UI thread to end...");
-        handle.join().expect("Error waiting UI thread");
-        debug!("UI thread ended correctly");
+        app.run();
     }
 
     fn on_key_pressed(
@@ -169,13 +167,13 @@ impl GtkUi {
             None => return Inhibit(false),
         };
 
-        KEYBOARD_CHANNEL.with(|cell| {
-            let publisher = cell
+        RENDER_THREAD_STATE.with(|cell| {
+            let state = cell
                 .get()
                 .expect("Thread local once cell should be initialized by now");
 
-            match publisher {
-                Some(keyboard_publisher) => {
+            match state.keyboard {
+                Some(ref keyboard_publisher) => {
                     keyboard_publisher.push_char(character);
                     Inhibit(true)
                 }
@@ -186,10 +184,65 @@ impl GtkUi {
 }
 
 impl Ui for GtkUi {
-    fn render(&self, frame: Frame) {
+    /// Starts a GTK running GUI. It should only be called once during the whole
+    /// program. If called more than once, it'll panic.
+    ///
+    /// TODO: overcome the limitation and be able to start/stop the UI more
+    /// times
+    fn start(&mut self) -> Result<(), UiError> {
+        let already_initialized = RENDER_SIGNALER
+            .set(Arc::new(RwLock::new(RenderSignaler::default())))
+            .is_err();
+
+        if already_initialized {
+            return Err(UiError::AlreadyStarted(
+                "GTK UI is already started, can't start it twice".to_string(),
+            ));
+        }
+
+        let screen_width = self.screen_width;
+        let screen_height = self.screen_height;
+        let pixel_scale_factor = self.pixel_scale_factor;
+        let keyboard_channel = self.keyboard_channel.take();
+        let event_bus = self.event_bus.take();
+
+        let join_handle = spawn(move || {
+            Self::render_thread(
+                (screen_width, screen_height),
+                pixel_scale_factor,
+                event_bus,
+                keyboard_channel,
+            )
+        });
+
+        self.handle.replace(join_handle);
+
+        Ok(())
+    }
+
+    /// Signal the GUI to render a new frame. This will be communicated to the
+    /// GTK render thread and it'll update the frame as soon as possible
+    fn render(&mut self, frame: Frame) {
         if let Some(signaler) = RENDER_SIGNALER.get() {
             signaler.write().unwrap().set_frame(frame);
         }
+    }
+
+    fn stop(&mut self) -> Result<(), UiError> {
+        let handle = self.handle.take().ok_or(UiError::NotStarted)?;
+        debug!("Waiting UI thread to end...");
+        handle.join().map_err(|_| {
+            UiError::Unhandled("Error waiting UI thread to join (stop)".to_string())
+        })?;
+        debug!("UI thread ended correctly");
+
+        // TODO: cleanup thread local and global variables.
+        //
+        // XXX: Right now, as global variables are not mutable and we don't do
+        // anything to mutate them, we can't clean the state so a second cycle
+        // of start/stop is not possible
+
+        Ok(())
     }
 }
 

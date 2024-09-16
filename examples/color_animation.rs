@@ -26,7 +26,7 @@ fn main() {
         }
     }
 
-    ui.join();
+    ui.stop();
 }
 
 fn colors_animation_frame(step: usize, forwards: bool) -> Frame {

@@ -15,6 +15,7 @@ use log::info;
 use crate::cartidge::Cartidge;
 use crate::controller::Controller;
 use crate::controller::ControllerButtons;
+use crate::errors::NesError;
 use crate::events::Event;
 use crate::events::KeyboardChannel;
 use crate::events::SharedEventBus;
@@ -300,9 +301,9 @@ impl Nes {
     }
 
     /// Blocking NES run
-    pub fn run(&mut self) -> Result<(), String> {
+    pub fn run(&mut self) -> Result<(), NesError> {
         if self.cartidge.is_none() {
-            return Err("NES can't run without a cartidge!".to_string());
+            return Err(NesError::NoCartidgeInserted);
         }
 
         info!("NES indefinedly running game");
@@ -310,7 +311,10 @@ impl Nes {
         // self.cpu_execute_forever();
 
         if let Some(ui) = self.ui.as_mut() {
-            ui.start();
+            ui.start().map_err(|error| NesError::UiError {
+                details: "Failed to start UI".to_string(),
+                source: error,
+            })?;
         }
 
         loop {
@@ -318,7 +322,15 @@ impl Nes {
                 break;
             }
 
-            self.clock()?;
+            self.clock()
+                .map_err(|error| NesError::NesInternalError(error))?;
+        }
+
+        if let Some(ui) = self.ui.as_mut() {
+            ui.stop().map_err(|error| NesError::UiError {
+                details: "Failed to stop UI after execution stopped".to_string(),
+                source: error,
+            })?;
         }
 
         Ok(())

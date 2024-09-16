@@ -248,7 +248,7 @@ impl Ppu {
                                     self.internal.borrow_mut().vram_addr.increment_x();
                                 }
                             }
-                            _ => panic!("Impossible condition!"),
+                            _ => unreachable!("We are matching exhausively all possible values"),
                         }
 
                         if self.cycle == 256 && self.bg_rendering_enabled() {
@@ -492,7 +492,7 @@ impl Ppu {
                     (x, y) if x >= 2 && y < 2 => utils::bvs_8(attributes, 3, 2),
                     (x, y) if x < 2 && y >= 2 => utils::bvs_8(attributes, 5, 4),
                     (x, y) if x >= 2 && y >= 2 => utils::bvs_8(attributes, 7, 6),
-                    (x, y) => panic!("Impossible situation: x={x}, y={y}"),
+                    (x, y) => unreachable!("Impossible situation: x={x}, y={y}"),
                 };
 
                 for x in 0..8 {
@@ -577,7 +577,7 @@ impl Memory for Ppu {
 
                 data
             }
-            _ => panic!("PPU read not implemented for address: {address:0>4X}"),
+            _ => unimplemented!("PPU read not implemented for address: {address:0>4X}"),
         };
         trace!("PPU read from: {address:0>4X} <- {data:0>2X}");
         data
@@ -665,7 +665,7 @@ impl Memory for Ppu {
                 internal.vram_addr = RenderAddress::from(vram_address + increment);
             }
 
-            _ => panic!("PPU write not implemented for address: {address:0>4X}"),
+            _ => unimplemented!("PPU write not implemented for address: {address:0>4X}"),
         }
     }
 

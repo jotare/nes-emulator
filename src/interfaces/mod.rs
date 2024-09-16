@@ -1,3 +1,4 @@
+use crate::errors::{BusError, NesError};
 use crate::types::SharedMemory;
 
 #[derive(Debug)]
@@ -16,7 +17,7 @@ pub trait Bus {
         id: DeviceId,
         device: SharedMemory,
         addr_range: AddressRange,
-    ) -> Result<(), String>;
+    ) -> Result<(), BusError>;
 
     /// Detach a device from the bus
     fn detach(&mut self, id: DeviceId);
@@ -40,10 +41,13 @@ pub trait Memory {
     /// Read a byte from the specified `address`
     fn read(&self, address: u16) -> u8;
 
-    fn try_read(&self, address: u16) -> Result<u8, String> {
+    fn try_read(&self, address: u16) -> Result<u8, NesError> {
         let size = self.size() as u16;
         if address > size {
-            return Err(format!("Read address out of bounds, index is ${address:0>4X} but memory size is ${size:0>4X}"));
+            return Err(NesError::MemoryAccessError {
+                address,
+                memory_size: self.size(),
+            });
         }
         Ok(self.read(address))
     }
@@ -51,10 +55,13 @@ pub trait Memory {
     /// Write a byte of `data` to the specified `address`
     fn write(&mut self, address: u16, data: u8);
 
-    fn try_write(&mut self, address: u16, data: u8) -> Result<(), String> {
+    fn try_write(&mut self, address: u16, data: u8) -> Result<(), NesError> {
         let size = self.size() as u16;
         if address > size {
-            return Err(format!("Write address out of bounds, index is ${address:0>4X} but memory size is ${size:0>4X}"));
+            return Err(NesError::MemoryAccessError {
+                address,
+                memory_size: self.size(),
+            });
         }
         self.write(address, data);
         Ok(())

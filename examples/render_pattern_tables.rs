@@ -52,7 +52,7 @@ fn main() {
         .pixel_scale_factor(PIXEL_SCALE_FACTOR)
         .build();
 
-    ui.start();
+    ui.start().unwrap();
 
     // NES have 8 palettes, 4 for background colors (palettes 0 to 3) and 4 for
     // sprites (palettes 4 to 7)
@@ -62,7 +62,7 @@ fn main() {
     let frame = render_pattern_tables(&nes, palette);
     ui.render(frame);
 
-    ui.join();
+    ui.stop().unwrap();
 }
 
 /// Generate a [`Frame`] with the two NES pattern tables.

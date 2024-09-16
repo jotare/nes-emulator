@@ -3,6 +3,7 @@ use std::collections::HashMap;
 
 use log::debug;
 
+use crate::errors::BusError;
 use crate::interfaces::AddressRange;
 use crate::interfaces::Bus as BusTrait;
 use crate::interfaces::DeviceId;
@@ -33,9 +34,12 @@ impl BusTrait for Bus {
         id: DeviceId,
         memory: SharedMemory,
         addr_range: AddressRange,
-    ) -> Result<(), String> {
+    ) -> Result<(), BusError> {
         if self.devices.borrow().contains_key(id) {
-            return Err(format!("Device '{id}' already exists on bus '{}'", self.id));
+            return Err(BusError::AlreadyAttached {
+                bus_id: self.id,
+                device_id: id,
+            });
         }
 
         // TODO: return error on overlapping address ranges
@@ -55,44 +59,65 @@ impl BusTrait for Bus {
     }
 
     fn read(&self, address: u16) -> u8 {
+        self.try_read(address)
+            .map_err(|error| error.to_string())
+            .unwrap()
+    }
+
+    fn write(&self, address: u16, data: u8) {
+        self.try_write(address, data)
+            .map_err(|error| error.to_string())
+            .unwrap();
+    }
+}
+
+impl Bus {
+    fn try_read(&self, address: u16) -> Result<u8, BusError> {
         for (device_id, Device { device, addr_range }) in self.devices.borrow().iter() {
             if address >= addr_range.start && address <= addr_range.end {
                 let virtual_address = address - addr_range.start;
-                let data = match device.borrow().try_read(virtual_address) {
-                    Ok(data) => data,
-                    Err(e) => {
-                        let error = format!(
-                            "Error while reading '{device_id}' on address ${address:0>4X}: {e}"
-                        );
-                        panic!("{}", error);
+                let data = device.borrow().try_read(virtual_address).map_err(|error| {
+                    BusError::BusReadError {
+                        bus_id: self.id,
+                        device_id,
+                        address,
+                        details: error.to_string(),
                     }
-                };
+                })?;
                 debug!(
                     "Bus ({0}) read from: {address:0>4X} <- {data:0>2X}",
                     self.id
                 );
-                return data;
+                return Ok(data);
             }
         }
-        panic!(
-            "Bus '{0}' doesn't have an attached device for address: '0x{address:x}'",
-            self.id
-        );
+        Err(BusError::MissingBusDevice {
+            bus_id: self.id.to_string(),
+            address,
+        })
     }
 
-    fn write(&self, address: u16, data: u8) {
+    fn try_write(&self, address: u16, data: u8) -> Result<(), BusError> {
         debug!("Bus ({0}) write to: {address:0>4X} <- {data:0>2X}", self.id);
-        for (_device_id, Device { device, addr_range }) in self.devices.borrow_mut().iter_mut() {
+        for (device_id, Device { device, addr_range }) in self.devices.borrow_mut().iter_mut() {
             if address >= addr_range.start && address <= addr_range.end {
                 let virtual_address = address - addr_range.start;
-                device.borrow_mut().write(virtual_address, data);
-                return;
+                device
+                    .borrow_mut()
+                    .try_write(virtual_address, data)
+                    .map_err(|error| BusError::BusWriteError {
+                        bus_id: self.id,
+                        device_id,
+                        address,
+                        details: error.to_string(),
+                    })?;
+                return Ok(());
             }
         }
-        panic!(
-            "Bus '{0}' doesn't have an attached device for address: '0x{address:x}'",
-            self.id
-        );
+        Err(BusError::MissingBusDevice {
+            bus_id: self.id.to_string(),
+            address,
+        })
     }
 }
 

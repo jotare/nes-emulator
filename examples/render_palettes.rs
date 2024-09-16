@@ -47,12 +47,12 @@ fn main() {
         .pixel_scale_factor(PIXEL_SCALE_FACTOR)
         .build();
 
-    ui.start();
+    ui.start().unwrap();
 
     let frame = render_palettes(&nes);
     ui.render(frame);
 
-    ui.join();
+    ui.stop().unwrap();
 }
 
 fn render_palettes(nes: &Nes) -> Frame {

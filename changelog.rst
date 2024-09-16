@@ -1,6 +1,11 @@
 CHANGELOG
 =========
 
+0.48.0
+------
+- Extend UI trait
+- Better error handling
+
 0.47.0
 ------
 - Implement an event bus for inter-component communications (NMI, frame
