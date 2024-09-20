@@ -42,7 +42,26 @@ impl BusTrait for Bus {
             });
         }
 
-        // TODO: return error on overlapping address ranges
+        // Check for overlapping address ranges
+        for (registered_id, registered_device) in self.devices.borrow().iter() {
+            let Device {
+                addr_range: registered_addr_range,
+                ..
+            } = registered_device;
+
+            let min_start =
+                std::cmp::min(registered_addr_range.start as u32, addr_range.start as u32);
+            let max_end =
+                std::cmp::max(registered_addr_range.end as u32, addr_range.end as u32) + 1;
+
+            let new_range = (addr_range.end - addr_range.start + 1) as u32;
+            let registered_range =
+                (registered_addr_range.end - registered_addr_range.start + 1) as u32;
+
+            if (new_range + registered_range) > (max_end - min_start) {
+                panic!("Device '{id}' (with address {addr_range:?}) overlapps with '{registered_id}' (with address {registered_addr_range:?})");
+            }
+        }
 
         self.devices.borrow_mut().insert(
             id,

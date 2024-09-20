@@ -116,16 +116,27 @@ impl Nes {
             )
             .unwrap();
 
-        let fake_apu = Rc::new(RefCell::new(Ram::new(APU_AND_IO_REGISTERS_SIZE.into())));
-        let fake_apu_ptr = Rc::clone(&fake_apu);
+        // Fake APU registers to avoid the games panicking for unattached
+        // address
         main_bus
             .borrow_mut()
             .attach(
-                "Fake APU",
-                fake_apu_ptr,
+                "Fake APU (1)",
+                Rc::new(RefCell::new(Ram::new(0x4014 - 0x4000))),
                 AddressRange {
-                    start: APU_AND_IO_REGISTERS_START,
-                    end: APU_AND_IO_REGISTERS_END,
+                    start: 0x4000,
+                    end: 0x4013,
+                },
+            )
+            .unwrap();
+        main_bus
+            .borrow_mut()
+            .attach(
+                "Fake APU (2)",
+                Rc::new(RefCell::new(Ram::new(0x4015 - 0x4014))),
+                AddressRange {
+                    start: 0x4015,
+                    end: 0x4015,
                 },
             )
             .unwrap();

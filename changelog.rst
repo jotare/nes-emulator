@@ -1,6 +1,11 @@
 CHANGELOG
 =========
 
+0.49.1
+------
+- Fix fake APU overwritting bus addresses
+- Add overlapping address validation in bus
+
 0.49.0
 ------
 - Implement OAM DMA
