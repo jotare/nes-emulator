@@ -34,6 +34,9 @@ pub const APU_AND_IO_REGISTERS_END: u16 = 0x4015;
 pub const APU_AND_IO_REGISTERS_SIZE: u16 =
     APU_AND_IO_REGISTERS_END - APU_AND_IO_REGISTERS_START + 1;
 
+// DMA
+pub const OAM_DMA: u16 = 0x4014;
+
 // Controllers
 pub const CONTROLLER_PORT_1: u16 = 0x4016;
 pub const CONTROLLER_PORT_2: u16 = 0x4017;

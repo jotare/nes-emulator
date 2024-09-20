@@ -48,10 +48,12 @@ use crate::graphics::render_address::RenderAddress;
 use crate::graphics::Frame;
 use crate::graphics::FramePixel;
 use crate::graphics::Pixel;
+use crate::hardware::OAMDATA;
 use crate::hardware::{
     OAMADDR, PALETTE_MEMORY_START, PPUADDR, PPUCTRL, PPUDATA, PPUMASK, PPUSCROLL, PPUSTATUS,
 };
 use crate::interfaces::{Bus, Memory};
+use crate::processor::memory::Ram;
 use crate::types::SharedBus;
 use crate::utils;
 
@@ -75,6 +77,7 @@ pub struct Ppu {
 
     registers: RefCell<PpuRegisters>,
     internal: RefCell<PpuInternalRegisters>,
+    oam: Ram,
 
     cycle: u16,
     scan_line: u16,
@@ -142,6 +145,7 @@ impl Ppu {
 
             registers: RefCell::new(PpuRegisters::default()),
             internal: RefCell::new(PpuInternalRegisters::default()),
+            oam: Ram::new(64 * 4), // 64 sprites, 4 bytes each
 
             cycle: 0,
             scan_line: 0,
@@ -441,10 +445,16 @@ impl Ppu {
         self.registers.borrow().background_rendering_enabled()
     }
 
+    /// Get the current frame being rendered by the PPU. Once the PPU signals
+    /// `FrameReady` event through the event bus, this Frame is complete.
     pub fn take_frame(&mut self) -> Frame {
         let frame = self.frame.clone();
         self.frame = Frame::black();
         frame
+    }
+
+    pub fn oam_dma_write(&mut self, address: u8, data: u8) {
+        self.oam.write(address as u16, data);
     }
 
     fn render_nametable(&self) -> Frame {
@@ -553,6 +563,11 @@ impl Memory for Ppu {
                 self.registers.borrow().mask.bits()
             }
 
+            OAMDATA => {
+                let oam_addr = self.registers.borrow().oam_addr as u16;
+                self.oam.read(oam_addr)
+            }
+
             PPUDATA => {
                 let mut regs = self.registers.borrow_mut();
                 let mut internal = self.internal.borrow_mut();
@@ -604,7 +619,12 @@ impl Memory for Ppu {
             }
 
             OAMADDR => {
-                // Ignored read to OAMADDR (not implemented yet)
+                regs.oam_addr = data;
+            }
+
+            OAMDATA => {
+                let oam_addr = regs.oam_addr as u16;
+                self.oam.write(oam_addr, data);
             }
 
             PPUSCROLL => {

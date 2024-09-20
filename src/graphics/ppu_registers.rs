@@ -9,6 +9,7 @@ pub struct PpuRegisters {
     pub ctrl: PpuCtrl,
     pub mask: PpuMask,
     pub status: PpuStatus,
+    pub oam_addr: u8,
     pub data_buffer: u8,
 }
 
@@ -18,6 +19,7 @@ impl Default for PpuRegisters {
             ctrl: PpuCtrl::empty(),
             mask: PpuMask::empty(),
             status: PpuStatus::empty(),
+            oam_addr: 0,
             data_buffer: 0,
         }
     }

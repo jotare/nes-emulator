@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.49.0
+------
+- Implement OAM DMA
+
 0.48.0
 ------
 - Extend UI trait

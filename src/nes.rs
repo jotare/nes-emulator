@@ -15,6 +15,7 @@ use log::info;
 use crate::cartidge::Cartidge;
 use crate::controller::Controller;
 use crate::controller::ControllerButtons;
+use crate::dma::DmaController;
 use crate::errors::NesError;
 use crate::events::Event;
 use crate::events::KeyboardChannel;
@@ -48,6 +49,8 @@ pub struct Nes {
     ram: SharedMemory,
     nametable: SharedCiram,
     palettes: SharedMemory,
+
+    dma_controller: Rc<RefCell<DmaController>>,
 
     pub ui: Option<GtkUi>,
 
@@ -157,6 +160,19 @@ impl Nes {
             )
             .unwrap();
 
+        let dma_controller = Rc::new(RefCell::new(DmaController::new()));
+        main_bus
+            .borrow_mut()
+            .attach(
+                "DMA controller",
+                dma_controller.clone(),
+                AddressRange {
+                    start: OAM_DMA,
+                    end: OAM_DMA,
+                },
+            )
+            .unwrap();
+
         let cartidge_expansion_rom =
             Rc::new(RefCell::new(Ram::new(CARTIDGE_EXPANSION_ROM_SIZE.into())));
         let cartidge_expansion_rom_ptr = Rc::clone(&cartidge_expansion_rom);
@@ -218,6 +234,7 @@ impl Nes {
             ram,
             nametable,
             palettes: palette_memory,
+            dma_controller,
             ui: None,
             controller_one,
             controller_two,
@@ -374,7 +391,17 @@ impl Nes {
 
         // CPU clock runs every 12 system clocks
         if self.system_clock % 12 == 0 {
-            self.cpu.clock()?;
+            let cpu_clock = self.system_clock / 12;
+            let ongoing_dma = self.dma_controller.borrow().is_oam_dma_active(cpu_clock);
+            if ongoing_dma {
+                self.dma_controller.borrow_mut().oam_dma_transfer(
+                    cpu_clock,
+                    &self.main_bus,
+                    &self.ppu,
+                );
+            } else {
+                self.cpu.clock()?;
+            }
         }
 
         Ok(())

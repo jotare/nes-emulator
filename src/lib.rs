@@ -5,6 +5,7 @@
 
 mod cartidge;
 mod controller;
+mod dma;
 pub mod errors;
 pub mod events;
 pub mod graphics;
