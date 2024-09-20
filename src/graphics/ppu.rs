@@ -36,6 +36,7 @@
 //!
 
 use std::cell::RefCell;
+use std::io::Write;
 
 use log::{debug, trace};
 
@@ -53,9 +54,10 @@ use crate::hardware::{
     OAMADDR, PALETTE_MEMORY_START, PPUADDR, PPUCTRL, PPUDATA, PPUMASK, PPUSCROLL, PPUSTATUS,
 };
 use crate::interfaces::{Bus, Memory};
-use crate::processor::memory::Ram;
 use crate::types::SharedBus;
 use crate::utils;
+
+use super::oam::Oam;
 
 // PPU background scrolling functionality is implemented using nesdev loopy
 // contributor design.
@@ -77,7 +79,7 @@ pub struct Ppu {
 
     registers: RefCell<PpuRegisters>,
     internal: RefCell<PpuInternalRegisters>,
-    oam: Ram,
+    oam: Oam,
 
     cycle: u16,
     scan_line: u16,
@@ -145,7 +147,7 @@ impl Ppu {
 
             registers: RefCell::new(PpuRegisters::default()),
             internal: RefCell::new(PpuInternalRegisters::default()),
-            oam: Ram::new(64 * 4), // 64 sprites, 4 bytes each
+            oam: Oam::new(),
 
             cycle: 0,
             scan_line: 0,
@@ -457,6 +459,13 @@ impl Ppu {
         self.oam.write(address as u16, data);
     }
 
+    pub fn dump_oam(&self, path: &str) -> std::io::Result<()> {
+        let mut file = std::fs::File::create(path)?;
+        file.write(format!("{:?}", self.oam).as_bytes())?;
+        Ok(())
+    }
+
+    // TODO: move to example?
     fn render_nametable(&self) -> Frame {
         let mut screen = Frame::black();
 

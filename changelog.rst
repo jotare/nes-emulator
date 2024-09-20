@@ -1,6 +1,11 @@
 CHANGELOG
 =========
 
+0.50.0
+------
+- Implement OAM struct with better API than raw RAM memory
+- Add OAM debugging function
+
 0.49.1
 ------
 - Fix fake APU overwritting bus addresses

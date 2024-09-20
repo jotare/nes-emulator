@@ -1,5 +1,6 @@
 //! NES graphics hardware emulation
 
+mod oam;
 pub mod palette;
 pub mod palette_memory;
 pub mod pattern_table;
