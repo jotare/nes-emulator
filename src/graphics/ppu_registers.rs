@@ -49,6 +49,12 @@ impl PpuRegisters {
     }
 
     #[inline]
+    pub fn sprite_pattern_table(&self) -> u8 {
+        self.ctrl.intersection(PpuCtrl::SPRITE_PATTERN_TABLE).bits()
+            >> PpuCtrl::SPRITE_PATTERN_TABLE.bits().trailing_zeros()
+    }
+
+    #[inline]
     pub fn vram_address_increment(&self) -> usize {
         match self.ctrl.contains(PpuCtrl::VRAM_ADDRESS_INCREMENT) {
             false => 1, // going across
@@ -101,7 +107,7 @@ bitflags! {
 
         /// Sprite pattern table address for 8x8 sprites (0: $0000; 1: $1000;
         /// ignored in 8x16 mode)
-        const SPRITE_PATTERN_TABLE_ADDRESS = 0b0000_1000;
+        const SPRITE_PATTERN_TABLE = 0b0000_1000;
 
         /// VRAM address increment per CPU read/write of PPUDATA (0: add 1,
         /// going across; 1: add 32, going down)
