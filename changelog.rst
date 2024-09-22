@@ -4,6 +4,8 @@ CHANGELOG
 0.51.0
 ------
 - Add debug logs to DMA
+- Use wrapping_add instead of relying on wrapping behaviour (as it panics for
+  other than --release)
 
 0.50.0
 ------

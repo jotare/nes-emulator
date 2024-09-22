@@ -83,7 +83,7 @@ impl DmaController {
 
     fn oam_data_write(&mut self, ppu: &SharedPpu) {
         ppu.borrow_mut().oam_dma_write(self.addr, self.data);
-        self.addr += 1;
+        self.addr = self.addr.wrapping_add(1);
 
         // once we wrap around, we've done 256 read-write cycles and filled the
         // OAM with data, we can now stop DMA
