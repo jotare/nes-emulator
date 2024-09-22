@@ -7,6 +7,7 @@
 use crate::interfaces::Bus;
 use crate::interfaces::Memory;
 use crate::types::{SharedBus, SharedPpu};
+use log::debug;
 
 /// DMA controller is responsible to manage DMA. Once DMA starts,
 /// [`DmaController`] is able to track the progress and indicate ending of DMA
@@ -88,6 +89,10 @@ impl DmaController {
         // OAM with data, we can now stop DMA
         let finish = self.addr == 0x00;
         self.transfer = !finish;
+
+        if finish {
+            debug!("OAM DMA finished");
+        }
     }
 }
 
@@ -97,7 +102,7 @@ impl Memory for DmaController {
     }
 
     fn write(&mut self, address: u16, data: u8) {
-        // OAM DMA starts
+        debug!("OAM DMA starts for page: ${data:0>2X}");
         self.transfer = true;
         self.page = data;
         self.addr = 0;

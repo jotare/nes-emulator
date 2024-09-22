@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.51.0
+------
+- Add debug logs to DMA
+
 0.50.0
 ------
 - Implement OAM struct with better API than raw RAM memory
