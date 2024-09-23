@@ -79,6 +79,7 @@ pub struct Ppu {
 
     registers: RefCell<PpuRegisters>,
     internal: RefCell<PpuInternalRegisters>,
+
     oam: Oam,
 
     cycle: u16,
@@ -147,6 +148,7 @@ impl Ppu {
 
             registers: RefCell::new(PpuRegisters::default()),
             internal: RefCell::new(PpuInternalRegisters::default()),
+
             oam: Oam::new(),
 
             cycle: 0,
@@ -317,6 +319,7 @@ impl Ppu {
 
             if self.scan_line > 261 {
                 self.scan_line = 0;
+                self.render_sprites();
                 self.event_bus.access().emit(Event::FrameReady);
             }
         }
@@ -465,6 +468,33 @@ impl Ppu {
         Ok(())
     }
 
+    // All sprite rendering functionality in a single function, overwritting the
+    // current frame. Just to do a v0
+    fn render_sprites(&mut self) {
+        for s in 0..64 {
+            let sprite = self.oam.read_sprite(s);
+
+            if sprite.y >= 240 {
+                // sprite hidden out of screen, skip
+                continue;
+            }
+
+            println!("Sprite {s} in screen: {sprite:?}");
+
+            for x in sprite.x..(sprite.x + 7) {
+                for y in sprite.y..(sprite.y + 7) {
+                    let color = Pixel::RED;
+                    self.frame.set_pixel(
+                        color,
+                        FramePixel {
+                            row: y as usize,
+                            col: x as usize,
+                        },
+                    );
+                }
+            }
+        }
+    }
     // TODO: move to example?
     fn render_nametable(&self) -> Frame {
         let mut screen = Frame::black();

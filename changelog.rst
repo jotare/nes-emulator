@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.52.0
+------
+- Sprite rendernig v0, use red tiles for sprites
+
 0.51.0
 ------
 - Add debug logs to DMA
