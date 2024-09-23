@@ -12,6 +12,7 @@ pub mod graphics;
 pub mod hardware;
 pub mod interfaces;
 mod mappers;
+mod metrics;
 mod nes;
 mod processor;
 pub mod settings;

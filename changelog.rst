@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.55.0
+------
+- Implement primitive metrics collector to compute FPS
+
 0.54.0
 ------
 - Sprite rendering v1, sprites by scan line

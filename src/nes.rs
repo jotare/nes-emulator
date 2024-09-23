@@ -25,6 +25,7 @@ use crate::graphics::ppu::Ppu;
 use crate::hardware::*;
 use crate::interfaces::AddressRange;
 use crate::interfaces::Bus as BusTrait;
+use crate::metrics::Collector;
 use crate::processor::bus::Bus;
 use crate::processor::cpu::{Cpu, Interrupt};
 use crate::processor::memory::MirroredMemory;
@@ -61,6 +62,7 @@ pub struct Nes {
     keyboard_channel: KeyboardChannel,
 
     settings: NesSettings,
+    metrics: Collector,
 }
 
 impl Default for Nes {
@@ -252,6 +254,7 @@ impl Nes {
             event_bus,
             keyboard_channel,
             settings,
+            metrics: Collector::new(),
         }
     }
 
@@ -350,6 +353,11 @@ impl Nes {
                 break;
             }
 
+            if self.system_clock % (2_u64.pow(25)) == 0 {
+                let metrics = self.metrics.collect();
+                println!("FPS: {}", metrics.frames_per_second);
+            }
+
             self.clock()
                 .map_err(|error| NesError::NesInternalError(error))?;
         }
@@ -389,6 +397,7 @@ impl Nes {
 
             if self.event_bus.access().emitted(Event::FrameReady) {
                 let frame = ppu.take_frame();
+                self.metrics.observe_frame_ready();
                 self.event_bus.access().mark_as_processed(Event::FrameReady);
 
                 if let Some(ui) = self.ui.as_mut() {
