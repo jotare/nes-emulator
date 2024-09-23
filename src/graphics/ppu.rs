@@ -479,16 +479,50 @@ impl Ppu {
                 continue;
             }
 
-            println!("Sprite {s} in screen: {sprite:?}");
+            let pattern_table = self.registers.borrow().sprite_pattern_table();
+            let mut pattern_table_address = PatternTableAddress::new(pattern_table);
+            pattern_table_address.set(PatternTableAddress::TILE_NUMBER, sprite.tile);
 
-            for x in sprite.x..(sprite.x + 7) {
-                for y in sprite.y..(sprite.y + 7) {
-                    let color = Pixel::RED;
+            let palette = (sprite.attributes & 0b0000_0011) + 4; // sprite palettes are 4 to 7
+
+            let flip_horizontally = utils::bv(sprite.attributes, 6) > 0;
+            let flip_vertically = utils::bv(sprite.attributes, 7) > 0;
+
+            for y in 0..8 {
+                pattern_table_address.set(PatternTableAddress::FINE_Y_OFFSET, y as u8);
+
+                pattern_table_address.set(PatternTableAddress::BIT_PLANE, 0);
+                let low = self.bus.borrow().read(pattern_table_address.into());
+
+                pattern_table_address.set(PatternTableAddress::BIT_PLANE, 1);
+                let high = self.bus.borrow().read(pattern_table_address.into());
+
+                for x in 0..8 {
+                    let palette_offset =
+                        (palette << 2) | utils::bv(high, x as u8) << 1 | utils::bv(low, x as u8);
+                    let palette_color = self
+                        .bus
+                        .borrow()
+                        .read(PALETTE_MEMORY_START + palette_offset as u16);
+                    let color = Pixel::from(palette_color);
+
+                    // read pattern comes already flipped, so we invers the operation
+                    let col = if flip_horizontally {
+                        sprite.x + x
+                    } else {
+                        sprite.x + 7 - x
+                    };
+                    let row = if flip_vertically {
+                        sprite.y + 7 - y
+                    } else {
+                        sprite.y + y
+                    };
+
                     self.frame.set_pixel(
                         color,
                         FramePixel {
-                            row: y as usize,
-                            col: x as usize,
+                            row: row as usize,
+                            col: col as usize,
                         },
                     );
                 }

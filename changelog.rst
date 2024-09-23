@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.53.0
+------
+- Sprite rendering v0, sprites literally over background
+
 0.52.0
 ------
 - Sprite rendernig v0, use red tiles for sprites
