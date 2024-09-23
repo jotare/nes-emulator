@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.54.0
+------
+- Sprite rendering v1, sprites by scan line
+
 0.53.0
 ------
 - Sprite rendering v0, sprites literally over background

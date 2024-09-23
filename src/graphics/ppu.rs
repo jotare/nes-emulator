@@ -58,6 +58,7 @@ use crate::types::SharedBus;
 use crate::utils;
 
 use super::oam::Oam;
+use super::oam::OamSprite;
 
 // PPU background scrolling functionality is implemented using nesdev loopy
 // contributor design.
@@ -186,7 +187,9 @@ impl Ppu {
                 // makes the same memory accesses it would for a regular
                 // scanline
                 if self.scan_line == 261 && self.cycle == 1 {
-                    self.registers.borrow_mut().unset_vertical_blank();
+                    let mut registers = self.registers.borrow_mut();
+                    registers.unset_vertical_blank();
+                    registers.set_sprite_overflow(false);
                 }
 
                 match self.cycle {
@@ -315,11 +318,11 @@ impl Ppu {
         self.cycle += 1;
         if self.cycle > 340 {
             self.cycle = 0;
+            self.render_scanline_sprites();
             self.scan_line += 1;
 
             if self.scan_line > 261 {
                 self.scan_line = 0;
-                self.render_sprites();
                 self.event_bus.access().emit(Event::FrameReady);
             }
         }
@@ -468,15 +471,55 @@ impl Ppu {
         Ok(())
     }
 
-    // All sprite rendering functionality in a single function, overwritting the
-    // current frame. Just to do a v0
-    fn render_sprites(&mut self) {
+    // Sprite rendering per scanline. This is still non functional, as sprites
+    // are completely over background and not in the correct scanline (sprites
+    // should be one scanline below). But it's a better approach
+    fn render_scanline_sprites(&mut self) {
+        if self.scan_line >= 240 {
+            // only render in visible scanlines
+            return;
+        }
+
+        // Cycles 1-64: secondary OAM initialization, all to 0xFF as if Y
+        // coordinate is out of screen, we won't paint the sprite
+        let mut secondary_oam = [OamSprite {
+            x: 0xFF,
+            y: 0xFF,
+            tile: 0xFF,
+            attributes: 0xFF,
+        }; 8];
+
+        // Cycles 65-256: read 8 sprites from OAM and write them into secondary
+        // OAM if they are in screen
+        let mut sprites_in_screen = 0;
+        let mut sprite_overflow = false;
         for s in 0..64 {
             let sprite = self.oam.read_sprite(s);
 
-            if sprite.y >= 240 {
+            let in_screen = (self.scan_line - (sprite.y as u16)) < 8;
+            if !in_screen {
                 // sprite hidden out of screen, skip
                 continue;
+            }
+
+            if sprites_in_screen < 8 {
+                secondary_oam[sprites_in_screen] = sprite;
+                sprites_in_screen += 1
+            } else {
+                sprite_overflow = true;
+                break;
+            }
+        }
+
+        self.registers
+            .borrow_mut()
+            .set_sprite_overflow(sprite_overflow);
+
+        // render sprites in screen
+        for sprite in secondary_oam.iter() {
+            // no more valid sprites
+            if sprite.y == 0xFF {
+                break;
             }
 
             let pattern_table = self.registers.borrow().sprite_pattern_table();
@@ -485,47 +528,49 @@ impl Ppu {
 
             let palette = (sprite.attributes & 0b0000_0011) + 4; // sprite palettes are 4 to 7
 
+            // 0 -> front of background, 1 -> behind background
+            let priority = utils::bv(sprite.attributes, 5);
             let flip_horizontally = utils::bv(sprite.attributes, 6) > 0;
             let flip_vertically = utils::bv(sprite.attributes, 7) > 0;
 
-            for y in 0..8 {
-                pattern_table_address.set(PatternTableAddress::FINE_Y_OFFSET, y as u8);
+            let y = (self.scan_line - sprite.y as u16) as u8;
 
-                pattern_table_address.set(PatternTableAddress::BIT_PLANE, 0);
-                let low = self.bus.borrow().read(pattern_table_address.into());
+            pattern_table_address.set(PatternTableAddress::FINE_Y_OFFSET, y);
 
-                pattern_table_address.set(PatternTableAddress::BIT_PLANE, 1);
-                let high = self.bus.borrow().read(pattern_table_address.into());
+            pattern_table_address.set(PatternTableAddress::BIT_PLANE, 0);
+            let low = self.bus.borrow().read(pattern_table_address.into());
 
-                for x in 0..8 {
-                    let palette_offset =
-                        (palette << 2) | utils::bv(high, x as u8) << 1 | utils::bv(low, x as u8);
-                    let palette_color = self
-                        .bus
-                        .borrow()
-                        .read(PALETTE_MEMORY_START + palette_offset as u16);
-                    let color = Pixel::from(palette_color);
+            pattern_table_address.set(PatternTableAddress::BIT_PLANE, 1);
+            let high = self.bus.borrow().read(pattern_table_address.into());
 
-                    // read pattern comes already flipped, so we invers the operation
-                    let col = if flip_horizontally {
-                        sprite.x + x
-                    } else {
-                        sprite.x + 7 - x
-                    };
-                    let row = if flip_vertically {
-                        sprite.y + 7 - y
-                    } else {
-                        sprite.y + y
-                    };
+            for x in 0..8 {
+                let palette_offset =
+                    (palette << 2) | utils::bv(high, x as u8) << 1 | utils::bv(low, x as u8);
+                let palette_color = self
+                    .bus
+                    .borrow()
+                    .read(PALETTE_MEMORY_START + palette_offset as u16);
+                let color = Pixel::from(palette_color);
 
-                    self.frame.set_pixel(
-                        color,
-                        FramePixel {
-                            row: row as usize,
-                            col: col as usize,
-                        },
-                    );
-                }
+                // read pattern comes already flipped, so we invers the operation
+                let col = if flip_horizontally {
+                    sprite.x + x
+                } else {
+                    sprite.x + 7 - x
+                };
+                let row = if flip_vertically {
+                    sprite.y + 7 - y
+                } else {
+                    sprite.y + y
+                };
+
+                self.frame.set_pixel(
+                    color,
+                    FramePixel {
+                        row: row as usize,
+                        col: col as usize,
+                    },
+                );
             }
         }
     }

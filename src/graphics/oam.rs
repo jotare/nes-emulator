@@ -9,7 +9,7 @@ pub struct Oam {
     memory: Ram,
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct OamSprite {
     pub x: u8,
     pub y: u8,
