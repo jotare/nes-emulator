@@ -4,6 +4,7 @@ mod oam;
 pub mod palette;
 pub mod palette_memory;
 pub mod pattern_table;
+mod pixel_producer;
 pub mod ppu;
 mod ppu_registers;
 mod render_address;

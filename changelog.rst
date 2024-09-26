@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.56.0
+------
+- Pixel-by-pixel sprite rendering implementation
+
 0.55.0
 ------
 - Implement primitive metrics collector to compute FPS

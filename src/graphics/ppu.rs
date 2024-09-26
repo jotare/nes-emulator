@@ -50,15 +50,14 @@ use crate::graphics::Frame;
 use crate::graphics::FramePixel;
 use crate::graphics::Pixel;
 use crate::hardware::OAMDATA;
-use crate::hardware::{
-    OAMADDR, PALETTE_MEMORY_START, PPUADDR, PPUCTRL, PPUDATA, PPUMASK, PPUSCROLL, PPUSTATUS,
-};
+use crate::hardware::{OAMADDR, PPUADDR, PPUCTRL, PPUDATA, PPUMASK, PPUSCROLL, PPUSTATUS};
 use crate::interfaces::{Bus, Memory};
 use crate::types::SharedBus;
 use crate::utils;
 
 use super::oam::Oam;
 use super::oam::OamSprite;
+use super::pixel_producer::PixelProducer;
 
 // PPU background scrolling functionality is implemented using nesdev loopy
 // contributor design.
@@ -86,34 +85,7 @@ pub struct Ppu {
     cycle: u16,
     scan_line: u16,
 
-    buffers: Buffers,
-    shifters: Shifters,
-    pixel_data: PixelData,
-}
-
-/// Internal PPU latches that store temporary information while rendering
-#[derive(Default)]
-struct Buffers {
-    next_tile_number: u8,
-    next_attributes: u8,
-    next_bit_plane_high: u8,
-    next_bit_plane_low: u8,
-}
-
-/// Internal PPU shift registers responsible of producing pixel data.
-///
-/// Shifters are 16-bit wide, the high 8 bits are used in the current pixels
-/// being drawn while the low 8 bits will be used for the next tile
-#[derive(Default)]
-struct Shifters {
-    attributes: (u16, u16),
-    tile_pattern: (u16, u16),
-}
-
-#[derive(Default)]
-struct PixelData {
-    pattern_data: (u8, u8),
-    attributes: (u8, u8),
+    pixel_producer: PixelProducer,
 }
 
 #[derive(Default)]
@@ -142,7 +114,7 @@ enum WriteToggle {
 impl Ppu {
     pub fn new(bus: SharedBus, event_bus: SharedEventBus) -> Self {
         Self {
-            bus,
+            bus: bus.clone(),
             event_bus,
 
             frame: Frame::black(),
@@ -155,9 +127,7 @@ impl Ppu {
             cycle: 0,
             scan_line: 0,
 
-            buffers: Buffers::default(),
-            shifters: Shifters::default(),
-            pixel_data: PixelData::default(),
+            pixel_producer: PixelProducer::new(bus),
         }
     }
 
@@ -203,14 +173,15 @@ impl Ppu {
                         // we need 4 accesses, then we need 8 clocks
 
                         if self.bg_rendering_enabled() {
-                            self.update_shifters();
+                            self.pixel_producer.update_shifters();
                         }
 
                         match (self.cycle - 1) % 8 {
                             // Fetch nametable byte
                             0 => {}
                             1 => {
-                                self.buffers.next_tile_number = self.nametable_fetch();
+                                self.pixel_producer.buffers.next_tile_number =
+                                    self.nametable_fetch();
                             }
 
                             // fetch attribute table byte
@@ -238,7 +209,7 @@ impl Ppu {
                                 }
                                 next_attributes &= 0x03;
 
-                                self.buffers.next_attributes = next_attributes;
+                                self.pixel_producer.buffers.next_attributes = next_attributes;
                             }
                             3 => {}
 
@@ -248,13 +219,14 @@ impl Ppu {
 
                             // fetch pattern table tile high
                             6 => {
-                                let (high_plane, low_plane) =
-                                    self.fetch_pattern_planes(self.buffers.next_tile_number);
-                                self.buffers.next_bit_plane_high = high_plane;
-                                self.buffers.next_bit_plane_low = low_plane;
+                                let (high_plane, low_plane) = self.fetch_pattern_planes(
+                                    self.pixel_producer.buffers.next_tile_number,
+                                );
+                                self.pixel_producer.buffers.next_bit_plane_high = high_plane;
+                                self.pixel_producer.buffers.next_bit_plane_low = low_plane;
                             }
                             7 => {
-                                self.load_shifters();
+                                self.pixel_producer.load_shifters();
                                 if self.rendering_enabled() {
                                     self.internal.borrow_mut().vram_addr.increment_x();
                                 }
@@ -268,7 +240,7 @@ impl Ppu {
                     }
 
                     257 => {
-                        self.load_shifters();
+                        self.pixel_producer.load_shifters();
                         if self.bg_rendering_enabled() {
                             self.internal.borrow_mut().transfer_x();
                         }
@@ -282,7 +254,7 @@ impl Ppu {
 
                     338 | 340 => {
                         // Unused NT fetches
-                        self.buffers.next_tile_number = self.nametable_fetch();
+                        self.pixel_producer.buffers.next_tile_number = self.nametable_fetch();
                     }
 
                     _ => {
@@ -389,57 +361,12 @@ impl Ppu {
         (high, low)
     }
 
-    // Load shift registers from internal latches (buffers) so next 8 pixels can
-    // be drawn by the PPU in the next clock cycles
-    fn load_shifters(&mut self) {
-        self.shifters.tile_pattern.0 =
-            (self.shifters.tile_pattern.0 & 0xFF00) | (self.buffers.next_bit_plane_low as u16);
-        self.shifters.tile_pattern.1 =
-            (self.shifters.tile_pattern.1 & 0xFF00) | (self.buffers.next_bit_plane_high as u16);
-
-        let attributes_0 = if utils::bv(self.buffers.next_attributes, 0) == 0 {
-            0
-        } else {
-            0xFF
-        };
-        self.shifters.attributes.0 = (self.shifters.attributes.0 & 0xFF00) | attributes_0 as u16;
-
-        let attributes_1 = if utils::bv(self.buffers.next_attributes, 1) == 0 {
-            0
-        } else {
-            0xFF
-        };
-        self.shifters.attributes.1 = (self.shifters.attributes.1 & 0xFF00) | attributes_1 as u16;
-    }
-
-    fn update_shifters(&mut self) {
-        self.shifters.tile_pattern.0 = self.shifters.tile_pattern.0 << 1;
-        self.shifters.tile_pattern.1 = self.shifters.tile_pattern.1 << 1;
-        self.shifters.attributes.0 = self.shifters.attributes.0 << 1;
-        self.shifters.attributes.1 = self.shifters.attributes.1 << 1;
-    }
-
     fn render_pixel(&mut self) {
         let col = self.cycle as usize;
         let row = self.scan_line as usize;
-        if col < 256 && row < 240 {
-            let fine_x = self.internal.borrow().fine_x_scroll;
-            let fine_x_bit = 15 - fine_x;
-
-            let palette_lo = utils::bv_16(self.shifters.attributes.0, fine_x_bit);
-            let palette_hi = utils::bv_16(self.shifters.attributes.1, fine_x_bit);
-            let bit_plane_lo = utils::bv_16(self.shifters.tile_pattern.0, fine_x_bit);
-            let bit_plane_hi = utils::bv_16(self.shifters.tile_pattern.1, fine_x_bit);
-
-            let palette_offset =
-                (palette_hi << 3) | (palette_lo << 2) | (bit_plane_hi << 1) | bit_plane_lo;
-            let color = Pixel::from(
-                self.bus
-                    .borrow()
-                    .read(PALETTE_MEMORY_START + palette_offset),
-            );
-
-            self.frame.set_pixel(color, FramePixel { col, row });
+        let pixel = self.pixel_producer.produce_pixel(col, row);
+        if let Some(pixel) = pixel {
+            self.frame.set_pixel(pixel, FramePixel { col, row });
         }
     }
 
@@ -496,7 +423,8 @@ impl Ppu {
         for s in 0..64 {
             let sprite = self.oam.read_sprite(s);
 
-            let in_screen = (self.scan_line - (sprite.y as u16)) < 8;
+            let sprite_y = sprite.y as u16;
+            let in_screen = (self.scan_line >= sprite_y) && (self.scan_line < (sprite_y + 8));
             if !in_screen {
                 // sprite hidden out of screen, skip
                 continue;
@@ -515,64 +443,8 @@ impl Ppu {
             .borrow_mut()
             .set_sprite_overflow(sprite_overflow);
 
-        // render sprites in screen
-        for sprite in secondary_oam.iter() {
-            // no more valid sprites
-            if sprite.y == 0xFF {
-                break;
-            }
-
-            let pattern_table = self.registers.borrow().sprite_pattern_table();
-            let mut pattern_table_address = PatternTableAddress::new(pattern_table);
-            pattern_table_address.set(PatternTableAddress::TILE_NUMBER, sprite.tile);
-
-            let palette = (sprite.attributes & 0b0000_0011) + 4; // sprite palettes are 4 to 7
-
-            // 0 -> front of background, 1 -> behind background
-            let priority = utils::bv(sprite.attributes, 5);
-            let flip_horizontally = utils::bv(sprite.attributes, 6) > 0;
-            let flip_vertically = utils::bv(sprite.attributes, 7) > 0;
-
-            let y = (self.scan_line - sprite.y as u16) as u8;
-
-            pattern_table_address.set(PatternTableAddress::FINE_Y_OFFSET, y);
-
-            pattern_table_address.set(PatternTableAddress::BIT_PLANE, 0);
-            let low = self.bus.borrow().read(pattern_table_address.into());
-
-            pattern_table_address.set(PatternTableAddress::BIT_PLANE, 1);
-            let high = self.bus.borrow().read(pattern_table_address.into());
-
-            for x in 0..8 {
-                let palette_offset =
-                    (palette << 2) | utils::bv(high, x as u8) << 1 | utils::bv(low, x as u8);
-                let palette_color = self
-                    .bus
-                    .borrow()
-                    .read(PALETTE_MEMORY_START + palette_offset as u16);
-                let color = Pixel::from(palette_color);
-
-                // read pattern comes already flipped, so we invers the operation
-                let col = if flip_horizontally {
-                    sprite.x + x
-                } else {
-                    sprite.x + 7 - x
-                };
-                let row = if flip_vertically {
-                    sprite.y + 7 - y
-                } else {
-                    sprite.y + y
-                };
-
-                self.frame.set_pixel(
-                    color,
-                    FramePixel {
-                        row: row as usize,
-                        col: col as usize,
-                    },
-                );
-            }
-        }
+        self.pixel_producer.sprites = secondary_oam;
+        self.pixel_producer.sprite_pattern_table = self.registers.borrow().sprite_pattern_table();
     }
     // TODO: move to example?
     fn render_nametable(&self) -> Frame {
