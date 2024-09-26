@@ -354,6 +354,7 @@ impl Nes {
             }
 
             if self.system_clock % (2_u64.pow(25)) == 0 {
+                self.metrics.observe_system_clocks(2_u64.pow(25));
                 let metrics = self.metrics.collect();
                 println!("FPS: {}", metrics.frames_per_second);
             }

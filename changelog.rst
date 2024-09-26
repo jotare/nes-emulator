@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.57.0
+------
+- Added metric for clock frequency
+
 0.56.0
 ------
 - Pixel-by-pixel sprite rendering implementation
