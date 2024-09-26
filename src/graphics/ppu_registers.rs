@@ -3,14 +3,16 @@
 //! This module provides a better way to manage PPU register bits and bit
 //! groups
 
+use std::cell::Cell;
+
 use bitflags::bitflags;
 
 pub struct PpuRegisters {
     pub ctrl: PpuCtrl,
     pub mask: PpuMask,
-    pub status: PpuStatus,
+    pub status: Cell<PpuStatus>,
     pub oam_addr: u8,
-    pub data_buffer: u8,
+    pub data_buffer: Cell<u8>,
 }
 
 impl Default for PpuRegisters {
@@ -18,19 +20,16 @@ impl Default for PpuRegisters {
         Self {
             ctrl: PpuCtrl::empty(),
             mask: PpuMask::empty(),
-            status: PpuStatus::empty(),
+            status: Cell::new(PpuStatus::empty()),
             oam_addr: 0,
-            data_buffer: 0,
+            data_buffer: Cell::new(0),
         }
     }
 }
 
 impl PpuRegisters {
     pub fn reset(&mut self) {
-        self.ctrl = PpuCtrl::empty();
-        self.mask = PpuMask::empty();
-        self.status = PpuStatus::empty();
-        self.data_buffer = 0;
+        *self = Self::default();
     }
 
     // PPUCTRL
@@ -38,6 +37,15 @@ impl PpuRegisters {
     #[inline]
     pub fn nmi_enabled(&self) -> bool {
         self.ctrl.contains(PpuCtrl::NMI_ENABLE)
+    }
+
+    #[inline]
+    pub fn sprite_size(&self) -> u8 {
+        if self.ctrl.contains(PpuCtrl::SPRITE_SIZE) {
+            16
+        } else {
+            8
+        }
     }
 
     #[inline]
@@ -55,7 +63,7 @@ impl PpuRegisters {
     }
 
     #[inline]
-    pub fn vram_address_increment(&self) -> usize {
+    pub fn vram_address_increment(&self) -> u16 {
         match self.ctrl.contains(PpuCtrl::VRAM_ADDRESS_INCREMENT) {
             false => 1, // going across
             true => 32, // going down
@@ -82,18 +90,24 @@ impl PpuRegisters {
     // PPUSTATUS
 
     #[inline]
-    pub fn set_sprite_overflow(&mut self, value: bool) {
-        self.status.set(PpuStatus::SPRITE_OVERFLOW, value);
+    pub fn set_sprite_overflow(&self, value: bool) {
+        let mut status = self.status.get();
+        status.set(PpuStatus::SPRITE_OVERFLOW, value);
+        self.status.set(status);
     }
 
     #[inline]
-    pub fn set_vertical_blank(&mut self) {
-        self.status.set(PpuStatus::VERTICAL_BLANK, true);
+    pub fn set_vertical_blank(&self) {
+        let mut status = self.status.get();
+        status.set(PpuStatus::VERTICAL_BLANK, true);
+        self.status.set(status);
     }
 
     #[inline]
-    pub fn unset_vertical_blank(&mut self) {
-        self.status.set(PpuStatus::VERTICAL_BLANK, false);
+    pub fn unset_vertical_blank(&self) {
+        let mut status = self.status.get();
+        status.set(PpuStatus::VERTICAL_BLANK, false);
+        self.status.set(status);
     }
 }
 

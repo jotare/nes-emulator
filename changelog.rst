@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.58.0
+------
+- Use internal mutability inside PpuRegisters instead of using a RefCell in Ppu
+
 0.57.0
 ------
 - Added metric for clock frequency
