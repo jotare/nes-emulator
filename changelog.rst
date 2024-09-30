@@ -4,6 +4,7 @@ CHANGELOG
 0.58.1
 ------
 - Add page boundary cross extra clock adjustments to CPU
+- Add some more docs in CPU clock function
 
 0.58.0
 ------

@@ -67,10 +67,31 @@ impl Cpu {
     }
 
     /// Perform a clock on the CPU. This emulation of CPU doesn't perform
-    /// operations at clock level. Instead, at the end of an instruction cycle,
-    /// it is executed atomically. The CPU will wait until the last cycle
-    /// though, emulating real CPU clock time. A pending interrupt will wait
-    /// until the current instruction is completely executed.
+    /// operations at clock level. Instead, it executes instructions atomically
+    /// and set the number of clocks as the wait time until next instruction
+    /// execution can take place.
+    ///
+    /// This is done to simplify CPU implementation while emulating "real" CPU
+    /// clock times (instruction times).
+    ///
+    /// A pending interrupt will wait until the current instruction is
+    /// completely executed.
+    ///
+    /// There's some extra details that affect how much an instruction takes.
+    /// Page boundary crosses in certain instructions and branch instruction can
+    /// produce a delay in execution. This extra cycles are added to the time to
+    /// wait before the next instruction.
+    ///
+    /// *Page boundary cross*
+    ///
+    /// The 16-bit address space can be seen as pages of 256 bytes each, with
+    /// address hi-bytes representing the page. An increment with carry while
+    /// computing a page may involve an extra add operation to resolve the
+    /// address hi-byte, taking an extra clock cycle.
+    ///
+    /// Branch instructions, depending whether are taken or not can cause also 1
+    /// or 2 extra cycles to the instruction.
+    ///
     pub fn clock(&mut self) -> Result<(), String> {
         self.clocks_before_next_execution -= 1;
         if self.clocks_before_next_execution > 0 {
