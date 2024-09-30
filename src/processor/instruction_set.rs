@@ -76,7 +76,7 @@ impl InstructionSet {
 
             Instruction {name: "TYA", opcode: 0x98, instruction: SingleByte(tya), addressing_mode: Implied, bytes: 1, cycles: 2, page_crossing_cost: 0},
 
-            // // Stack instructions
+            // Stack instructions
             Instruction {name: "PHA", opcode: 0x48, instruction: Misc(Push(pha)), addressing_mode: Implied, bytes: 1, cycles: 3, page_crossing_cost: 0},
 
             Instruction {name: "PHP", opcode: 0x08, instruction: Misc(Push(php)), addressing_mode: Implied, bytes: 1, cycles: 3, page_crossing_cost: 0},
