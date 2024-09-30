@@ -21,6 +21,8 @@ pub struct Cpu {
     bus: SharedBus,
 
     clocks_before_next_execution: u8,
+    page_boundary_cross_extra_clocks: u8,
+
     interrupt_request: Option<Interrupt>,
 }
 
@@ -39,6 +41,7 @@ impl Cpu {
             instruction_set: InstructionSet::new_legal_opcode_set(),
             bus,
             clocks_before_next_execution: 1,
+            page_boundary_cross_extra_clocks: 0,
             interrupt_request: None,
         }
     }
@@ -53,6 +56,9 @@ impl Cpu {
         self.cpu.y_reg = 0;
         self.cpu.sp = 0xFF;
         self.cpu.sr.reset();
+
+        self.clocks_before_next_execution = 1;
+        self.page_boundary_cross_extra_clocks = 0;
 
         // read address provided in the reset vector
         let pcl = self.bus_read(0xFFFC) as u16;
@@ -82,8 +88,21 @@ impl Cpu {
             }
             None => {
                 let instruction = self.fetch()?;
-                self.clocks_before_next_execution = instruction.cycles;
-                self.execute_instruction(instruction)
+                let name = instruction.name;
+                let cycles = instruction.cycles;
+                let page_crossing_cost = instruction.page_crossing_cost;
+
+                self.cpu.page_boundary_crossed = false;
+                self.execute_instruction(instruction)?;
+
+                if self.cpu.page_boundary_crossed {
+                    self.page_boundary_cross_extra_clocks += page_crossing_cost;
+                }
+
+                self.clocks_before_next_execution = cycles + self.page_boundary_cross_extra_clocks;
+                self.page_boundary_cross_extra_clocks = 0;
+
+                Ok(())
             }
         }
     }
@@ -99,8 +118,9 @@ impl Cpu {
     /// Execute a complete instruction and return the number of clocks used
     pub fn execute(&mut self) -> Result<u8, String> {
         let instruction = self.fetch()?;
-        let clocks = instruction.cycles;
+        let mut clocks = instruction.cycles;
         self.execute_instruction(instruction)?;
+        clocks += self.page_boundary_cross_extra_clocks;
         Ok(clocks)
     }
 
@@ -137,6 +157,12 @@ impl Cpu {
                 Branch(fun) => {
                     let (_, data) = self.load(instruction.addressing_mode);
                     fun(&mut self.cpu, data);
+                    // when a branch is taken, a boolean is set to indicate
+                    // whether page boundary is crossed. Extra clocks are added
+                    // to the instruction execution
+                    if let Some(page_crossed) = self.cpu.branch_crossed_page_boundary.take() {
+                        self.page_boundary_cross_extra_clocks += if page_crossed { 2 } else { 1 }
+                    }
                 }
                 Call(fun) => {
                     let (addr, _) = self.load(instruction.addressing_mode);
@@ -248,6 +274,9 @@ impl Cpu {
                 let bal = self.bus_read(self.cpu.pc + 1) as u16;
                 let bah = self.bus_read(self.cpu.pc + 2) as u16;
                 let addr = ((bah << 8) | bal) + self.cpu.x_reg as u16;
+                if (addr & 0xFF00) >> 8 != bah {
+                    self.cpu.page_boundary_crossed = true;
+                }
                 let data = self.bus_read(addr);
                 (addr, data)
             }
@@ -256,6 +285,9 @@ impl Cpu {
                 let bah = self.bus_read(self.cpu.pc + 2) as u16;
                 // ignore overflow while computing address
                 let addr = (((bah << 8) | bal) as u32 + self.cpu.y_reg as u32) as u16;
+                if (addr & 0xFF00) >> 8 != bah {
+                    self.cpu.page_boundary_crossed = true;
+                }
                 let data = self.bus_read(addr);
                 (addr, data)
             }
@@ -276,18 +308,15 @@ impl Cpu {
             IndirectY => {
                 let ial = self.bus_read(self.cpu.pc + 1) as u16;
                 let bal = self.bus_read(ial) as u16;
-                let bah = self.bus_read(ial + 1) as u16;
+                let bah = self.bus_read((ial + 1) & 0x00FF) as u16;
                 let base_addr = (bah << 8) | bal;
                 // ignore overflow while computing address
                 let addr = (base_addr as u32 + self.cpu.y_reg as u32) as u16;
-                let mut data = self.bus_read(addr);
-
-                let page_boundary_crossed = (ial & 0xFF00) != ((ial + 1) & 0xFF00);
-                if page_boundary_crossed {
-                    // Fetch data from next page
-                    data = self.bus_read(addr + 0x0100);
-                }
-
+                let data = self.bus_read(addr);
+                // Hardware CPU behaviour would be doing a fetch of the wrong
+                // address and then another for the correct page. We don't need
+                // that as we are directly fetching the correct address
+                self.cpu.page_boundary_crossed = (addr & 0xFF00) != (bah << 8);
                 (addr, data)
             }
             Relative => {
@@ -324,12 +353,20 @@ impl Cpu {
             AbsoluteX => {
                 let bal = self.bus_read(self.cpu.pc + 1) as u16;
                 let bah = self.bus_read(self.cpu.pc + 2) as u16;
-                ((bah << 8) | bal) + (self.cpu.x_reg as u16)
+                let addr = ((bah << 8) | bal) + (self.cpu.x_reg as u16);
+                if (addr & 0xFF00) >> 8 != bah {
+                    self.cpu.page_boundary_crossed = true;
+                }
+                addr
             }
             AbsoluteY => {
                 let bal = self.bus_read(self.cpu.pc + 1) as u16;
                 let bah = self.bus_read(self.cpu.pc + 2) as u16;
-                ((bah << 8) | bal) + (self.cpu.y_reg as u16)
+                let addr = ((bah << 8) | bal) + (self.cpu.y_reg as u16);
+                if (addr & 0xFF00) >> 8 != bah {
+                    self.cpu.page_boundary_crossed = true;
+                }
+                addr
             }
             ZeroPageX => {
                 let bal = self.bus_read(self.cpu.pc + 1) as u16;
@@ -342,16 +379,10 @@ impl Cpu {
             IndirectY => {
                 let ial = self.bus_read(self.cpu.pc + 1) as u16;
                 let bal = self.bus_read(ial) as u16;
-                let bah = self.bus_read(ial + 1) as u16;
+                let bah = self.bus_read((ial + 1) & 0x00FF) as u16;
                 let base_addr = (bah << 8) | bal;
-                let mut addr = base_addr + self.cpu.y_reg as u16;
-
-                let page_boundary_crossed = (ial & 0xFF00) != ((ial + 1) & 0xFF00);
-                if page_boundary_crossed {
-                    // Fetch data from next page
-                    addr += 0x0100;
-                }
-
+                let addr = base_addr + self.cpu.y_reg as u16;
+                self.cpu.page_boundary_crossed = (addr & 0xFF00) != (bah << 8);
                 addr
             }
             _ => {

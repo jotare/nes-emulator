@@ -34,6 +34,7 @@ impl InstructionSet {
                 addressing_mode: Immediate,
                 bytes: 2,
                 cycles: 2,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "LDA",
@@ -42,6 +43,7 @@ impl InstructionSet {
                 addressing_mode: ZeroPage,
                 bytes: 2,
                 cycles: 3,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "LDA",
@@ -50,6 +52,7 @@ impl InstructionSet {
                 addressing_mode: ZeroPageX,
                 bytes: 2,
                 cycles: 4,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "LDA",
@@ -58,6 +61,7 @@ impl InstructionSet {
                 addressing_mode: Absolute,
                 bytes: 3,
                 cycles: 4,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "LDA",
@@ -66,6 +70,7 @@ impl InstructionSet {
                 addressing_mode: AbsoluteX,
                 bytes: 3,
                 cycles: 4,
+                page_crossing_cost: 1,
             },
             Instruction {
                 name: "LDA",
@@ -74,6 +79,7 @@ impl InstructionSet {
                 addressing_mode: AbsoluteY,
                 bytes: 3,
                 cycles: 4,
+                page_crossing_cost: 1,
             },
             Instruction {
                 name: "LDA",
@@ -82,6 +88,7 @@ impl InstructionSet {
                 addressing_mode: IndirectX,
                 bytes: 2,
                 cycles: 6,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "LDA",
@@ -90,6 +97,7 @@ impl InstructionSet {
                 addressing_mode: IndirectY,
                 bytes: 2,
                 cycles: 5,
+                page_crossing_cost: 1,
             },
 
             Instruction {
@@ -99,6 +107,7 @@ impl InstructionSet {
                 addressing_mode: Immediate,
                 bytes: 2,
                 cycles: 2,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "LDX",
@@ -107,6 +116,7 @@ impl InstructionSet {
                 addressing_mode: ZeroPage,
                 bytes: 2,
                 cycles: 3,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "LDX",
@@ -115,6 +125,7 @@ impl InstructionSet {
                 addressing_mode: ZeroPageY,
                 bytes: 2,
                 cycles: 4,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "LDX",
@@ -123,6 +134,7 @@ impl InstructionSet {
                 addressing_mode: Absolute,
                 bytes: 3,
                 cycles: 4,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "LDX",
@@ -131,6 +143,7 @@ impl InstructionSet {
                 addressing_mode: AbsoluteY,
                 bytes: 3,
                 cycles: 4,
+                page_crossing_cost: 1,
             },
 
             Instruction {
@@ -140,6 +153,7 @@ impl InstructionSet {
                 addressing_mode: Immediate,
                 bytes: 2,
                 cycles: 2,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "LDY",
@@ -148,6 +162,7 @@ impl InstructionSet {
                 addressing_mode: ZeroPage,
                 bytes: 2,
                 cycles: 3,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "LDY",
@@ -156,6 +171,7 @@ impl InstructionSet {
                 addressing_mode: ZeroPageX,
                 bytes: 2,
                 cycles: 4,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "LDY",
@@ -164,6 +180,7 @@ impl InstructionSet {
                 addressing_mode: Absolute,
                 bytes: 3,
                 cycles: 4,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "LDY",
@@ -172,6 +189,7 @@ impl InstructionSet {
                 addressing_mode: AbsoluteX,
                 bytes: 3,
                 cycles: 4,
+                page_crossing_cost: 1,
             },
 
             Instruction {
@@ -181,6 +199,7 @@ impl InstructionSet {
                 addressing_mode: ZeroPage,
                 bytes: 2,
                 cycles: 3,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "STA",
@@ -189,6 +208,7 @@ impl InstructionSet {
                 addressing_mode: ZeroPageX,
                 bytes: 2,
                 cycles: 4,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "STA",
@@ -197,6 +217,7 @@ impl InstructionSet {
                 addressing_mode: Absolute,
                 bytes: 3,
                 cycles: 4,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "STA",
@@ -205,6 +226,7 @@ impl InstructionSet {
                 addressing_mode: AbsoluteX,
                 bytes: 3,
                 cycles: 5,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "STA",
@@ -213,6 +235,7 @@ impl InstructionSet {
                 addressing_mode: AbsoluteY,
                 bytes: 3,
                 cycles: 5,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "STA",
@@ -221,6 +244,7 @@ impl InstructionSet {
                 addressing_mode: IndirectX,
                 bytes: 2,
                 cycles: 6,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "STA",
@@ -229,6 +253,7 @@ impl InstructionSet {
                 addressing_mode: IndirectY,
                 bytes: 2,
                 cycles: 6,
+                page_crossing_cost: 0,
             },
 
             Instruction {
@@ -238,6 +263,7 @@ impl InstructionSet {
                 addressing_mode: ZeroPage,
                 bytes: 2,
                 cycles: 3,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "STX",
@@ -246,6 +272,7 @@ impl InstructionSet {
                 addressing_mode: ZeroPageY,
                 bytes: 2,
                 cycles: 4,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "STX",
@@ -254,6 +281,7 @@ impl InstructionSet {
                 addressing_mode: Absolute,
                 bytes: 3,
                 cycles: 4,
+                page_crossing_cost: 0,
             },
 
             Instruction {
@@ -263,6 +291,7 @@ impl InstructionSet {
                 addressing_mode: ZeroPage,
                 bytes: 2,
                 cycles: 3,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "STY",
@@ -271,6 +300,7 @@ impl InstructionSet {
                 addressing_mode: ZeroPageX,
                 bytes: 2,
                 cycles: 4,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "STY",
@@ -279,6 +309,7 @@ impl InstructionSet {
                 addressing_mode: Absolute,
                 bytes: 3,
                 cycles: 4,
+                page_crossing_cost: 0,
             },
 
             Instruction {
@@ -288,6 +319,7 @@ impl InstructionSet {
                 addressing_mode: Implied,
                 bytes: 1,
                 cycles: 2,
+                page_crossing_cost: 0,
             },
 
             Instruction {
@@ -297,6 +329,7 @@ impl InstructionSet {
                 addressing_mode: Implied,
                 bytes: 1,
                 cycles: 2,
+                page_crossing_cost: 0,
             },
 
             Instruction {
@@ -306,6 +339,7 @@ impl InstructionSet {
                 addressing_mode: Implied,
                 bytes: 1,
                 cycles: 2,
+                page_crossing_cost: 0,
             },
 
             Instruction {
@@ -315,6 +349,7 @@ impl InstructionSet {
                 addressing_mode: Implied,
                 bytes: 1,
                 cycles: 2,
+                page_crossing_cost: 0,
             },
 
             Instruction {
@@ -324,6 +359,7 @@ impl InstructionSet {
                 addressing_mode: Implied,
                 bytes: 1,
                 cycles: 2,
+                page_crossing_cost: 0,
             },
 
             Instruction {
@@ -333,6 +369,7 @@ impl InstructionSet {
                 addressing_mode: Implied,
                 bytes: 1,
                 cycles: 2,
+                page_crossing_cost: 0,
             },
 
             // // Stack instructions
@@ -343,6 +380,7 @@ impl InstructionSet {
                 addressing_mode: Implied,
                 bytes: 1,
                 cycles: 3,
+                page_crossing_cost: 0,
             },
 
             Instruction {
@@ -352,6 +390,7 @@ impl InstructionSet {
                 addressing_mode: Implied,
                 bytes: 1,
                 cycles: 3,
+                page_crossing_cost: 0,
             },
 
             Instruction {
@@ -361,6 +400,7 @@ impl InstructionSet {
                 addressing_mode: Implied,
                 bytes: 1,
                 cycles: 4,
+                page_crossing_cost: 0,
             },
 
             Instruction {
@@ -370,6 +410,7 @@ impl InstructionSet {
                 addressing_mode: Implied,
                 bytes: 1,
                 cycles: 4,
+                page_crossing_cost: 0,
             },
 
             // Decrements and increments
@@ -380,6 +421,7 @@ impl InstructionSet {
                 addressing_mode: ZeroPage,
                 bytes: 2,
                 cycles: 5,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "DEC",
@@ -388,6 +430,7 @@ impl InstructionSet {
                 addressing_mode: ZeroPageX,
                 bytes: 2,
                 cycles: 6,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "DEC",
@@ -396,6 +439,7 @@ impl InstructionSet {
                 addressing_mode: Absolute,
                 bytes: 3,
                 cycles: 6,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "DEC",
@@ -404,6 +448,7 @@ impl InstructionSet {
                 addressing_mode: AbsoluteX,
                 bytes: 3,
                 cycles: 7,
+                page_crossing_cost: 0,
             },
 
             Instruction {
@@ -413,6 +458,7 @@ impl InstructionSet {
                 addressing_mode: Implied,
                 bytes: 1,
                 cycles: 2,
+                page_crossing_cost: 0,
             },
 
             Instruction {
@@ -422,6 +468,7 @@ impl InstructionSet {
                 addressing_mode: Implied,
                 bytes: 1,
                 cycles: 2,
+                page_crossing_cost: 0,
             },
 
             Instruction {
@@ -431,6 +478,7 @@ impl InstructionSet {
                 addressing_mode: ZeroPage,
                 bytes: 2,
                 cycles: 5,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "INC",
@@ -439,6 +487,7 @@ impl InstructionSet {
                 addressing_mode: ZeroPageX,
                 bytes: 2,
                 cycles: 6,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "INC",
@@ -447,6 +496,7 @@ impl InstructionSet {
                 addressing_mode: Absolute,
                 bytes: 3,
                 cycles: 6,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "INC",
@@ -455,6 +505,7 @@ impl InstructionSet {
                 addressing_mode: AbsoluteX,
                 bytes: 3,
                 cycles: 7,
+                page_crossing_cost: 0,
             },
 
             Instruction {
@@ -464,6 +515,7 @@ impl InstructionSet {
                 addressing_mode: Implied,
                 bytes: 1,
                 cycles: 2,
+                page_crossing_cost: 0,
             },
 
             Instruction {
@@ -473,6 +525,7 @@ impl InstructionSet {
                 addressing_mode: Implied,
                 bytes: 1,
                 cycles: 2,
+                page_crossing_cost: 0,
             },
 
             // Arithmetic operations
@@ -483,6 +536,7 @@ impl InstructionSet {
                 addressing_mode: Immediate,
                 bytes: 2,
                 cycles: 2,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "ADC",
@@ -491,6 +545,7 @@ impl InstructionSet {
                 addressing_mode: ZeroPage,
                 bytes: 2,
                 cycles: 3,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "ADC",
@@ -499,6 +554,7 @@ impl InstructionSet {
                 addressing_mode: ZeroPageX,
                 bytes: 2,
                 cycles: 4,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "ADC",
@@ -507,6 +563,7 @@ impl InstructionSet {
                 addressing_mode: Absolute,
                 bytes: 3,
                 cycles: 4,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "ADC",
@@ -515,6 +572,7 @@ impl InstructionSet {
                 addressing_mode: AbsoluteX,
                 bytes: 3,
                 cycles: 4,
+                page_crossing_cost: 1,
             },
             Instruction {
                 name: "ADC",
@@ -523,6 +581,7 @@ impl InstructionSet {
                 addressing_mode: AbsoluteY,
                 bytes: 3,
                 cycles: 4,
+                page_crossing_cost: 1,
             },
             Instruction {
                 name: "ADC",
@@ -531,6 +590,7 @@ impl InstructionSet {
                 addressing_mode: IndirectX,
                 bytes: 2,
                 cycles: 6,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "ADC",
@@ -539,6 +599,7 @@ impl InstructionSet {
                 addressing_mode: IndirectY,
                 bytes: 2,
                 cycles: 5,
+                page_crossing_cost: 1,
             },
 
             Instruction {
@@ -548,6 +609,7 @@ impl InstructionSet {
                 addressing_mode: Immediate,
                 bytes: 2,
                 cycles: 2,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "SBC",
@@ -556,6 +618,7 @@ impl InstructionSet {
                 addressing_mode: ZeroPage,
                 bytes: 2,
                 cycles: 3,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "SBC",
@@ -564,6 +627,7 @@ impl InstructionSet {
                 addressing_mode: ZeroPageX,
                 bytes: 2,
                 cycles: 4,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "SBC",
@@ -572,6 +636,7 @@ impl InstructionSet {
                 addressing_mode: Absolute,
                 bytes: 3,
                 cycles: 4,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "SBC",
@@ -580,6 +645,7 @@ impl InstructionSet {
                 addressing_mode: AbsoluteX,
                 bytes: 3,
                 cycles: 4,
+                page_crossing_cost: 1,
             },
             Instruction {
                 name: "SBC",
@@ -588,6 +654,7 @@ impl InstructionSet {
                 addressing_mode: AbsoluteY,
                 bytes: 3,
                 cycles: 4,
+                page_crossing_cost: 1,
             },
             Instruction {
                 name: "SBC",
@@ -596,6 +663,7 @@ impl InstructionSet {
                 addressing_mode: IndirectX,
                 bytes: 2,
                 cycles: 6,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "SBC",
@@ -604,6 +672,7 @@ impl InstructionSet {
                 addressing_mode: IndirectY,
                 bytes: 2,
                 cycles: 5,
+                page_crossing_cost: 1,
             },
 
             // Logical operations
@@ -614,6 +683,7 @@ impl InstructionSet {
                 addressing_mode: Immediate,
                 bytes: 2,
                 cycles: 2,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "AND",
@@ -622,6 +692,7 @@ impl InstructionSet {
                 addressing_mode: ZeroPage,
                 bytes: 2,
                 cycles: 3,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "AND",
@@ -630,6 +701,7 @@ impl InstructionSet {
                 addressing_mode: ZeroPageX,
                 bytes: 2,
                 cycles: 4,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "AND",
@@ -638,6 +710,7 @@ impl InstructionSet {
                 addressing_mode: Absolute,
                 bytes: 3,
                 cycles: 4,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "AND",
@@ -646,6 +719,7 @@ impl InstructionSet {
                 addressing_mode: AbsoluteX,
                 bytes: 3,
                 cycles: 4,
+                page_crossing_cost: 1,
             },
             Instruction {
                 name: "AND",
@@ -654,6 +728,7 @@ impl InstructionSet {
                 addressing_mode: AbsoluteY,
                 bytes: 3,
                 cycles: 4,
+                page_crossing_cost: 1,
             },
             Instruction {
                 name: "AND",
@@ -662,6 +737,7 @@ impl InstructionSet {
                 addressing_mode: IndirectX,
                 bytes: 2,
                 cycles: 6,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "AND",
@@ -670,6 +746,7 @@ impl InstructionSet {
                 addressing_mode: IndirectY,
                 bytes: 2,
                 cycles: 5,
+                page_crossing_cost: 1,
             },
 
             Instruction {
@@ -679,6 +756,7 @@ impl InstructionSet {
                 addressing_mode: Immediate,
                 bytes: 2,
                 cycles: 2,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "EOR",
@@ -687,6 +765,7 @@ impl InstructionSet {
                 addressing_mode: ZeroPage,
                 bytes: 2,
                 cycles: 3,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "EOR",
@@ -695,6 +774,7 @@ impl InstructionSet {
                 addressing_mode: ZeroPageX,
                 bytes: 2,
                 cycles: 4,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "EOR",
@@ -703,6 +783,7 @@ impl InstructionSet {
                 addressing_mode: Absolute,
                 bytes: 3,
                 cycles: 4,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "EOR",
@@ -711,6 +792,7 @@ impl InstructionSet {
                 addressing_mode: AbsoluteX,
                 bytes: 3,
                 cycles: 4,
+                page_crossing_cost: 1,
             },
             Instruction {
                 name: "EOR",
@@ -719,6 +801,7 @@ impl InstructionSet {
                 addressing_mode: AbsoluteY,
                 bytes: 3,
                 cycles: 4,
+                page_crossing_cost: 1,
             },
             Instruction {
                 name: "EOR",
@@ -727,6 +810,7 @@ impl InstructionSet {
                 addressing_mode: IndirectX,
                 bytes: 2,
                 cycles: 6,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "EOR",
@@ -735,6 +819,7 @@ impl InstructionSet {
                 addressing_mode: IndirectY,
                 bytes: 2,
                 cycles: 5,
+                page_crossing_cost: 1,
             },
 
             Instruction {
@@ -744,6 +829,7 @@ impl InstructionSet {
                 addressing_mode: Immediate,
                 bytes: 2,
                 cycles: 2,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "ORA",
@@ -752,6 +838,7 @@ impl InstructionSet {
                 addressing_mode: ZeroPage,
                 bytes: 2,
                 cycles: 3,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "ORA",
@@ -760,6 +847,7 @@ impl InstructionSet {
                 addressing_mode: ZeroPageX,
                 bytes: 2,
                 cycles: 4,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "ORA",
@@ -768,6 +856,7 @@ impl InstructionSet {
                 addressing_mode: Absolute,
                 bytes: 3,
                 cycles: 4,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "ORA",
@@ -776,6 +865,7 @@ impl InstructionSet {
                 addressing_mode: AbsoluteX,
                 bytes: 3,
                 cycles: 4,
+                page_crossing_cost: 1,
             },
             Instruction {
                 name: "ORA",
@@ -784,6 +874,7 @@ impl InstructionSet {
                 addressing_mode: AbsoluteY,
                 bytes: 3,
                 cycles: 4,
+                page_crossing_cost: 1,
             },
             Instruction {
                 name: "ORA",
@@ -792,6 +883,7 @@ impl InstructionSet {
                 addressing_mode: IndirectX,
                 bytes: 2,
                 cycles: 6,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "ORA",
@@ -800,6 +892,7 @@ impl InstructionSet {
                 addressing_mode: IndirectY,
                 bytes: 2,
                 cycles: 5,
+                page_crossing_cost: 1,
             },
 
             // Shift and rotation instructions
@@ -810,6 +903,7 @@ impl InstructionSet {
                 addressing_mode: Accumulator,
                 bytes: 1,
                 cycles: 2,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "ASL",
@@ -818,6 +912,7 @@ impl InstructionSet {
                 addressing_mode: ZeroPage,
                 bytes: 2,
                 cycles: 5,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "ASL",
@@ -826,6 +921,7 @@ impl InstructionSet {
                 addressing_mode: ZeroPageX,
                 bytes: 2,
                 cycles: 6,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "ASL",
@@ -834,6 +930,7 @@ impl InstructionSet {
                 addressing_mode: Absolute,
                 bytes: 3,
                 cycles: 6,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "ASL",
@@ -842,6 +939,7 @@ impl InstructionSet {
                 addressing_mode: AbsoluteX,
                 bytes: 3,
                 cycles: 7,
+                page_crossing_cost: 0,
             },
 
             Instruction {
@@ -851,6 +949,7 @@ impl InstructionSet {
                 addressing_mode: Accumulator,
                 bytes: 1,
                 cycles: 2,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "LSR",
@@ -859,6 +958,7 @@ impl InstructionSet {
                 addressing_mode: ZeroPage,
                 bytes: 2,
                 cycles: 5,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "LSR",
@@ -867,6 +967,7 @@ impl InstructionSet {
                 addressing_mode: ZeroPageX,
                 bytes: 2,
                 cycles: 6,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "LSR",
@@ -875,6 +976,7 @@ impl InstructionSet {
                 addressing_mode: Absolute,
                 bytes: 3,
                 cycles: 6,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "LSR",
@@ -883,6 +985,7 @@ impl InstructionSet {
                 addressing_mode: AbsoluteX,
                 bytes: 3,
                 cycles: 7,
+                page_crossing_cost: 0,
             },
 
             Instruction {
@@ -892,6 +995,7 @@ impl InstructionSet {
                 addressing_mode: Accumulator,
                 bytes: 1,
                 cycles: 2,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "ROL",
@@ -900,6 +1004,7 @@ impl InstructionSet {
                 addressing_mode: ZeroPage,
                 bytes: 2,
                 cycles: 5,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "ROL",
@@ -908,6 +1013,7 @@ impl InstructionSet {
                 addressing_mode: ZeroPageX,
                 bytes: 2,
                 cycles: 6,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "ROL",
@@ -916,6 +1022,7 @@ impl InstructionSet {
                 addressing_mode: Absolute,
                 bytes: 3,
                 cycles: 6,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "ROL",
@@ -924,6 +1031,7 @@ impl InstructionSet {
                 addressing_mode: AbsoluteX,
                 bytes: 3,
                 cycles: 7,
+                page_crossing_cost: 0,
             },
 
             Instruction {
@@ -933,6 +1041,7 @@ impl InstructionSet {
                 addressing_mode: Accumulator,
                 bytes: 1,
                 cycles: 2,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "ROR",
@@ -941,6 +1050,7 @@ impl InstructionSet {
                 addressing_mode: ZeroPage,
                 bytes: 2,
                 cycles: 5,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "ROR",
@@ -949,6 +1059,7 @@ impl InstructionSet {
                 addressing_mode: ZeroPageX,
                 bytes: 2,
                 cycles: 6,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "ROR",
@@ -957,6 +1068,7 @@ impl InstructionSet {
                 addressing_mode: Absolute,
                 bytes: 3,
                 cycles: 6,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "ROR",
@@ -965,6 +1077,7 @@ impl InstructionSet {
                 addressing_mode: AbsoluteX,
                 bytes: 3,
                 cycles: 7,
+                page_crossing_cost: 0,
             },
 
             // Flag instructions
@@ -975,6 +1088,7 @@ impl InstructionSet {
                 addressing_mode: Implied,
                 bytes: 1,
                 cycles: 2,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "CLD",
@@ -983,6 +1097,7 @@ impl InstructionSet {
                 addressing_mode: Implied,
                 bytes: 1,
                 cycles: 2,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "CLI",
@@ -991,6 +1106,7 @@ impl InstructionSet {
                 addressing_mode: Implied,
                 bytes: 1,
                 cycles: 2,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "CLV",
@@ -999,6 +1115,7 @@ impl InstructionSet {
                 addressing_mode: Implied,
                 bytes: 1,
                 cycles: 2,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "SEC",
@@ -1007,6 +1124,7 @@ impl InstructionSet {
                 addressing_mode: Implied,
                 bytes: 1,
                 cycles: 2,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "SED",
@@ -1015,6 +1133,7 @@ impl InstructionSet {
                 addressing_mode: Implied,
                 bytes: 1,
                 cycles: 2,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "SEI",
@@ -1023,6 +1142,7 @@ impl InstructionSet {
                 addressing_mode: Implied,
                 bytes: 1,
                 cycles: 2,
+                page_crossing_cost: 0,
             },
 
             // Comparaisons
@@ -1033,6 +1153,7 @@ impl InstructionSet {
                 addressing_mode: Immediate,
                 bytes: 2,
                 cycles: 2,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "CMP",
@@ -1041,6 +1162,7 @@ impl InstructionSet {
                 addressing_mode: ZeroPage,
                 bytes: 2,
                 cycles: 3,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "CMP",
@@ -1049,6 +1171,7 @@ impl InstructionSet {
                 addressing_mode: ZeroPageX,
                 bytes: 2,
                 cycles: 4,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "CMP",
@@ -1057,6 +1180,7 @@ impl InstructionSet {
                 addressing_mode: Absolute,
                 bytes: 3,
                 cycles: 4,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "CMP",
@@ -1065,6 +1189,7 @@ impl InstructionSet {
                 addressing_mode: AbsoluteX,
                 bytes: 3,
                 cycles: 4,
+                page_crossing_cost: 1,
             },
             Instruction {
                 name: "CMP",
@@ -1073,6 +1198,7 @@ impl InstructionSet {
                 addressing_mode: AbsoluteY,
                 bytes: 3,
                 cycles: 4,
+                page_crossing_cost: 1,
             },
             Instruction {
                 name: "CMP",
@@ -1081,6 +1207,7 @@ impl InstructionSet {
                 addressing_mode: IndirectX,
                 bytes: 2,
                 cycles: 6,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "CMP",
@@ -1089,6 +1216,7 @@ impl InstructionSet {
                 addressing_mode: IndirectY,
                 bytes: 2,
                 cycles: 5,
+                page_crossing_cost: 1,
             },
 
             Instruction {
@@ -1098,6 +1226,7 @@ impl InstructionSet {
                 addressing_mode: Immediate,
                 bytes: 2,
                 cycles: 2,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "CPX",
@@ -1106,6 +1235,7 @@ impl InstructionSet {
                 addressing_mode: ZeroPage,
                 bytes: 2,
                 cycles: 3,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "CPX",
@@ -1114,6 +1244,7 @@ impl InstructionSet {
                 addressing_mode: Absolute,
                 bytes: 3,
                 cycles: 4,
+                page_crossing_cost: 0,
             },
 
             Instruction {
@@ -1123,6 +1254,7 @@ impl InstructionSet {
                 addressing_mode: Immediate,
                 bytes: 2,
                 cycles: 2,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "CPY",
@@ -1131,6 +1263,7 @@ impl InstructionSet {
                 addressing_mode: ZeroPage,
                 bytes: 2,
                 cycles: 3,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "CPY",
@@ -1139,6 +1272,7 @@ impl InstructionSet {
                 addressing_mode: Absolute,
                 bytes: 3,
                 cycles: 4,
+                page_crossing_cost: 0,
             },
 
             // Conditional branch instructions
@@ -1149,6 +1283,7 @@ impl InstructionSet {
                 addressing_mode: Relative,
                 bytes: 2,
                 cycles: 2,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "BCS",
@@ -1157,6 +1292,7 @@ impl InstructionSet {
                 addressing_mode: Relative,
                 bytes: 2,
                 cycles: 2,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "BEQ",
@@ -1165,6 +1301,7 @@ impl InstructionSet {
                 addressing_mode: Relative,
                 bytes: 2,
                 cycles: 2,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "BMI",
@@ -1173,6 +1310,7 @@ impl InstructionSet {
                 addressing_mode: Relative,
                 bytes: 2,
                 cycles: 2,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "BNE",
@@ -1181,6 +1319,7 @@ impl InstructionSet {
                 addressing_mode: Relative,
                 bytes: 2,
                 cycles: 2,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "BPL",
@@ -1189,6 +1328,7 @@ impl InstructionSet {
                 addressing_mode: Relative,
                 bytes: 2,
                 cycles: 2,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "BVC",
@@ -1197,6 +1337,7 @@ impl InstructionSet {
                 addressing_mode: Relative,
                 bytes: 2,
                 cycles: 2,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "BVS",
@@ -1205,6 +1346,7 @@ impl InstructionSet {
                 addressing_mode: Relative,
                 bytes: 2,
                 cycles: 2,
+                page_crossing_cost: 0,
             },
 
             // Jumps and subroutines
@@ -1215,6 +1357,7 @@ impl InstructionSet {
                 addressing_mode: Absolute,
                 bytes: 3,
                 cycles: 3,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "JMP",
@@ -1223,6 +1366,7 @@ impl InstructionSet {
                 addressing_mode: Indirect,
                 bytes: 3,
                 cycles: 5,
+                page_crossing_cost: 0,
             },
 
             Instruction {
@@ -1232,6 +1376,7 @@ impl InstructionSet {
                 addressing_mode: Absolute,
                 bytes: 3,
                 cycles: 6,
+                page_crossing_cost: 0,
             },
 
             Instruction {
@@ -1241,6 +1386,7 @@ impl InstructionSet {
                 addressing_mode: Implied,
                 bytes: 1,
                 cycles: 6,
+                page_crossing_cost: 0,
             },
 
             // Interrupts
@@ -1251,6 +1397,7 @@ impl InstructionSet {
                 addressing_mode: Implied,
                 bytes: 1,
                 cycles: 7,
+                page_crossing_cost: 0,
             },
 
             Instruction {
@@ -1260,6 +1407,7 @@ impl InstructionSet {
                 addressing_mode: Implied,
                 bytes: 1,
                 cycles: 6,
+                page_crossing_cost: 0,
             },
 
             // Other
@@ -1270,6 +1418,7 @@ impl InstructionSet {
                 addressing_mode: ZeroPage,
                 bytes: 2,
                 cycles: 3,
+                page_crossing_cost: 0,
             },
             Instruction {
                 name: "BIT",
@@ -1278,6 +1427,7 @@ impl InstructionSet {
                 addressing_mode: Absolute,
                 bytes: 3,
                 cycles: 4,
+                page_crossing_cost: 0,
             },
 
             Instruction {
@@ -1287,6 +1437,7 @@ impl InstructionSet {
                 addressing_mode: Implied,
                 bytes: 1,
                 cycles: 2,
+                page_crossing_cost: 0,
             },
         ];
 
@@ -1958,6 +2109,8 @@ pub fn branch(cpu: &mut InternalCpu, condition: bool, offset: u8) {
     if condition {
         // TODO add +1 if page changes
         let (pc, _) = cpu.pc.overflowing_add_signed(offset as i8 as i16);
+        let page_crossed = (cpu.pc ^ pc) & 0x0100 > 0;
+        cpu.branch_crossed_page_boundary.replace(page_crossed);
         cpu.pc = pc;
     }
 }

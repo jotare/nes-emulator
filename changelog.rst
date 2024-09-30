@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.58.1
+------
+- Add page boundary cross extra clock adjustments to CPU
+
 0.58.0
 ------
 - Use internal mutability inside PpuRegisters instead of using a RefCell in Ppu

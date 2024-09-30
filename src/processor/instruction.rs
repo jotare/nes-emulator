@@ -11,6 +11,8 @@ pub struct Instruction {
     pub addressing_mode: AddressingMode,
     pub bytes: u8,
     pub cycles: u8,
+    // number of extra cycles an instruction costs if page boundary is crossed
+    pub page_crossing_cost: u8,
 }
 
 #[derive(Clone)]
