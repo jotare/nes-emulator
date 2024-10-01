@@ -4,6 +4,7 @@ CHANGELOG
 0.58.3
 ------
 - Fix OAMADDR autoincrement after OAMDATA write
+- Add sprite 0 hit flag to PPU registers
 
 0.58.2
 ------

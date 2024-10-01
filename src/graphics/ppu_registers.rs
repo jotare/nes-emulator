@@ -97,6 +97,13 @@ impl PpuRegisters {
     }
 
     #[inline]
+    pub fn set_sprite_0_hit(&self, value: bool) {
+        let mut status = self.status.get();
+        status.set(PpuStatus::SPRITE_0_HIT, value);
+        self.status.set(status);
+    }
+
+    #[inline]
     pub fn set_vertical_blank(&self) {
         let mut status = self.status.get();
         status.set(PpuStatus::VERTICAL_BLANK, true);
@@ -151,6 +158,8 @@ bitflags! {
     pub struct PpuStatus: u8 {
         /// PPU is in vertical blank (VBL) status
         const VERTICAL_BLANK = 0b1000_0000;
+
+        const SPRITE_0_HIT = 0b0100_0000;
 
         /// Sprite overflow is active whenever more than 8 sprites appear on a
         /// scanline. The real NES had a hardware bug that generate false
