@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.58.3
+------
+- Fix OAMADDR autoincrement after OAMDATA write
+
 0.58.2
 ------
 - Refactor DMA

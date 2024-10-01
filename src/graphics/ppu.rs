@@ -603,8 +603,9 @@ impl Memory for Ppu {
             }
 
             OAMDATA => {
-                let oam_addr = self.registers.oam_addr as u16;
-                self.oam.write(oam_addr, data);
+                let oam_addr = self.registers.oam_addr;
+                self.oam.write(oam_addr as u16, data);
+                self.registers.oam_addr = oam_addr.wrapping_add(1);
             }
 
             PPUSCROLL => {
