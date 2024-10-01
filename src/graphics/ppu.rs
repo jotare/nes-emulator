@@ -416,6 +416,9 @@ impl Ppu {
     fn render_pixel(&mut self) {
         let col = self.cycle as usize;
         let row = self.scan_line as usize;
+        if self.registers.sprite_size() == 16 {
+            unimplemented!("8x16 sprite");
+        }
         let pixel = self.produce_pixel(col, row);
         if let Some(pixel) = pixel {
             self.frame.set_pixel(pixel, FramePixel { col, row });
