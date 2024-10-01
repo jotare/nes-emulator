@@ -42,6 +42,7 @@ use log::{debug, trace};
 
 use crate::events::Event;
 use crate::events::SharedEventBus;
+use crate::graphics::oam::{Oam, OamSprite};
 use crate::graphics::pattern_table::PatternTableAddress;
 use crate::graphics::ppu_registers::PpuRegisters;
 use crate::graphics::ppu_registers::{PpuCtrl, PpuMask};
@@ -50,14 +51,11 @@ use crate::graphics::Frame;
 use crate::graphics::FramePixel;
 use crate::graphics::Pixel;
 use crate::hardware::OAMDATA;
+use crate::hardware::PALETTE_MEMORY_START;
 use crate::hardware::{OAMADDR, PPUADDR, PPUCTRL, PPUDATA, PPUMASK, PPUSCROLL, PPUSTATUS};
 use crate::interfaces::{Bus, Memory};
 use crate::types::SharedBus;
 use crate::utils;
-
-use super::oam::Oam;
-use super::oam::OamSprite;
-use super::pixel_producer::PixelProducer;
 
 // PPU background scrolling functionality is implemented using nesdev loopy
 // contributor design.
@@ -111,6 +109,45 @@ enum WriteToggle {
     Second,
 }
 
+/// PPU's internal set of shift registers and multiplexers responsible of
+/// producing pixel data.
+///
+/// In consists in shifters for background tile pattern and attributes as well
+/// as sprite information.
+///
+/// Priority multiplexers decide how to combine all data to produce the correct
+/// pixel.
+struct PixelProducer {
+    // Background
+    buffers: Buffers,
+    shifters: Shifters,
+
+    // Sprites
+    /// Up to 8 sprites used for a single scanline
+    sprites: [OamSprite; 8],
+}
+
+/// Internal PPU latches that store temporary pixel data information while
+/// rendering
+#[derive(Default)]
+pub struct Buffers {
+    pub next_tile_number: u8,
+    pub next_attributes: u8,
+    pub next_bit_plane_high: u8,
+    pub next_bit_plane_low: u8,
+}
+
+/// PPU Serial-to-parallel shift registers responsible of producing background
+/// pixel data.
+///
+/// Shifters are 16-bit wide, the high 8 bits are used in the current pixels
+/// being drawn while the low 8 bits will be used for the next tile
+#[derive(Default)]
+pub struct Shifters {
+    pub attributes: (u16, u16),
+    pub tile_pattern: (u16, u16),
+}
+
 impl Ppu {
     pub fn new(bus: SharedBus, event_bus: SharedEventBus) -> Self {
         Self {
@@ -127,7 +164,16 @@ impl Ppu {
             cycle: 0,
             scan_line: 0,
 
-            pixel_producer: PixelProducer::new(bus),
+            pixel_producer: PixelProducer {
+                buffers: Buffers::default(),
+                shifters: Shifters::default(),
+                sprites: [OamSprite {
+                    x: 0xFF,
+                    y: 0xFF,
+                    tile: 0xFF,
+                    attributes: 0xFF,
+                }; 8],
+            },
         }
     }
 
@@ -159,6 +205,13 @@ impl Ppu {
                 if self.scan_line == 261 && self.cycle == 1 {
                     self.registers.unset_vertical_blank();
                     self.registers.set_sprite_overflow(false);
+                    self.registers.set_sprite_0_hit(false);
+                    self.pixel_producer.sprites = [OamSprite {
+                        x: 0xFF,
+                        y: 0xFF,
+                        tile: 0xFF,
+                        attributes: 0xFF,
+                    }; 8]
                 }
 
                 match self.cycle {
@@ -172,7 +225,7 @@ impl Ppu {
                         // we need 4 accesses, then we need 8 clocks
 
                         if self.bg_rendering_enabled() {
-                            self.pixel_producer.update_shifters();
+                            self.update_shifters();
                         }
 
                         match (self.cycle - 1) % 8 {
@@ -225,7 +278,7 @@ impl Ppu {
                                 self.pixel_producer.buffers.next_bit_plane_low = low_plane;
                             }
                             7 => {
-                                self.pixel_producer.load_shifters();
+                                self.load_shifters();
                                 if self.rendering_enabled() {
                                     self.internal.borrow_mut().vram_addr.increment_x();
                                 }
@@ -239,7 +292,7 @@ impl Ppu {
                     }
 
                     257 => {
-                        self.pixel_producer.load_shifters();
+                        self.load_shifters();
                         if self.bg_rendering_enabled() {
                             self.internal.borrow_mut().transfer_x();
                         }
@@ -363,7 +416,7 @@ impl Ppu {
     fn render_pixel(&mut self) {
         let col = self.cycle as usize;
         let row = self.scan_line as usize;
-        let pixel = self.pixel_producer.produce_pixel(col, row);
+        let pixel = self.produce_pixel(col, row);
         if let Some(pixel) = pixel {
             self.frame.set_pixel(pixel, FramePixel { col, row });
         }
@@ -377,6 +430,11 @@ impl Ppu {
     // Reexport for readability
     fn bg_rendering_enabled(&self) -> bool {
         self.registers.background_rendering_enabled()
+    }
+
+    // Reexport for readability
+    fn sprite_rendering_enabled(&self) -> bool {
+        self.registers.sprite_rendering_enabled()
     }
 
     /// Get the current frame being rendered by the PPU. Once the PPU signals
@@ -436,12 +494,147 @@ impl Ppu {
                 sprite_overflow = true;
                 break;
             }
+
+            // println!("Sprite in scan line {}: {sprite:?}", self.scan_line);
         }
 
         self.registers.set_sprite_overflow(sprite_overflow);
 
         self.pixel_producer.sprites = secondary_oam;
-        self.pixel_producer.sprite_pattern_table = self.registers.sprite_pattern_table();
+    }
+
+    // Load shift registers from internal latches (buffers) so next 8 pixels can
+    // be drawn by the PPU in the next clock cycles
+    pub fn load_shifters(&mut self) {
+        self.pixel_producer.shifters.tile_pattern.0 = (self.pixel_producer.shifters.tile_pattern.0
+            & 0xFF00)
+            | (self.pixel_producer.buffers.next_bit_plane_low as u16);
+        self.pixel_producer.shifters.tile_pattern.1 = (self.pixel_producer.shifters.tile_pattern.1
+            & 0xFF00)
+            | (self.pixel_producer.buffers.next_bit_plane_high as u16);
+
+        let attributes_0 = if utils::bv(self.pixel_producer.buffers.next_attributes, 0) == 0 {
+            0
+        } else {
+            0xFF
+        };
+        self.pixel_producer.shifters.attributes.0 =
+            (self.pixel_producer.shifters.attributes.0 & 0xFF00) | attributes_0 as u16;
+
+        let attributes_1 = if utils::bv(self.pixel_producer.buffers.next_attributes, 1) == 0 {
+            0
+        } else {
+            0xFF
+        };
+        self.pixel_producer.shifters.attributes.1 =
+            (self.pixel_producer.shifters.attributes.1 & 0xFF00) | attributes_1 as u16;
+    }
+
+    pub fn update_shifters(&mut self) {
+        self.pixel_producer.shifters.tile_pattern.0 =
+            self.pixel_producer.shifters.tile_pattern.0 << 1 | 1;
+        self.pixel_producer.shifters.tile_pattern.1 =
+            self.pixel_producer.shifters.tile_pattern.1 << 1 | 1;
+        self.pixel_producer.shifters.attributes.0 =
+            self.pixel_producer.shifters.attributes.0 << 1 | 1;
+        self.pixel_producer.shifters.attributes.1 =
+            self.pixel_producer.shifters.attributes.1 << 1 | 1;
+    }
+
+    pub fn produce_pixel(&mut self, col: usize, row: usize) -> Option<Pixel> {
+        if col >= 256 || row >= 240 {
+            return None;
+        }
+
+        // Background
+
+        let fine_x_bit = 15 - self.internal.borrow().fine_x_scroll;
+
+        let background_palette = {
+            let palette_lo = utils::bv_16(self.pixel_producer.shifters.attributes.0, fine_x_bit);
+            let palette_hi = utils::bv_16(self.pixel_producer.shifters.attributes.1, fine_x_bit);
+            (palette_hi << 1) | palette_lo
+        };
+        let background_bit_plane = {
+            let bit_plane_lo = utils::bv_16(self.pixel_producer.shifters.tile_pattern.0, fine_x_bit);
+            let bit_plane_hi = utils::bv_16(self.pixel_producer.shifters.tile_pattern.1, fine_x_bit);
+            (bit_plane_hi << 1) | bit_plane_lo
+        };
+
+        // ----------------------------------------------------------------------------------------------------
+        let mut palette_offset = (background_palette << 2) | background_bit_plane;
+
+        // Sprites
+
+        for sprite in self.pixel_producer.sprites.iter_mut() {
+            // no more valid sprites
+            if sprite.y == 0xFF {
+                break;
+            }
+
+            if col < (sprite.x as usize) || col >= (sprite.x as usize + 8) {
+                continue;
+            }
+
+            let mut pattern_table_address = PatternTableAddress::new(self.registers.sprite_pattern_table());
+            pattern_table_address.set(PatternTableAddress::TILE_NUMBER, sprite.tile);
+
+            let sprite_palette = (sprite.attributes & 0b0000_0011) + 4; // sprite palettes are 4 to 7
+
+            // 0 -> front of background, 1 -> behind background
+            let priority = utils::bv(sprite.attributes, 5);
+            let flip_horizontally = utils::bv(sprite.attributes, 6) > 0;
+            let flip_vertically = utils::bv(sprite.attributes, 7) > 0;
+
+            // sprites are rendered with 1 scan line offset, we need to
+            // substract it from the row to place it in the correct position
+            let mut y = (row - 1 - sprite.y as usize) as u8;
+            if flip_vertically {
+                y = 7 - y;
+            }
+
+            pattern_table_address.set(PatternTableAddress::FINE_Y_OFFSET, y);
+
+            pattern_table_address.set(PatternTableAddress::BIT_PLANE, 0);
+            let low = self.bus.borrow().read(pattern_table_address.into());
+
+            pattern_table_address.set(PatternTableAddress::BIT_PLANE, 1);
+            let high = self.bus.borrow().read(pattern_table_address.into());
+
+            let mut x = (7 - (col - sprite.x as usize)) as u8;
+            if flip_horizontally {
+                x = 7 - x
+            }
+
+            let sprite_bit_plane = utils::bv(high, x as u8) << 1 | utils::bv(low, x as u8);
+
+            if background_bit_plane == 0 && sprite_bit_plane == 0 {
+                // EXT in $3F00
+                palette_offset = 0;
+            } else if background_bit_plane == 0 && sprite_bit_plane > 0 {
+                // paint sprite
+                palette_offset = ((sprite_palette << 2) | sprite_bit_plane) as u16;
+                break;
+            } else if background_bit_plane > 0 && sprite_bit_plane == 0 {
+                // paint background
+            } else {
+                if priority == 0 {
+                    // paint sprite
+                    palette_offset = ((sprite_palette << 2) | sprite_bit_plane) as u16;
+                    break;
+                } else {
+                    // paint background
+                }
+            }
+        }
+
+        let color = Pixel::from(
+            self.bus
+                .borrow()
+                .read(PALETTE_MEMORY_START + palette_offset),
+        );
+
+        Some(color)
     }
 
     // TODO: move to example?

@@ -5,6 +5,7 @@ CHANGELOG
 ------
 - Fix OAMADDR autoincrement after OAMDATA write
 - Add sprite 0 hit flag to PPU registers
+- Move pixel producer back to PPU module
 
 0.58.2
 ------
