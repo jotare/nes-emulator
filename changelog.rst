@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.59.0
+------
+- Implement cartridge support for CHR RAM
+
 0.58.4
 ------
 - Fix PPU priority multiplexer

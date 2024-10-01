@@ -25,6 +25,7 @@ pub struct MapperSpecs {
     pub program_rom_capacity: usize,
     pub program_ram_capacity: usize,
     pub character_memory_capacity: usize,
+    pub character_ram: bool,
 }
 
 pub struct Mapper0 {
@@ -36,6 +37,12 @@ pub struct Mapper0 {
 
     // Character memory, stores patterns and graphics for the PPU
     character_memory: SharedRam,
+}
+
+
+enum CharacterMemory {
+    Rom(SharedRom),
+    Ram(SharedRam),
 }
 
 impl Mapper0 {
@@ -55,10 +62,19 @@ impl Mapper0 {
             ),
         };
 
+        let character_memory = if specs.character_ram {
+            CharacterMemory::Ram(Rc::new(RefCell::new(Ram::new(CHR_MEMORY_SIZE as usize))))
+        } else {
+            // CharacterMemory::Rom(Rc::new(RefCell::new(Rom::new(
+            CharacterMemory::Ram(Rc::new(RefCell::new(Ram::new(
+                specs.character_rom_capacity,
+            ))))
+        };
+
         Self {
             program_rom,
             program_ram: Rc::new(RefCell::new(Ram::new(specs.program_ram_capacity))),
-            character_memory: Rc::new(RefCell::new(Ram::new(specs.character_memory_capacity))),
+            character_memory,
         }
     }
 }
@@ -68,7 +84,10 @@ impl Mapper for Mapper0 {
         self.program_rom.borrow_mut().load(0, data);
     }
     fn load_character_memory(&mut self, data: &[u8]) {
-        self.character_memory.borrow_mut().load(0, data);
+        match self.character_memory {
+            CharacterMemory::Rom(ref memory) => memory.borrow_mut().load(0, data),
+            CharacterMemory::Ram(ref memory) => memory.borrow_mut().load(0, data),
+        };
     }
 
     fn program_ram_ref(&self) -> SharedMemory {
@@ -80,6 +99,9 @@ impl Mapper for Mapper0 {
     }
 
     fn character_memory_ref(&self) -> SharedMemory {
-        Rc::clone(&self.character_memory) as _
+        match self.character_memory {
+            CharacterMemory::Rom(ref memory) => Rc::clone(memory) as _,
+            CharacterMemory::Ram(ref memory) => Rc::clone(memory) as _,
+        }
     }
 }

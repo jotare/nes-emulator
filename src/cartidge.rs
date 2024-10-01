@@ -66,21 +66,18 @@ impl Cartidge {
         let mapper_specs = MapperSpecs {
             program_ram_capacity: cartidge_header.pgr_ram_size,
             program_rom_capacity: cartidge_header.pgr_rom_size,
-            character_memory_capacity: cartidge_header.chr_rom_size,
+            character_rom_capacity: cartidge_header.chr_rom_size,
+            character_ram: cartidge_header.chr_ram,
         };
         let mut mapper = mapper_map(cartidge_header.mapper, mapper_specs);
 
-        // let program_rom = Rc::new(RefCell::new(Rom::new(cartidge_header.pgr_rom_size)));
         let mut buf = vec![0; cartidge_header.pgr_rom_size];
         file.read_exact(&mut buf).unwrap();
         mapper.load_program_rom(&buf);
-        // program_rom.borrow_mut().load(0, &buf);
 
-        // let character_memory = Rc::new(RefCell::new(Ram::new(cartidge_header.chr_rom_size)));
         let mut buf = vec![0; cartidge_header.chr_rom_size];
         file.read_exact(&mut buf).unwrap();
         mapper.load_character_memory(&buf);
-        // character_memory.borrow_mut().load(0, &buf);
 
         let mut rest = Vec::new();
         file.read_to_end(&mut rest).unwrap();
@@ -112,6 +109,8 @@ struct CartidgeHeader {
     pub chr_rom_size: usize,
     pub mirroring: Mirroring,
 
+    pub chr_ram: bool,
+
     // 512-byte trainer at 0x7000-0x71FF (stored before PGR data)
     pub trainer: bool,
 
@@ -133,7 +132,8 @@ impl CartidgeHeader {
         // (byte 4) - Size of PGR ROM in 16 KB units
         let pgr_rom_size = (header[4] as usize) * 16 * 1024;
 
-        // (byte 5) - Size of CHR ROM in 8 KB units
+        // (byte 5) - Size of CHR ROM in 8 KB units (or usage of CHR RAM)
+        let chr_ram = header[5] == 0;
         let chr_rom_size = (header[5] as usize) * 8 * 1024;
 
         // (byte 6) - Mapper, mirroring, battery, trainer
@@ -159,6 +159,7 @@ impl CartidgeHeader {
         Self {
             pgr_rom_size,
             chr_rom_size,
+            chr_ram,
             mirroring,
             trainer,
             mapper: mapper_number,
