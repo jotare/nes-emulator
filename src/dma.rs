@@ -94,6 +94,9 @@ impl DmaController {
 
         if finish {
             debug!("OAM DMA finished");
+            // ppu.borrow()
+            //     .dump_oam("/tmp/nes-oam")
+            //     .expect("Unable to dump OAM");
             self.dummy = true;
         }
     }
