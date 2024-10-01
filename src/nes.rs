@@ -412,14 +412,12 @@ impl Nes {
 
         // CPU clock runs every 12 system clocks
         if self.system_clock % 12 == 0 {
-            let cpu_clock = self.system_clock / 12;
-            let ongoing_dma = self.dma_controller.borrow().is_oam_dma_active(cpu_clock);
+            self.dma_controller.borrow_mut().clock();
+            let ongoing_dma = self.dma_controller.borrow().is_oam_dma_active();
             if ongoing_dma {
-                self.dma_controller.borrow_mut().oam_dma_transfer(
-                    cpu_clock,
-                    &self.main_bus,
-                    &self.ppu,
-                );
+                self.dma_controller
+                    .borrow_mut()
+                    .oam_dma_transfer(&self.main_bus, &self.ppu);
             } else {
                 self.cpu.clock()?;
             }

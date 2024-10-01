@@ -27,10 +27,12 @@ pub struct DmaController {
 
     /// Byte of OAM data read from the CPU to write to the PPU
     data: u8,
+
+    cycle: DmaCycle,
 }
 
-#[derive(Default)]
-pub enum DmaCycle {
+#[derive(Default, PartialEq)]
+enum DmaCycle {
     #[default]
     Read,
     Write,
@@ -39,6 +41,7 @@ pub enum DmaCycle {
 impl DmaController {
     pub fn new() -> Self {
         Self {
+            cycle: DmaCycle::Read,
             transfer: false,
             dummy: true,
             data: 0,
@@ -47,25 +50,24 @@ impl DmaController {
         }
     }
 
-    pub fn is_oam_dma_active(&self, clock: u64) -> bool {
-        self.transfer
-    }
-
-    pub fn dma_cycle(&self, cpu_clock: u64) -> DmaCycle {
-        if cpu_clock % 2 == 0 {
-            DmaCycle::Read
-        } else {
-            DmaCycle::Write
+    pub fn clock(&mut self) {
+        self.cycle = match self.cycle {
+            DmaCycle::Read => DmaCycle::Write,
+            DmaCycle::Write => DmaCycle::Read,
         }
     }
 
-    pub fn oam_dma_transfer(&mut self, cpu_clock: u64, main_bus: &SharedBus, ppu: &SharedPpu) {
+    pub fn is_oam_dma_active(&self) -> bool {
+        self.transfer
+    }
+
+    pub fn oam_dma_transfer(&mut self, main_bus: &SharedBus, ppu: &SharedPpu) {
         if self.dummy {
-            if cpu_clock % 2 == 0 {
+            if self.cycle == DmaCycle::Write {
                 self.dummy = false;
             }
         } else {
-            match self.dma_cycle(cpu_clock) {
+            match self.cycle {
                 DmaCycle::Read => {
                     self.oam_dma_read(main_bus);
                 }
@@ -92,6 +94,7 @@ impl DmaController {
 
         if finish {
             debug!("OAM DMA finished");
+            self.dummy = true;
         }
     }
 }
@@ -104,6 +107,7 @@ impl Memory for DmaController {
     fn write(&mut self, address: u16, data: u8) {
         debug!("OAM DMA starts for page: ${data:0>2X}");
         self.transfer = true;
+        self.dummy = true;
         self.page = data;
         self.addr = 0;
     }

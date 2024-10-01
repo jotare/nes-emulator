@@ -1,6 +1,11 @@
 CHANGELOG
 =========
 
+0.58.2
+------
+- Refactor DMA
+- Fix dummy cycle (wasn't reset appropriately)
+
 0.58.1
 ------
 - Add page boundary cross extra clock adjustments to CPU
