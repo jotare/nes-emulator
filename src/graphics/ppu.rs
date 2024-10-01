@@ -335,9 +335,7 @@ impl Ppu {
             _ => panic!("Internal PPU error. Scanline is {}!", self.scan_line),
         }
 
-        if self.bg_rendering_enabled() {
-            self.render_pixel();
-        }
+        self.render_pixel();
 
         self.cycle += 1;
         if self.cycle > 340 {
@@ -553,85 +551,112 @@ impl Ppu {
 
         // Background
 
-        let fine_x_bit = 15 - self.internal.borrow().fine_x_scroll;
+        let mut background_palette = 0;
+        let mut background_bit_plane = 0;
 
-        let background_palette = {
-            let palette_lo = utils::bv_16(self.pixel_producer.shifters.attributes.0, fine_x_bit);
-            let palette_hi = utils::bv_16(self.pixel_producer.shifters.attributes.1, fine_x_bit);
-            (palette_hi << 1) | palette_lo
-        };
-        let background_bit_plane = {
-            let bit_plane_lo = utils::bv_16(self.pixel_producer.shifters.tile_pattern.0, fine_x_bit);
-            let bit_plane_hi = utils::bv_16(self.pixel_producer.shifters.tile_pattern.1, fine_x_bit);
-            (bit_plane_hi << 1) | bit_plane_lo
-        };
+        if self.bg_rendering_enabled() {
+            let fine_x = self.internal.borrow().fine_x_scroll;
+            let fine_x_bit = 15 - fine_x;
+
+            background_palette = {
+                let palette_lo = utils::bv_16(self.pixel_producer.shifters.attributes.0, fine_x_bit);
+                let palette_hi = utils::bv_16(self.pixel_producer.shifters.attributes.1, fine_x_bit);
+                (palette_hi << 1) | palette_lo
+            };
+            background_bit_plane = {
+                let bit_plane_lo =
+                    utils::bv_16(self.pixel_producer.shifters.tile_pattern.0, fine_x_bit);
+                let bit_plane_hi =
+                    utils::bv_16(self.pixel_producer.shifters.tile_pattern.1, fine_x_bit);
+                (bit_plane_hi << 1) | bit_plane_lo
+            };
+        }
 
         // ----------------------------------------------------------------------------------------------------
-        let mut palette_offset = (background_palette << 2) | background_bit_plane;
 
         // Sprites
 
-        for sprite in self.pixel_producer.sprites.iter_mut() {
-            // no more valid sprites
-            if sprite.y == 0xFF {
-                break;
-            }
+        let mut sprite_palette = 0;
+        let mut sprite_bit_plane = 0;
+        let mut priority = 0; // 0 -> front of background, 1 -> behind background
+        let mut sprite_number = u8::MAX;
 
-            if col < (sprite.x as usize) || col >= (sprite.x as usize + 8) {
-                continue;
-            }
-
-            let mut pattern_table_address = PatternTableAddress::new(self.registers.sprite_pattern_table());
-            pattern_table_address.set(PatternTableAddress::TILE_NUMBER, sprite.tile);
-
-            let sprite_palette = (sprite.attributes & 0b0000_0011) + 4; // sprite palettes are 4 to 7
-
-            // 0 -> front of background, 1 -> behind background
-            let priority = utils::bv(sprite.attributes, 5);
-            let flip_horizontally = utils::bv(sprite.attributes, 6) > 0;
-            let flip_vertically = utils::bv(sprite.attributes, 7) > 0;
-
-            // sprites are rendered with 1 scan line offset, we need to
-            // substract it from the row to place it in the correct position
-            let mut y = (row - 1 - sprite.y as usize) as u8;
-            if flip_vertically {
-                y = 7 - y;
-            }
-
-            pattern_table_address.set(PatternTableAddress::FINE_Y_OFFSET, y);
-
-            pattern_table_address.set(PatternTableAddress::BIT_PLANE, 0);
-            let low = self.bus.borrow().read(pattern_table_address.into());
-
-            pattern_table_address.set(PatternTableAddress::BIT_PLANE, 1);
-            let high = self.bus.borrow().read(pattern_table_address.into());
-
-            let mut x = (7 - (col - sprite.x as usize)) as u8;
-            if flip_horizontally {
-                x = 7 - x
-            }
-
-            let sprite_bit_plane = utils::bv(high, x as u8) << 1 | utils::bv(low, x as u8);
-
-            if background_bit_plane == 0 && sprite_bit_plane == 0 {
-                // EXT in $3F00
-                palette_offset = 0;
-            } else if background_bit_plane == 0 && sprite_bit_plane > 0 {
-                // paint sprite
-                palette_offset = ((sprite_palette << 2) | sprite_bit_plane) as u16;
-                break;
-            } else if background_bit_plane > 0 && sprite_bit_plane == 0 {
-                // paint background
-            } else {
-                if priority == 0 {
-                    // paint sprite
-                    palette_offset = ((sprite_palette << 2) | sprite_bit_plane) as u16;
+        if self.sprite_rendering_enabled() {
+            for (idx, sprite) in self.pixel_producer.sprites.iter_mut().enumerate() {
+                // no more valid sprites
+                if sprite.y == 0xFF {
                     break;
-                } else {
-                    // paint background
+                }
+
+                if col < (sprite.x as usize) || col >= (sprite.x as usize + 8) {
+                    continue;
+                }
+
+                sprite_number = idx as u8;
+
+                let mut pattern_table_address =
+                    PatternTableAddress::new(self.registers.sprite_pattern_table());
+                pattern_table_address.set(PatternTableAddress::TILE_NUMBER, sprite.tile);
+
+                sprite_palette = (sprite.attributes & 0b0000_0011) + 4; // sprite palettes are 4 to 7
+
+                priority = utils::bv(sprite.attributes, 5);
+                let flip_horizontally = utils::bv(sprite.attributes, 6) > 0;
+                let flip_vertically = utils::bv(sprite.attributes, 7) > 0;
+
+                // sprites are rendered with 1 scan line offset, we need to
+                // substract it from the row to place it in the correct position
+                let mut y = (row - 1 - sprite.y as usize) as u8;
+                if flip_vertically {
+                    y = 7 - y;
+                }
+
+                pattern_table_address.set(PatternTableAddress::FINE_Y_OFFSET, y);
+
+                pattern_table_address.set(PatternTableAddress::BIT_PLANE, 0);
+                let low = self.bus.borrow().read(pattern_table_address.into());
+
+                pattern_table_address.set(PatternTableAddress::BIT_PLANE, 1);
+                let high = self.bus.borrow().read(pattern_table_address.into());
+
+                let mut x = (7 - (col - sprite.x as usize)) as u8;
+                if flip_horizontally {
+                    x = 7 - x
+                }
+
+                sprite_bit_plane = utils::bv(high, x as u8) << 1 | utils::bv(low, x as u8);
+
+                if sprite_bit_plane > 0 {
+                    // first non transparent sprite, let's render it
+                    break;
                 }
             }
         }
+
+        // Choose background or sprite pixel
+
+        let palette_offset = if background_bit_plane == 0 && sprite_bit_plane == 0 {
+            // EXT in $3F00
+            0
+        } else if background_bit_plane == 0 && sprite_bit_plane > 0 {
+            // paint sprite
+            ((sprite_palette << 2) | sprite_bit_plane) as u16
+        } else if background_bit_plane > 0 && sprite_bit_plane == 0 {
+            // paint background
+            (background_palette << 2) | background_bit_plane
+        } else {
+            if sprite_number == 0 {
+                self.registers.set_sprite_0_hit(true);
+            }
+
+            if priority == 0 {
+                // paint sprite
+                ((sprite_palette << 2) | sprite_bit_plane) as u16
+            } else {
+                // paint background
+                (background_palette << 2) | background_bit_plane
+            }
+        };
 
         let color = Pixel::from(
             self.bus

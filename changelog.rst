@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+0.58.4
+------
+- Fix PPU priority multiplexer
+- Implement sprite 0 hit
+- Fix pixel rendering according to flags on PPUMASK
+
 0.58.3
 ------
 - Fix OAMADDR autoincrement after OAMDATA write
