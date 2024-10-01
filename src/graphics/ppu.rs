@@ -342,7 +342,7 @@ impl Ppu {
         self.cycle += 1;
         if self.cycle > 340 {
             self.cycle = 0;
-            self.render_scanline_sprites();
+            self.prepare_scanline_sprites();
             self.scan_line += 1;
 
             if self.scan_line > 261 {
@@ -455,10 +455,12 @@ impl Ppu {
         Ok(())
     }
 
-    // Sprite rendering per scanline. This is still non functional, as sprites
-    // are completely over background and not in the correct scanline (sprites
-    // should be one scanline below). But it's a better approach
-    fn render_scanline_sprites(&mut self) {
+    // First part of sprite rendering by scanline.
+    //
+    // In this setp, OAM is read looking for sprites to render in the next
+    // scanline. It chooses a max of 8 sprites and load them in the pixel
+    // producer
+    fn prepare_scanline_sprites(&mut self) {
         if self.scan_line >= 240 {
             // only render in visible scanlines
             return;
