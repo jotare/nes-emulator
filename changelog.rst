@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.59.1
+------
+- Proper PPU odd frame cycle skip implementation
+
 0.59.0
 ------
 - Implement cartridge support for CHR RAM

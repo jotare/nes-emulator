@@ -74,6 +74,7 @@ pub struct Ppu {
     event_bus: SharedEventBus,
 
     frame: Frame,
+    frame_parity: FrameParity,
 
     registers: PpuRegisters,
     internal: RefCell<PpuInternalRegisters>,
@@ -84,6 +85,13 @@ pub struct Ppu {
     scan_line: u16,
 
     pixel_producer: PixelProducer,
+}
+
+#[derive(Default)]
+enum FrameParity {
+    #[default]
+    Odd,
+    Even,
 }
 
 #[derive(Default)]
@@ -155,6 +163,7 @@ impl Ppu {
             event_bus,
 
             frame: Frame::black(),
+            frame_parity: FrameParity::default(),
 
             registers: PpuRegisters::default(),
             internal: RefCell::new(PpuInternalRegisters::default()),
@@ -181,8 +190,10 @@ impl Ppu {
         // Screen rendering never stops
 
         if self.scan_line == 0 && self.cycle == 0 {
-            // "Odd frame" cycle skip
-            self.cycle = 1;
+            if self.rendering_enabled() && matches!(self.frame_parity, FrameParity::Odd) {
+                // "Odd frame" cycle skip
+                self.cycle = 1;
+            }
         }
 
         match self.scan_line {
@@ -346,6 +357,7 @@ impl Ppu {
             if self.scan_line > 261 {
                 self.scan_line = 0;
                 self.event_bus.access().emit(Event::FrameReady);
+                self.frame_parity.reverse();
             }
         }
     }
@@ -934,6 +946,15 @@ impl PpuInternalRegisters {
             RenderAddress::FINE_Y_SCROLL,
             self.temp_vram_addr.get(RenderAddress::FINE_Y_SCROLL) as u8,
         );
+    }
+}
+
+impl FrameParity {
+    fn reverse(&mut self) {
+        *self = match self {
+            Self::Odd => Self::Even,
+            Self::Even => Self::Odd,
+        }
     }
 }
 
