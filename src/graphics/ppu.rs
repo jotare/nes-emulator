@@ -552,8 +552,10 @@ impl Ppu {
             let fine_x_bit = 15 - fine_x;
 
             background_palette = {
-                let palette_lo = utils::bv_16(self.pixel_producer.shifters.attributes.0, fine_x_bit);
-                let palette_hi = utils::bv_16(self.pixel_producer.shifters.attributes.1, fine_x_bit);
+                let palette_lo =
+                    utils::bv_16(self.pixel_producer.shifters.attributes.0, fine_x_bit);
+                let palette_hi =
+                    utils::bv_16(self.pixel_producer.shifters.attributes.1, fine_x_bit);
                 (palette_hi << 1) | palette_lo
             };
             background_bit_plane = {
