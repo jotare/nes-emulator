@@ -266,51 +266,7 @@ impl Nes {
     pub fn load_cartidge(&mut self, cartidge: Cartidge) {
         info!("Cartidge inserted: {}", cartidge);
 
-        let ram = cartidge.mapper.program_ram_ref();
-        let rom = cartidge.mapper.program_rom_ref();
-        let chr = cartidge.mapper.character_memory_ref();
-
-        self.main_bus
-            .borrow_mut()
-            .attach(
-                "Cartidge RAM",
-                ram,
-                AddressRange {
-                    start: CARTIDGE_RAM_START,
-                    end: CARTIDGE_RAM_END,
-                },
-            )
-            .unwrap();
-
-        self.main_bus
-            .borrow_mut()
-            .attach(
-                "Cartidge ROM",
-                rom,
-                AddressRange {
-                    start: CARTIDGE_ROM_START,
-                    end: CARTIDGE_ROM_END,
-                },
-            )
-            .unwrap();
-
-        // Pattern memory - also known as CHR ROM is a 8 kB memory where two
-        // pattern tables are stored. It contains all graphical information the
-        // PPU require to draw.
-        //
-        // It can be split into two 4 kB (0x1000) sections containing the
-        // pattern tables 0 and 1
-        self.graphics_bus
-            .borrow_mut()
-            .attach(
-                "CHR ROM (pattern memories)",
-                chr,
-                AddressRange {
-                    start: PATTERN_TABLES_START,
-                    end: PATTERN_TABLES_END,
-                },
-            )
-            .unwrap();
+        cartidge.mapper.connect(&self.main_bus, &self.graphics_bus);
 
         self.nametable
             .borrow_mut()

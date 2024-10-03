@@ -4,6 +4,7 @@ CHANGELOG
 0.59.0
 ------
 - Implement cartridge support for CHR RAM
+- Refactor mappers for more flexiblity
 
 0.58.4
 ------

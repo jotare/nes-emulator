@@ -73,11 +73,11 @@ impl Cartidge {
 
         let mut buf = vec![0; cartidge_header.pgr_rom_size];
         file.read_exact(&mut buf).unwrap();
-        mapper.load_program_rom(&buf);
+        mapper.load_program_memory(buf);
 
         let mut buf = vec![0; cartidge_header.chr_rom_size];
         file.read_exact(&mut buf).unwrap();
-        mapper.load_character_memory(&buf);
+        mapper.load_character_memory(buf);
 
         let mut rest = Vec::new();
         file.read_to_end(&mut rest).unwrap();
@@ -168,18 +168,20 @@ impl CartidgeHeader {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+// Doesn't make sense, as the mapper doesn't expose it's memories anymore
 
-    #[test]
-    fn test_cartidge_new() {
-        let cartidge = Cartidge::new("roms/Super Mario Bros. (World).nes");
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
 
-        assert_eq!(cartidge.mapper.program_rom_ref().borrow().size(), 32 * 1024);
-        assert_eq!(
-            cartidge.mapper.character_memory_ref().borrow().size(),
-            8 * 1024
-        );
-    }
-}
+//     #[test]
+//     fn test_cartidge_new() {
+//         let cartidge = Cartidge::new("roms/Super Mario Bros. (World).nes");
+
+//         assert_eq!(cartidge.mapper.program_rom_ref().borrow().size(), 32 * 1024);
+//         assert_eq!(
+//             cartidge.mapper.character_memory_ref().borrow().size(),
+//             8 * 1024
+//         );
+//     }
+// }
