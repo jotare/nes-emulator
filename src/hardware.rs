@@ -66,13 +66,18 @@ pub const CARTIDGE_ROM_END: u16 = 0xFFFF;
 // and is attached from the cartidges
 pub const PATTERN_TABLES_START: u16 = 0x0000;
 pub const PATTERN_TABLES_END: u16 = 0x1FFF;
+// Alias for clarity
+pub const CHR_MEMORY_START: u16 = PATTERN_TABLES_START;
+pub const CHR_MEMORY_END: u16 = PATTERN_TABLES_END;
+pub const CHR_MEMORY_SIZE: u16 = CHR_MEMORY_END - CHR_MEMORY_START + 1;
 
 // Nametables - also known as VRAM. 1024-byte area used by the PPU to lay out
-// backgrounds
+// backgrounds.
 pub const NAMETABLES_START: u16 = 0x2000;
 pub const NAMETABLES_END: u16 = 0x2FFF;
 
-// TODO: nametables mirrors
+pub const CARTIDGE_WEIRD_UNUSED_REGION_START: u16 = 0x3000;
+pub const CARTIDGE_WEIRD_UNUSED_REGION_END: u16 = 0x3EFF;
 
 // Palettes - 256-byte memory storing which colors should be displayed on the
 // screen when sprites and background are combined
