@@ -478,30 +478,23 @@ impl Ppu {
 
         // Cycles 65-256: read 8 sprites from OAM and write them into secondary
         // OAM if they are in screen
+        let mut n = 0;
         let mut sprites_in_screen = 0;
-        let mut sprite_overflow = false;
-        for s in 0..64 {
-            let sprite = self.oam.read_sprite(s);
+        while n < 64 && sprites_in_screen < 9 {
+            let sprite = self.oam.read_sprite(n);
 
-            let sprite_y = sprite.y as u16;
-            let in_screen = (self.scan_line >= sprite_y) && (self.scan_line < (sprite_y + 8));
-            if !in_screen {
-                // sprite hidden out of screen, skip
-                continue;
+            let diff = (self.scan_line as i16) - (sprite.y as i16);
+            if diff >= 0 && diff < 8 {
+                if sprites_in_screen < 8 {
+                    secondary_oam[sprites_in_screen] = sprite;
+                    sprites_in_screen += 1;
+                }
             }
 
-            if sprites_in_screen < 8 {
-                secondary_oam[sprites_in_screen] = sprite;
-                sprites_in_screen += 1
-            } else {
-                sprite_overflow = true;
-                break;
-            }
-
-            // println!("Sprite in scan line {}: {sprite:?}", self.scan_line);
+            n += 1;
         }
 
-        self.registers.set_sprite_overflow(sprite_overflow);
+        self.registers.set_sprite_overflow(sprites_in_screen > 9);
 
         self.pixel_producer.sprites = secondary_oam;
     }
