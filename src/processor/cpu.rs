@@ -168,9 +168,9 @@ impl Cpu {
             }
             Misc(t) => match t {
                 Push(fun) => {
-                    fun(&mut self.cpu, &self.bus);
+                    fun(&mut self.cpu, &mut self.bus.borrow_mut());
                 }
-                Pull(fun) => fun(&mut self.cpu, &self.bus),
+                Pull(fun) => fun(&mut self.cpu, &self.bus.borrow()),
                 Jump(fun) => {
                     let (addr, _) = self.load(instruction.addressing_mode);
                     fun(&mut self.cpu, addr);
@@ -187,14 +187,14 @@ impl Cpu {
                 }
                 Call(fun) => {
                     let (addr, _) = self.load(instruction.addressing_mode);
-                    fun(&mut self.cpu, addr, &self.bus);
+                    fun(&mut self.cpu, addr, &mut self.bus.borrow_mut());
                 }
                 Return(fun) => {
-                    fun(&mut self.cpu, &self.bus);
+                    fun(&mut self.cpu, &self.bus.borrow());
                 }
-                HardwareInterrupt(fun) => fun(&mut self.cpu, &self.bus),
+                HardwareInterrupt(fun) => fun(&mut self.cpu, &mut self.bus.borrow_mut()),
                 ReturnFromInterrupt(fun) => {
-                    fun(&mut self.cpu, &self.bus);
+                    fun(&mut self.cpu, &self.bus.borrow());
                 }
             },
         }
@@ -237,9 +237,12 @@ impl Cpu {
         let pch = ((self.cpu.pc & 0xFF00) >> 8) as u8;
         let pcl = (self.cpu.pc & 0x00FF) as u8;
         let sr: u8 = self.cpu.sr.into();
-        instruction_set::push(&mut self.cpu, pch, &self.bus);
-        instruction_set::push(&mut self.cpu, pcl, &self.bus);
-        instruction_set::push(&mut self.cpu, sr, &self.bus);
+        {
+            let mut bus = self.bus.borrow_mut();
+            instruction_set::push(&mut self.cpu, pch, &mut bus);
+            instruction_set::push(&mut self.cpu, pcl, &mut bus);
+            instruction_set::push(&mut self.cpu, sr, &mut bus);
+        }
 
         // Fetch interrupt vector address
         let pcl = self.bus_read(lb) as u16;

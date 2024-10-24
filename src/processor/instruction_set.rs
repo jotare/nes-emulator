@@ -3,12 +3,12 @@ use std::collections::HashMap;
 use log::trace;
 
 use crate::interfaces::Bus as _;
+use crate::processor::bus::Bus;
 use crate::processor::instruction::{
     AddressingMode, Instruction, InstructionKind, MiscInstructionKind, Opcode,
 };
 use crate::processor::internal_cpu::InternalCpu;
 use crate::processor::status_register::{StatusRegister, StatusRegisterFlag};
-use crate::types::SharedBus;
 use crate::utils;
 
 use AddressingMode::*;
@@ -411,17 +411,17 @@ pub fn tya(cpu: &mut InternalCpu) {
 
 // Stack instructions
 
-pub fn push(cpu: &mut InternalCpu, data: u8, memory: &SharedBus) {
+pub fn push(cpu: &mut InternalCpu, data: u8, memory: &mut Bus) {
     let address = 0x0100 + (cpu.sp as u16);
     trace!("Push to SP 0x{:X} - 0x{:X}", cpu.sp, data);
-    memory.borrow_mut().write(address, data);
+    memory.write(address, data);
     cpu.sp -= 1;
 }
 
-pub fn pull(cpu: &mut InternalCpu, memory: &SharedBus) -> u8 {
+pub fn pull(cpu: &mut InternalCpu, memory: &Bus) -> u8 {
     cpu.sp += 1;
     let address = 0x0100 + (cpu.sp as u16);
-    let data = memory.borrow().read(address);
+    let data = memory.read(address);
     trace!("Pull from SP 0x{:X} - 0x{:X}", cpu.sp, data);
     data
 }
@@ -434,7 +434,7 @@ pub fn pull(cpu: &mut InternalCpu, memory: &SharedBus) -> u8 {
 /// Status Register:
 /// N Z C I D V
 /// - - - - - -
-pub fn pha(cpu: &mut InternalCpu, memory: &SharedBus) {
+pub fn pha(cpu: &mut InternalCpu, memory: &mut Bus) {
     push(cpu, cpu.acc, memory);
 }
 
@@ -449,7 +449,7 @@ pub fn pha(cpu: &mut InternalCpu, memory: &SharedBus) {
 /// Status Register:
 /// N Z C I D V
 /// - - - - - -
-pub fn php(cpu: &mut InternalCpu, memory: &SharedBus) {
+pub fn php(cpu: &mut InternalCpu, memory: &mut Bus) {
     let sr: u8 = cpu.sr.into();
     push(cpu, sr | (1 << Break as u8) | (1 << 5), memory);
 }
@@ -462,7 +462,7 @@ pub fn php(cpu: &mut InternalCpu, memory: &SharedBus) {
 /// Status Register
 /// N Z C I D V
 /// + + - - - -
-pub fn pla(cpu: &mut InternalCpu, memory: &SharedBus) {
+pub fn pla(cpu: &mut InternalCpu, memory: &Bus) {
     cpu.acc = pull(cpu, memory);
     cpu.sr.auto_set(Negative, cpu.acc);
     cpu.sr.auto_set(Zero, cpu.acc);
@@ -479,7 +479,7 @@ pub fn pla(cpu: &mut InternalCpu, memory: &SharedBus) {
 /// Status Register
 /// N Z C I D V
 /// + + - - - -
-pub fn plp(cpu: &mut InternalCpu, memory: &SharedBus) {
+pub fn plp(cpu: &mut InternalCpu, memory: &Bus) {
     let mut sr = StatusRegister::from(pull(cpu, memory));
     sr.set_value(Break, cpu.sr.get(Break));
     // XXX bit 5 is ignored, as NES don't use it
@@ -1028,7 +1028,7 @@ pub fn jmp(cpu: &mut InternalCpu, address: u16) {
 /// Status Register:
 /// N Z C I D V
 /// - - - - - -
-pub fn jsr(cpu: &mut InternalCpu, address: u16, memory: &SharedBus) {
+pub fn jsr(cpu: &mut InternalCpu, address: u16, memory: &mut Bus) {
     let pc = cpu.pc + 2;
     let pch = (pc >> 8) as u8;
     let pcl = (pc & 0x00FF) as u8;
@@ -1045,7 +1045,7 @@ pub fn jsr(cpu: &mut InternalCpu, address: u16, memory: &SharedBus) {
 /// Status Register:
 /// N Z C I D V
 /// - - - - - -
-pub fn rts(cpu: &mut InternalCpu, memory: &SharedBus) {
+pub fn rts(cpu: &mut InternalCpu, memory: &Bus) {
     let pcl = pull(cpu, memory) as u16;
     let pch = pull(cpu, memory) as u16;
     cpu.pc = ((pch << 8) | pcl) + 1;
@@ -1072,7 +1072,7 @@ pub fn rts(cpu: &mut InternalCpu, memory: &SharedBus) {
 /// Status Register:
 /// N Z C I D V
 /// - - - 1 - -
-pub fn brk(cpu: &mut InternalCpu, memory: &SharedBus) {
+pub fn brk(cpu: &mut InternalCpu, memory: &mut Bus) {
     let return_address = cpu.pc + 2;
     let pch = (return_address >> 8) as u8;
     let pcl = (return_address & 0x00FF) as u8;
@@ -1081,8 +1081,8 @@ pub fn brk(cpu: &mut InternalCpu, memory: &SharedBus) {
     let current_sr: u8 = cpu.sr.into();
     let sr: u8 = current_sr | (1 << Break as u8);
     push(cpu, sr, memory);
-    let adl = memory.borrow().read(0xFFFE) as u16;
-    let adh = memory.borrow().read(0xFFFF) as u16;
+    let adl = memory.read(0xFFFE) as u16;
+    let adh = memory.read(0xFFFF) as u16;
     cpu.pc = (adh << 8) | adl;
     cpu.sr.set(InterruptDisable);
 }
@@ -1098,7 +1098,7 @@ pub fn brk(cpu: &mut InternalCpu, memory: &SharedBus) {
 /// Status Register:
 ///  N Z C I D V
 ///  from stack
-pub fn rti(cpu: &mut InternalCpu, memory: &SharedBus) {
+pub fn rti(cpu: &mut InternalCpu, memory: &Bus) {
     let mut stack_sr = pull(cpu, memory);
     stack_sr &= !(1 << Break as u8);
     cpu.sr = StatusRegister::from(stack_sr);

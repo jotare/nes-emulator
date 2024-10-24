@@ -1,5 +1,5 @@
+use crate::processor::bus::Bus;
 use crate::processor::internal_cpu::InternalCpu;
-use crate::types::SharedBus;
 
 pub type Opcode = u8;
 
@@ -26,14 +26,14 @@ pub enum InstructionKind {
 
 #[derive(Clone)]
 pub enum MiscInstructionKind {
-    Push(fn(&mut InternalCpu, &SharedBus)),
-    Pull(fn(&mut InternalCpu, &SharedBus)),
+    Push(fn(&mut InternalCpu, &mut Bus)),
+    Pull(fn(&mut InternalCpu, &Bus)),
     Jump(fn(&mut InternalCpu, u16)),
     Branch(fn(&mut InternalCpu, u8)),
-    Call(fn(&mut InternalCpu, u16, &SharedBus)),
-    Return(fn(&mut InternalCpu, &SharedBus)),
-    HardwareInterrupt(fn(&mut InternalCpu, &SharedBus)),
-    ReturnFromInterrupt(fn(&mut InternalCpu, &SharedBus)),
+    Call(fn(&mut InternalCpu, u16, &mut Bus)),
+    Return(fn(&mut InternalCpu, &Bus)),
+    HardwareInterrupt(fn(&mut InternalCpu, &mut Bus)),
+    ReturnFromInterrupt(fn(&mut InternalCpu, &Bus)),
 }
 
 #[derive(Clone, Copy, Debug)]

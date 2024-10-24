@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.60.0
+------
+- Change SharedBus for plain Bus references in CPU instruction set
+
 0.59.1
 ------
 - Proper PPU odd frame cycle skip implementation
