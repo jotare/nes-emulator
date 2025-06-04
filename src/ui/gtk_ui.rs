@@ -432,7 +432,7 @@ impl PaintableImpl for PaintableScreen {
             self.intrinsic_width() as f32,
             self.intrinsic_height() as f32,
         ));
-        let pixel_size = 0.95;
+        let pixel_size = 0.98;
 
         for (h, row) in frame.iter().enumerate().take(height) {
             for (w, pixel) in row.iter().enumerate().take(width) {
