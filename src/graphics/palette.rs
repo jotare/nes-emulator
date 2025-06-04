@@ -7,7 +7,7 @@ impl From<u8> for Pixel {
     /// https://www.nesdev.org/wiki/PPU_palettes
     /// http://forums.nesdev.org/viewtopic.php?f=2&t=6484
     fn from(color: u8) -> Self {
-        match color {
+        match color & 0x3F {
             0x00 => Self::new_rgb_byte(84, 84, 84),
             0x01 => Self::new_rgb_byte(0, 30, 116),
             0x02 => Self::new_rgb_byte(8, 16, 144),
@@ -76,7 +76,7 @@ impl From<u8> for Pixel {
             0x3E => Self::new_rgb_byte(0, 0, 0),
             0x3F => Self::new_rgb_byte(0, 0, 0),
 
-            _ => panic!("Invalid color {color}"),
+            _ => unreachable!("Invalid color {color}"),
         }
     }
 }

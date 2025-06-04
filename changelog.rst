@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.61.1
+------
+- Palettes are always interpreted as 6-bit colors
+
 0.61.0
 ------
 - Always set status register bit 5
