@@ -35,6 +35,7 @@
 //!
 //!
 
+use std::cell::Cell;
 use std::cell::RefCell;
 use std::io::Write;
 
@@ -85,6 +86,8 @@ pub struct Ppu {
     scan_line: u16,
 
     pixel_producer: PixelProducer,
+
+    supress_vertical_blank: Cell<bool>,
 }
 
 #[derive(Default)]
@@ -183,6 +186,8 @@ impl Ppu {
                     attributes: 0xFF,
                 }; 8],
             },
+
+            supress_vertical_blank: Cell::new(false),
         }
     }
 
@@ -214,7 +219,7 @@ impl Ppu {
                 // makes the same memory accesses it would for a regular
                 // scanline
                 if self.scan_line == 261 && self.cycle == 1 {
-                    self.registers.unset_vertical_blank();
+                    self.end_vertical_blank();
                     self.registers.set_sprite_overflow(false);
                     self.registers.set_sprite_0_hit(false);
                     self.pixel_producer.sprites = [OamSprite {
@@ -297,20 +302,22 @@ impl Ppu {
                             _ => unreachable!("We are matching exhausively all possible values"),
                         }
 
-                        if self.cycle == 256 && self.bg_rendering_enabled() {
-                            self.internal.borrow_mut().vram_addr.increment_y();
+                        if self.cycle == 256 {
+                            if self.rendering_enabled() {
+                                self.internal.borrow_mut().vram_addr.increment_y();
+                            }
                         }
                     }
 
                     257 => {
                         self.load_shifters();
-                        if self.bg_rendering_enabled() {
+                        if self.rendering_enabled() {
                             self.internal.borrow_mut().transfer_x();
                         }
                     }
 
                     280..=304 if self.scan_line == 261 => {
-                        if self.bg_rendering_enabled() {
+                        if self.rendering_enabled() {
                             self.internal.borrow_mut().transfer_y();
                         }
                     }
@@ -325,6 +332,10 @@ impl Ppu {
                         // ignore them
                     }
                 }
+
+                // if 257 <= self.cycle && self.cycle <= 320 {
+                //     self.registers.oam_addr = 0;
+                // }
             }
 
             240 => {
@@ -332,10 +343,7 @@ impl Ppu {
             }
 
             241 if self.cycle == 1 => {
-                self.registers.set_vertical_blank();
-                if self.registers.nmi_enabled() {
-                    self.event_bus.access().emit(Event::NMI)
-                }
+                self.begin_vertical_blank();
             }
 
             241..=260 => {
@@ -360,6 +368,23 @@ impl Ppu {
                 self.frame_parity.reverse();
             }
         }
+    }
+
+    /// Begin the vertical blank period. It sets the PPU status to VBL and
+    /// triggers an NMI if needed
+    fn begin_vertical_blank(&mut self) {
+        if !self.supress_vertical_blank.get() {
+            self.registers.set_vertical_blank();
+            if self.registers.nmi_enabled() {
+                self.event_bus.access().emit(Event::NMI)
+            }
+        }
+        self.supress_vertical_blank.set(false);
+    }
+
+    /// End vertical blank period. This unsets the VBL flag on PPU status
+    fn end_vertical_blank(&mut self) {
+        self.registers.unset_vertical_blank();
     }
 
     /// Fetch next tile ID to render using internal state: loopy v register and
@@ -540,13 +565,11 @@ impl Ppu {
 
     pub fn update_shifters(&mut self) {
         self.pixel_producer.shifters.tile_pattern.0 =
-            self.pixel_producer.shifters.tile_pattern.0 << 1 | 1;
+            self.pixel_producer.shifters.tile_pattern.0 << 1;
         self.pixel_producer.shifters.tile_pattern.1 =
-            self.pixel_producer.shifters.tile_pattern.1 << 1 | 1;
-        self.pixel_producer.shifters.attributes.0 =
-            self.pixel_producer.shifters.attributes.0 << 1 | 1;
-        self.pixel_producer.shifters.attributes.1 =
-            self.pixel_producer.shifters.attributes.1 << 1 | 1;
+            self.pixel_producer.shifters.tile_pattern.1 << 1;
+        self.pixel_producer.shifters.attributes.0 = self.pixel_producer.shifters.attributes.0 << 1;
+        self.pixel_producer.shifters.attributes.1 = self.pixel_producer.shifters.attributes.1 << 1;
     }
 
     pub fn produce_pixel(&mut self, col: usize, row: usize) -> Option<Pixel> {
@@ -757,6 +780,8 @@ impl Memory for Ppu {
         // PPU registers are mirrored every 8 bytes
         let address = (address & 0b0111) + 0x2000;
         let data = match address {
+            PPUCTRL => self.registers.data_buffer.get() & 0x1F,
+
             PPUSTATUS => {
                 // Internal
                 let mut internal = self.internal.borrow_mut();
@@ -769,9 +794,23 @@ impl Memory for Ppu {
 
                 // Reading PPU status clears VBL flag and the address latch
                 self.registers.unset_vertical_blank();
-                self.registers.data_buffer.set(0);
+                // self.registers.data_buffer.set(0);
 
-                ppustatus | 0b1000_0000
+                // also, if status is read one PPU clock before vertical blank,
+                // it'll supress the NMI
+                self.supress_vertical_blank
+                    .set(self.scan_line == 241 && self.cycle == (1 - 1));
+
+                // reading in the VBL clock or one later reads the flag as true
+                if self.scan_line == 241
+                    && (self.cycle == 1 || self.cycle == (1 + 1) || self.cycle == (1 + 2))
+                {
+                    // if self.scan_line == 241 && (self.cycle == 1) {
+                    self.event_bus.access().mark_as_processed(Event::NMI);
+                    ppustatus | 0b1000_0000
+                } else {
+                    ppustatus
+                }
             }
 
             OAMDATA => {

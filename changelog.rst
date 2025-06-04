@@ -4,6 +4,7 @@ CHANGELOG
 0.61.1
 ------
 - Palettes are always interpreted as 6-bit colors
+- PPU vertical blank supress and small fixes
 
 0.61.0
 ------
