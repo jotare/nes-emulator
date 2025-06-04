@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.61.0
+------
+- Always set status register bit 5
+
 0.60.0
 ------
 - Change SharedBus for plain Bus references in CPU instruction set

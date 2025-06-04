@@ -51,13 +51,15 @@ impl StatusRegister {
 
 impl From<u8> for StatusRegister {
     fn from(value: u8) -> Self {
-        Self { sr: value }
+        Self {
+            sr: value | (1 << 5),
+        }
     }
 }
 
 impl From<StatusRegister> for u8 {
     fn from(value: StatusRegister) -> Self {
-        value.sr
+        value.sr | (1 << 5)
     }
 }
 
