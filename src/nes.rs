@@ -13,8 +13,8 @@ use std::rc::Rc;
 use log::info;
 
 use crate::cartidge::Cartidge;
-use crate::controller::Controller;
 use crate::controller::ControllerButtons;
+use crate::controller::Controllers;
 use crate::dma::DmaController;
 use crate::errors::NesError;
 use crate::events::Event;
@@ -32,7 +32,7 @@ use crate::processor::memory::MirroredMemory;
 use crate::processor::memory::{Ciram, Ram};
 use crate::settings::NesSettings;
 use crate::settings::UiKind;
-use crate::types::{SharedBus, SharedCiram, SharedController, SharedMemory, SharedPpu};
+use crate::types::{SharedBus, SharedCiram, SharedMemory, SharedPpu};
 use crate::ui::{GtkUi, Ui};
 
 pub struct Nes {
@@ -55,8 +55,7 @@ pub struct Nes {
 
     pub ui: Option<GtkUi>,
 
-    controller_one: SharedController,
-    controller_two: SharedController,
+    controllers: Rc<RefCell<Controllers>>,
 
     event_bus: SharedEventBus,
     keyboard_channel: KeyboardChannel,
@@ -143,31 +142,15 @@ impl Nes {
             )
             .unwrap();
 
-        let keyboard_listener_one = keyboard_channel.listener();
-        let controller_one = Rc::new(RefCell::new(Controller::new(keyboard_listener_one)));
-        let controller_one_ptr = Rc::clone(&controller_one);
+        let controllers = Rc::new(RefCell::new(Controllers::new(keyboard_channel.listener())));
+        let controllers_ptr = Rc::clone(&controllers);
         main_bus
             .borrow_mut()
             .attach(
-                "Controller 1",
-                controller_one_ptr,
+                "Controllers",
+                controllers_ptr,
                 AddressRange {
                     start: CONTROLLER_PORT_1,
-                    end: CONTROLLER_PORT_1,
-                },
-            )
-            .unwrap();
-
-        let keyboard_listener_two = keyboard_channel.listener();
-        let controller_two = Rc::new(RefCell::new(Controller::new(keyboard_listener_two)));
-        let controller_two_ptr = Rc::clone(&controller_two);
-        main_bus
-            .borrow_mut()
-            .attach(
-                "Controller 2",
-                controller_two_ptr,
-                AddressRange {
-                    start: CONTROLLER_PORT_2,
                     end: CONTROLLER_PORT_2,
                 },
             )
@@ -249,8 +232,7 @@ impl Nes {
             palettes: palette_memory,
             dma_controller,
             ui: None,
-            controller_one,
-            controller_two,
+            controllers,
             event_bus,
             keyboard_channel,
             settings,
@@ -278,13 +260,28 @@ impl Nes {
 
     /// Connect controller one to the NES and define its configuration
     pub fn connect_controller_one(&mut self, buttons: ControllerButtons) {
-        self.controller_one.borrow_mut().connect(buttons);
+        self.controllers
+            .borrow_mut()
+            .connect_controller_one(buttons);
     }
 
     /// Diconnect controller one from the NES. After this action, the controls
     /// defined for this controller won't do anything anymore
     pub fn disconnect_controller_one(&mut self) {
-        self.controller_one.borrow_mut().disconnect();
+        self.controllers.borrow_mut().disconnect_controller_one();
+    }
+
+    /// Connect controller two to the NES and define its configuration
+    pub fn connect_controller_two(&mut self, buttons: ControllerButtons) {
+        self.controllers
+            .borrow_mut()
+            .connect_controller_two(buttons);
+    }
+
+    /// Diconnect controller two from the NES. After this action, the controls
+    /// defined for this controller won't do anything anymore
+    pub fn disconnect_controller_two(&mut self) {
+        self.controllers.borrow_mut().disconnect_controller_two();
     }
 
     /// Blocking NES run

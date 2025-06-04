@@ -47,6 +47,11 @@ struct RenderThreadState {
     event_bus: Option<SharedEventBus>,
 }
 
+enum KeyEvent {
+    Pressed,
+    Released,
+}
+
 impl GtkUi {
     pub fn builder() -> GtkUiBuilder {
         GtkUiBuilder::new()
@@ -109,7 +114,11 @@ impl GtkUi {
                 .build();
 
             event_controller.connect_key_pressed(|event_controller, keyval, keycode, state| {
-                Self::on_key_pressed(event_controller, keyval, keycode, state)
+                Self::on_key_event(KeyEvent::Pressed, event_controller, keyval, keycode, state);
+                Inhibit(false)
+            });
+            event_controller.connect_key_released(|event_controller, keyval, keycode, state| {
+                Self::on_key_event(KeyEvent::Released, event_controller, keyval, keycode, state)
             });
             window.add_controller(event_controller);
 
@@ -146,40 +155,43 @@ impl GtkUi {
         app.run();
     }
 
-    fn on_key_pressed(
+    fn on_key_event(
+        event: KeyEvent,
         event_controller: &gtk::EventControllerKey,
         keyval: gdk::Key,
         keycode: u32,
         modifier_type: gdk::ModifierType,
-    ) -> Inhibit {
-        println!("KEY PRESSED: {keyval} {modifier_type:?}");
-
+    ) {
         // We only handle lowercase and uppercase chars and ignore other combinations (C-, M-, ...)
         if !(modifier_type == gdk::ModifierType::empty()
             || modifier_type == gdk::ModifierType::SHIFT_MASK
             || modifier_type == gdk::ModifierType::LOCK_MASK)
         {
-            return Inhibit(false);
+            return;
         }
 
         let character = match keyval.to_unicode() {
             Some(c) => c,
-            None => return Inhibit(false),
+            None => return,
         };
+
+        if character == ' ' {
+            // TODO IMPLEMENT PAUSE
+            println!("SPACE");
+        }
 
         RENDER_THREAD_STATE.with(|cell| {
             let state = cell
                 .get()
                 .expect("Thread local once cell should be initialized by now");
 
-            match state.keyboard {
-                Some(ref keyboard_publisher) => {
-                    keyboard_publisher.push_char(character);
-                    Inhibit(true)
+            if let Some(ref keyboard_publisher) = state.keyboard {
+                match event {
+                    KeyEvent::Pressed => keyboard_publisher.pressed_char(character),
+                    KeyEvent::Released => keyboard_publisher.released_char(character),
                 }
-                None => Inhibit(false),
             }
-        })
+        });
     }
 }
 

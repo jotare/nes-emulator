@@ -4,6 +4,8 @@ CHANGELOG
 0.61.0
 ------
 - Always set status register bit 5
+- Fix controllers. Maintain state between reads and implement proper key
+  pressed/released logic
 
 0.60.0
 ------
