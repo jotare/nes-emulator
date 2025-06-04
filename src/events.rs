@@ -90,9 +90,23 @@ impl Clone for SharedEventBus {
 
 // Keyboard input and reading
 
+pub enum KeyEvent {
+    Pressed(char),
+    Released(char),
+}
+
+impl KeyEvent {
+    pub fn get_char(&self) -> char {
+        match self {
+            Self::Pressed(c) => *c,
+            Self::Released(c) => *c,
+        }
+    }
+}
+
 pub struct KeyboardChannel {
-    sender: Sender<char>,
-    receiver: Receiver<char>,
+    sender: Sender<KeyEvent>,
+    receiver: Receiver<KeyEvent>,
 }
 
 impl KeyboardChannel {
@@ -122,12 +136,22 @@ impl Default for KeyboardChannel {
 
 #[derive(Debug)]
 pub struct KeyboardPublisher {
-    sender: Sender<char>,
+    sender: Sender<KeyEvent>,
 }
 
 impl KeyboardPublisher {
-    pub fn push_char(&self, c: char) {
-        match self.sender.try_send(c) {
+    pub fn pressed_char(&self, c: char) {
+        match self.sender.try_send(KeyEvent::Pressed(c)) {
+            Ok(()) => {}
+            Err(TrySendError::Full(_)) => {
+                warn!("Keyboard channel full, dropping char: {c}");
+            }
+            Err(TrySendError::Disconnected(_)) => panic!("Keyboard channel disconnected"),
+        }
+    }
+
+    pub fn released_char(&self, c: char) {
+        match self.sender.try_send(KeyEvent::Released(c)) {
             Ok(()) => {}
             Err(TrySendError::Full(_)) => {
                 warn!("Keyboard channel full, dropping char: {c}");
@@ -139,15 +163,15 @@ impl KeyboardPublisher {
 
 #[derive(Debug)]
 pub struct KeyboardListener {
-    receiver: Receiver<char>,
+    receiver: Receiver<KeyEvent>,
 }
 
 impl KeyboardListener {
     /// Read buffered keyboard input
-    pub fn read(&self) -> String {
-        let mut buffer = String::new();
-        while let Some(c) = self.get_char() {
-            buffer.push(c);
+    pub fn read(&self) -> Vec<KeyEvent> {
+        let mut buffer = Vec::new();
+        while let Some(ev) = self.get_event() {
+            buffer.push(ev);
         }
         buffer
     }
@@ -157,9 +181,9 @@ impl KeyboardListener {
         while self.receiver.try_recv().is_ok() {}
     }
 
-    fn get_char(&self) -> Option<char> {
+    fn get_event(&self) -> Option<KeyEvent> {
         match self.receiver.try_recv() {
-            Ok(c) => Some(c),
+            Ok(ev) => Some(ev),
             Err(TryRecvError::Empty) => None,
             Err(TryRecvError::Disconnected) => panic!("Keyboard channel disconnected"),
         }
