@@ -93,11 +93,6 @@ impl Cpu {
     /// or 2 extra cycles to the instruction.
     ///
     pub fn clock(&mut self) -> Result<(), String> {
-        self.clocks_before_next_execution -= 1;
-        if self.clocks_before_next_execution > 0 {
-            return Ok(());
-        }
-
         match self.interrupt_request.take() {
             Some(interrupt) => {
                 self.execute_interrupt(interrupt);
@@ -108,6 +103,11 @@ impl Cpu {
                 Ok(())
             }
             None => {
+                self.clocks_before_next_execution -= 1;
+                if self.clocks_before_next_execution > 0 {
+                    return Ok(());
+                }
+
                 let instruction = self.fetch()?;
                 let name = instruction.name;
                 let cycles = instruction.cycles;

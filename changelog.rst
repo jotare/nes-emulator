@@ -5,6 +5,7 @@ CHANGELOG
 ------
 - Palettes are always interpreted as 6-bit colors
 - PPU vertical blank supress and small fixes
+- Fix CPU clock before execution counter on interrupts
 
 0.61.0
 ------
