@@ -5,6 +5,7 @@ CHANGELOG
 ------
 - Stack ops can wrap around the stack pointer
 - More understandable branch and page crossing
+- PC can wrap around
 
 0.61.1
 ------

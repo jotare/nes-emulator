@@ -208,7 +208,9 @@ impl Cpu {
         // Increase PC
         match instruction.name {
             "JMP" | "JSR" | "RTS" | "BRK" | "RTI" => {}
-            _ => self.cpu.pc += instruction.bytes as u16,
+            _ => {
+                self.cpu.pc = self.cpu.pc.wrapping_add(instruction.bytes as u16);
+            }
         }
 
         debug!(
