@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.62.0
+------
+- Stack ops can wrap around the stack pointer
+
 0.61.1
 ------
 - Palettes are always interpreted as 6-bit colors

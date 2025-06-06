@@ -415,11 +415,11 @@ pub fn push(cpu: &mut InternalCpu, data: u8, memory: &mut Bus) {
     let address = 0x0100 + (cpu.sp as u16);
     trace!("Push to SP 0x{:X} - 0x{:X}", cpu.sp, data);
     memory.write(address, data);
-    cpu.sp -= 1;
+    cpu.sp = cpu.sp.wrapping_sub(1); // SP wraps around if the stack underflows
 }
 
 pub fn pull(cpu: &mut InternalCpu, memory: &Bus) -> u8 {
-    cpu.sp += 1;
+    cpu.sp = cpu.sp.wrapping_add(1); // SP wraps around if the stack overflows
     let address = 0x0100 + (cpu.sp as u16);
     let data = memory.read(address);
     trace!("Pull from SP 0x{:X} - 0x{:X}", cpu.sp, data);
