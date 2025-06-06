@@ -284,8 +284,16 @@ impl Nes {
         self.controllers.borrow_mut().disconnect_controller_two();
     }
 
+    /// Power-up the NES. This should be done before running the NES. It presets
+    /// the emulator with some specific values
+    pub fn power_up(&mut self) {
+        self.cpu.power_up()
+    }
+
     /// Blocking NES run
     pub fn run(&mut self) -> Result<(), NesError> {
+        self.power_up();
+
         if self.cartidge.is_none() {
             return Err(NesError::NoCartidgeInserted);
         }
@@ -302,8 +310,17 @@ impl Nes {
         }
 
         loop {
-            if self.event_bus.access().emitted(Event::SwitchOff) {
-                break;
+            {
+                let mut event_bus = self.event_bus.access();
+                if event_bus.emitted(Event::SwitchOff) {
+                    println!("Switching off NES");
+                    break;
+                } else if event_bus.emitted(Event::Reset) {
+                    println!("Resetting the NES at clock {}", self.system_clock);
+                    self.cpu.reset();
+                    // TODO: PPU reset
+                    event_bus.mark_as_processed(Event::Reset);
+                }
             }
 
             if self.system_clock % (2_u64.pow(25)) == 0 {

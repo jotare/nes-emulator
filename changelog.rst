@@ -6,6 +6,7 @@ CHANGELOG
 - Stack ops can wrap around the stack pointer
 - More understandable branch and page crossing
 - PC can wrap around
+- Implement proper power up state
 
 0.61.1
 ------

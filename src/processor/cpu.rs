@@ -46,15 +46,25 @@ impl Cpu {
         }
     }
 
+    /// Set the CPU into power-up state
+    pub fn power_up(&mut self) {
+        self.cpu.acc = 0;
+        self.cpu.x_reg = 0;
+        self.cpu.y_reg = 0;
+        self.cpu.sp = 0;
+        self.reset();
+    }
+
     /// Reset the processor to an init state. After concrete CPU
     /// initializations, it'll call the Reset vector (RES interrupt) and leave
     /// further state initialization to it.
     pub fn reset(&mut self) {
         info!("CPU reset");
-        self.cpu.acc = 0;
-        self.cpu.x_reg = 0;
-        self.cpu.y_reg = 0;
-        self.cpu.sp = 0xFF;
+        // A reset cause the SP to decrement 3 instead of resetting to some
+        // specific value. See https://www.nesdev.org/wiki/CPU_power_up_state
+        // for more details
+        // self.cpu.sp = 0xFD;
+        self.cpu.sp = self.cpu.sp.wrapping_sub(3);
         self.cpu.sr.reset();
 
         self.clocks_before_next_execution = 1;

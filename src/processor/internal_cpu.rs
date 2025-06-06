@@ -25,7 +25,7 @@ impl Default for InternalCpu {
             acc: 0,
             x_reg: 0,
             y_reg: 0,
-            sp: 0xFF,
+            sp: 0,
             pc: 0,
             sr: StatusRegister::default(),
             page_boundary_crossed: false,

@@ -185,6 +185,12 @@ impl GtkUi {
                 .get()
                 .expect("Thread local once cell should be initialized by now");
 
+            if character == 'R' {
+                state.event_bus.as_ref().map(|event_bus| {
+                    event_bus.access().emit(crate::events::Event::Reset);
+                });
+            }
+
             if let Some(ref keyboard_publisher) = state.keyboard {
                 match event {
                     KeyEvent::Pressed => keyboard_publisher.pressed_char(character),

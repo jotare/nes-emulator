@@ -12,11 +12,17 @@ pub struct StatusRegister {
 
 impl StatusRegister {
     pub fn new() -> Self {
-        Self { sr: 0 }
+        Self {
+            sr: (1 << 5), // bit 5 is always set
+        }
+    }
+
+    pub fn power_up(&mut self) {
+        self.sr = 0 | (1 << 5) | (1 << InterruptDisable as usize);
     }
 
     pub fn reset(&mut self) {
-        self.sr = 0;
+        self.set(InterruptDisable);
     }
 
     pub fn get(&self, flag: StatusRegisterFlag) -> bool {
