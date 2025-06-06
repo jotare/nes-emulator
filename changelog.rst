@@ -3,13 +3,16 @@ CHANGELOG
 
 0.62.0
 ------
-- Stack ops can wrap around the stack pointer
 - More understandable branch and page crossing
-- PC can wrap around
 - Implement proper power up state
-- Absolute X addressing can wrap around
-- Fix sprite 0 hit left-side clipping
-- Fix sprite 0 hit for x=255
+- CPU register wrap around:
+  - Stack ops can wrap around the stack pointer
+  - PC can wrap around
+  - Absolute X addressing can wrap around
+- Fixed spite 0 hit edge cases:
+  - Fix sprite 0 hit left-side clipping
+  - Fix sprite 0 hit for x=255
+
 
 0.61.1
 ------
