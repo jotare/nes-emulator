@@ -315,7 +315,7 @@ impl Cpu {
             AbsoluteX => {
                 let bal = self.bus_read(self.cpu.pc + 1) as u16;
                 let bah = self.bus_read(self.cpu.pc + 2) as u16;
-                let addr = ((bah << 8) | bal) + self.cpu.x_reg as u16;
+                let addr = ((bah << 8) | bal).wrapping_add(self.cpu.x_reg as u16);
                 if (addr & 0xFF00) >> 8 != bah {
                     self.cpu.page_boundary_crossed = true;
                 }
@@ -395,7 +395,7 @@ impl Cpu {
             AbsoluteX => {
                 let bal = self.bus_read(self.cpu.pc + 1) as u16;
                 let bah = self.bus_read(self.cpu.pc + 2) as u16;
-                let addr = ((bah << 8) | bal) + (self.cpu.x_reg as u16);
+                let addr = ((bah << 8) | bal).wrapping_add(self.cpu.x_reg as u16);
                 if (addr & 0xFF00) >> 8 != bah {
                     self.cpu.page_boundary_crossed = true;
                 }

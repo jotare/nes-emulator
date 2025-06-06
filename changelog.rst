@@ -7,6 +7,7 @@ CHANGELOG
 - More understandable branch and page crossing
 - PC can wrap around
 - Implement proper power up state
+- Absolute X addressing can wrap around
 
 0.61.1
 ------
