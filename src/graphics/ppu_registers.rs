@@ -73,6 +73,16 @@ impl PpuRegisters {
     // PPUMASK
 
     #[inline]
+    pub fn left_size_clipping_window_enabled(&self) -> bool {
+        !self
+            .mask
+            .contains(PpuMask::SHOW_BACKGROUND_IN_LEFTMOST_8_PIXELS)
+            || !self
+                .mask
+                .contains(PpuMask::SHOW_SPRITES_IN_LEFTMOST_8_PIXELS)
+    }
+
+    #[inline]
     pub fn rendering_enabled(&self) -> bool {
         self.background_rendering_enabled() || self.sprite_rendering_enabled()
     }
@@ -146,6 +156,10 @@ bitflags! {
 
 bitflags! {
     pub struct PpuMask: u8 {
+        const SHOW_BACKGROUND_IN_LEFTMOST_8_PIXELS = 0b0000_0010;
+
+        const SHOW_SPRITES_IN_LEFTMOST_8_PIXELS = 0b0000_0100;
+
         const BACKGROUND_RENDERING_ENABLE = 0b0000_1000;
 
         const SPRITE_RENDERING_ENABLED = 0b0001_0000;

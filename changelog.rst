@@ -8,6 +8,7 @@ CHANGELOG
 - PC can wrap around
 - Implement proper power up state
 - Absolute X addressing can wrap around
+- Fix sprite 0 hit left-side clipping
 
 0.61.1
 ------

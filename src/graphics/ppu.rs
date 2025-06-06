@@ -676,7 +676,12 @@ impl Ppu {
             (background_palette << 2) | background_bit_plane
         } else {
             if sprite_number == 0 {
-                self.registers.set_sprite_0_hit(true);
+                if !(
+                    // skip at x=0 to x=7 i left-side clipping window is enabled
+                    (col <= 7 && self.registers.left_size_clipping_window_enabled())
+                ) {
+                    self.registers.set_sprite_0_hit(true);
+                }
             }
 
             if priority == 0 {
