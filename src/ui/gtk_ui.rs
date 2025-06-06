@@ -185,7 +185,7 @@ impl GtkUi {
                 .get()
                 .expect("Thread local once cell should be initialized by now");
 
-            if character == 'R' {
+            if matches!(event, KeyEvent::Pressed) && character == 'R' {
                 state.event_bus.as_ref().map(|event_bus| {
                     event_bus.access().emit(crate::events::Event::Reset);
                 });

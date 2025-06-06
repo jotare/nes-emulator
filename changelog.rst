@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+0.62.1
+------
+- Reset on key press, not press and release
+
 0.62.0
 ------
 - More understandable branch and page crossing
