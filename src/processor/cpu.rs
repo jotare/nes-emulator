@@ -515,7 +515,7 @@ mod tests {
 
         let cpu = Cpu::new(bus_ptr);
 
-        let memory = Rc::new(RefCell::new(Ram::new(0xFFFF + 1)));
+        let memory = Rc::new(RefCell::new(Ram::new(0xFFFF)));
         memory.borrow_mut().load(0, &program);
 
         let memory_ptr = Rc::clone(&memory);
