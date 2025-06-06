@@ -679,6 +679,9 @@ impl Ppu {
                 if !(
                     // skip at x=0 to x=7 i left-side clipping window is enabled
                     (col <= 7 && self.registers.left_size_clipping_window_enabled())
+                    // skip at x=255, for an obscure reason related to the pixel
+                    // pipeline
+                    || (col == 255)
                 ) {
                     self.registers.set_sprite_0_hit(true);
                 }

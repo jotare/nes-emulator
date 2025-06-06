@@ -9,6 +9,7 @@ CHANGELOG
 - Implement proper power up state
 - Absolute X addressing can wrap around
 - Fix sprite 0 hit left-side clipping
+- Fix sprite 0 hit for x=255
 
 0.61.1
 ------
