@@ -114,12 +114,17 @@ impl Cpu {
                 let page_crossing_cost = instruction.page_crossing_cost;
 
                 self.cpu.page_boundary_crossed = false;
+                self.cpu.branch_taken = false;
                 self.execute_instruction(instruction)?;
 
                 if self.cpu.page_boundary_crossed {
                     self.page_boundary_cross_extra_clocks += page_crossing_cost;
                 }
 
+                // XXX: page boundary crossing cost is added to the next
+                // instruction. This could lead to some timing tests using NMI
+                // or other timing mechanisms to fail as we are not waiting in
+                // the correct spot.
                 self.clocks_before_next_execution = cycles + self.page_boundary_cross_extra_clocks;
                 self.page_boundary_cross_extra_clocks = 0;
 
@@ -181,8 +186,9 @@ impl Cpu {
                     // when a branch is taken, a boolean is set to indicate
                     // whether page boundary is crossed. Extra clocks are added
                     // to the instruction execution
-                    if let Some(page_crossed) = self.cpu.branch_crossed_page_boundary.take() {
-                        self.page_boundary_cross_extra_clocks += if page_crossed { 2 } else { 1 }
+                    if self.cpu.branch_taken {
+                        self.page_boundary_cross_extra_clocks +=
+                            if self.cpu.page_boundary_crossed { 2 } else { 1 }
                     }
                 }
                 Call(fun) => {

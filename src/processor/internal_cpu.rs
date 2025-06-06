@@ -9,11 +9,14 @@ pub struct InternalCpu {
     pub pc: u16,   // Program Counter
     pub sr: StatusRegister,
 
+    // indicates whether an instruction affecting the PC crossed a page. This
+    // have an effect on the execution time, usually adding a clock
     pub page_boundary_crossed: bool,
-    // when a branch operation is executed, a boolean is set indicating whether
-    // page boundary is crossed. This can add 1 or 2 extra clocks to the
-    // instruction execution
-    pub branch_crossed_page_boundary: Option<bool>,
+
+    // when a branch operation is executed, a boolean is set. This can add 1 or
+    // 2 extra clocks to the instruction execution depending whether the page
+    // boundary was crossed or not.
+    pub branch_taken: bool,
 }
 
 impl Default for InternalCpu {
@@ -26,7 +29,7 @@ impl Default for InternalCpu {
             pc: 0,
             sr: StatusRegister::default(),
             page_boundary_crossed: false,
-            branch_crossed_page_boundary: None,
+            branch_taken: false,
         }
     }
 }

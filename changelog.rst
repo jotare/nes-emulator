@@ -4,6 +4,7 @@ CHANGELOG
 0.62.0
 ------
 - Stack ops can wrap around the stack pointer
+- More understandable branch and page crossing
 
 0.61.1
 ------

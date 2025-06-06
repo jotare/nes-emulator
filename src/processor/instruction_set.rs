@@ -899,10 +899,9 @@ pub fn cpy(cpu: &mut InternalCpu, operand: u8) {
 
 pub fn branch(cpu: &mut InternalCpu, condition: bool, offset: u8) {
     if condition {
-        // TODO add +1 if page changes
+        cpu.branch_taken = true;
         let (pc, _) = cpu.pc.overflowing_add_signed(offset as i8 as i16);
-        let page_crossed = (cpu.pc ^ pc) & 0x0100 > 0;
-        cpu.branch_crossed_page_boundary.replace(page_crossed);
+        cpu.page_boundary_crossed = (cpu.pc ^ pc) & 0x0100 > 0;
         cpu.pc = pc;
     }
 }
