@@ -1,6 +1,11 @@
 CHANGELOG
 =========
 
+0.63.0
+------
+- Performance optimizations:
+  - Faster instruction set lookup with match instead of a HashMap
+
 0.62.1
 ------
 - Reset on key press, not press and release
