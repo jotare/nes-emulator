@@ -447,8 +447,8 @@ impl Cpu {
         self.bus.borrow().read(address)
     }
 
-    fn bus_write(&self, address: u16, data: u8) {
-        self.bus.borrow().write(address, data);
+    fn bus_write(&mut self, address: u16, data: u8) {
+        self.bus.borrow_mut().write(address, data);
     }
 
     fn status_diff(previous: &InternalCpu, current: &InternalCpu) -> String {

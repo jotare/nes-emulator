@@ -20,19 +20,19 @@ use crate::errors::NesError;
 use crate::events::Event;
 use crate::events::KeyboardChannel;
 use crate::events::SharedEventBus;
-use crate::graphics::palette_memory::PaletteMemory;
 use crate::graphics::ppu::Ppu;
 use crate::hardware::*;
 use crate::interfaces::AddressRange;
 use crate::interfaces::Bus as BusTrait;
 use crate::metrics::Collector;
 use crate::processor::bus::Bus;
+use crate::processor::bus::GraphicsBus;
 use crate::processor::cpu::{Cpu, Interrupt};
-use crate::processor::memory::MirroredMemory;
-use crate::processor::memory::{Ciram, Ram};
+use crate::processor::memory::Ram;
 use crate::settings::NesSettings;
 use crate::settings::UiKind;
-use crate::types::{SharedBus, SharedCiram, SharedMemory, SharedPpu};
+use crate::types::SharedGraphicsBus;
+use crate::types::{SharedBus, SharedPpu};
 use crate::ui::{GtkUi, Ui};
 
 pub struct Nes {
@@ -45,11 +45,7 @@ pub struct Nes {
     pub main_bus: SharedBus,
 
     pub ppu: SharedPpu,
-    pub graphics_bus: SharedBus,
-
-    ram: SharedMemory,
-    nametable: SharedCiram,
-    palettes: SharedMemory,
+    pub graphics_bus: SharedGraphicsBus,
 
     dma_controller: Rc<RefCell<DmaController>>,
 
@@ -76,7 +72,7 @@ impl Nes {
         let keyboard_channel = KeyboardChannel::default();
 
         let main_bus = Rc::new(RefCell::new(Bus::new("CPU")));
-        let graphics_bus = Rc::new(RefCell::new(Bus::new("PPU")));
+        let graphics_bus = Rc::new(RefCell::new(GraphicsBus::new()));
 
         let main_bus_ptr = Rc::clone(&main_bus);
         let cpu = Cpu::new(main_bus_ptr);
@@ -86,23 +82,6 @@ impl Nes {
 
         // Main Bus
         // ----------------------------------------------------------------------------------------
-
-        let ram = Rc::new(RefCell::new(MirroredMemory::new(
-            Ram::new((RAM_SIZE / (RAM_MIRRORS + 1)).into()),
-            RAM_MIRRORS.into(),
-        )));
-        let ram_ptr = Rc::clone(&ram);
-        main_bus
-            .borrow_mut()
-            .attach(
-                "RAM",
-                ram_ptr,
-                AddressRange {
-                    start: RAM_START,
-                    end: RAM_END,
-                },
-            )
-            .unwrap();
 
         let ppu_ptr = Rc::clone(&ppu); // The 8 PPU registers are mirrored 1023 times
         main_bus
@@ -184,40 +163,6 @@ impl Nes {
             )
             .unwrap();
 
-        // Graphics Bus
-        // ----------------------------------------------------------------------------------------
-
-        let nametable = Rc::new(RefCell::new(Ciram::new(0x0400))); // 2 kB mirrored
-        let name_table_memory_ptr = Rc::clone(&nametable);
-        graphics_bus
-            .borrow_mut()
-            .attach(
-                "Nametables",
-                name_table_memory_ptr,
-                AddressRange {
-                    start: NAMETABLES_START,
-                    end: NAMETABLES_END,
-                },
-            )
-            .unwrap();
-
-        let palette_memory = Rc::new(RefCell::new(MirroredMemory::new(
-            PaletteMemory::new(),
-            PALETTE_MIRRORS.into(),
-        )));
-        let palette_memory_ptr = Rc::clone(&palette_memory);
-        graphics_bus
-            .borrow_mut()
-            .attach(
-                "Palettes",
-                palette_memory_ptr,
-                AddressRange {
-                    start: PALETTE_MEMORY_START,
-                    end: PALETTE_MEMORY_MIRRORS_END,
-                },
-            )
-            .unwrap();
-
         // ----------------------------------------------------------------------------------------
 
         Self {
@@ -227,9 +172,6 @@ impl Nes {
             main_bus,
             ppu,
             graphics_bus,
-            ram,
-            nametable,
-            palettes: palette_memory,
             dma_controller,
             ui: None,
             controllers,
@@ -250,8 +192,10 @@ impl Nes {
 
         cartidge.mapper.connect(&self.main_bus, &self.graphics_bus);
 
-        self.nametable
+        self.graphics_bus
             .borrow_mut()
+            .nametables
+            .inner_mut()
             .set_mirroring(cartidge.mirroring());
 
         self.cartidge = Some(cartidge);

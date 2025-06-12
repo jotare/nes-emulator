@@ -1,3 +1,6 @@
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use crate::errors::{BusError, NesError};
 use crate::types::SharedMemory;
 
@@ -34,7 +37,7 @@ pub trait Bus {
     ///
     /// Panics if an address doesn't correspond to any attached
     /// device.
-    fn write(&self, address: u16, data: u8);
+    fn write(&mut self, address: u16, data: u8);
 }
 
 pub trait Memory {
@@ -74,4 +77,18 @@ pub trait Memory {
 pub trait LoadableMemory {
     /// Load `contents` array starting on `address`.
     fn load(&mut self, address: u16, contents: &[u8]);
+}
+
+impl Memory for Rc<RefCell<dyn Memory>> {
+    fn read(&self, address: u16) -> u8 {
+        self.borrow().read(address)
+    }
+
+    fn write(&mut self, address: u16, data: u8) {
+        self.borrow_mut().write(address, data);
+    }
+
+    fn size(&self) -> usize {
+        self.borrow().size()
+    }
 }

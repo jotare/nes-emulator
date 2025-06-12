@@ -9,7 +9,7 @@ use crate::interfaces::Bus;
 use crate::interfaces::{AddressRange, LoadableMemory};
 use crate::mappers::{Mapper, MapperSpecs};
 use crate::processor::memory::{MirroredMemory, Ram, Rom};
-use crate::types::SharedBus;
+use crate::types::{SharedBus, SharedGraphicsBus};
 use crate::types::{SharedMirroredRom, SharedRam, SharedRom};
 
 const CARTRIDGE_ROM_ID: &'static str = "Cartridge ROM";
@@ -79,7 +79,7 @@ impl Mapper for Mapper0 {
         };
     }
 
-    fn connect(&self, main_bus: &SharedBus, graphics_bus: &SharedBus) {
+    fn connect(&self, main_bus: &SharedBus, graphics_bus: &SharedGraphicsBus) {
         let ram = Rc::clone(&self.program_ram);
         let rom = Rc::clone(&self.program_rom);
         let chr = match self.character_memory {
@@ -117,20 +117,16 @@ impl Mapper for Mapper0 {
         //
         // It can be split into two 4 kB (0x1000) sections containing the
         // pattern tables 0 and 1
-        graphics_bus
-            .borrow_mut()
-            .attach(
-                CARTRIDGE_CHR_MEM_ID,
-                chr,
-                AddressRange {
-                    start: CHR_MEMORY_START,
-                    end: CHR_MEMORY_END,
-                },
-            )
-            .unwrap();
+        graphics_bus.borrow_mut().connect_cartridge(
+            chr,
+            AddressRange {
+                start: CHR_MEMORY_START,
+                end: CHR_MEMORY_END,
+            },
+        );
     }
 
-    fn disconnect(&self, main_bus: &SharedBus, graphics_bus: &SharedBus) {
+    fn disconnect(&self, main_bus: &SharedBus, graphics_bus: &SharedGraphicsBus) {
         todo!("Not needed until ejection of cartridges is implemented")
     }
 }

@@ -100,6 +100,14 @@ impl<T: Memory> MirroredMemory<T> {
     pub fn new(memory: T, mirrors: usize) -> Self {
         Self { memory, mirrors }
     }
+
+    pub fn inner(&self) -> &T {
+        &self.memory
+    }
+
+    pub fn inner_mut(&mut self) -> &mut T {
+        &mut self.memory
+    }
 }
 
 impl<T: Memory> Memory for MirroredMemory<T> {

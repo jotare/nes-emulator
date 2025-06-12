@@ -9,7 +9,7 @@
 
 mod mapper_000;
 
-use crate::types::SharedBus;
+use crate::types::{SharedBus, SharedGraphicsBus};
 use mapper_000::Mapper0;
 
 pub struct MapperSpecs {
@@ -31,10 +31,10 @@ pub trait Mapper {
     // Cartridge insertion and ejection
 
     /// Attach mapper memories to NES buses
-    fn connect(&self, main_bus: &SharedBus, graphics_bus: &SharedBus);
+    fn connect(&self, main_bus: &SharedBus, graphics_bus: &SharedGraphicsBus);
 
     /// Detach mapper memories to NES buses
-    fn disconnect(&self, main_bus: &SharedBus, graphics_bus: &SharedBus);
+    fn disconnect(&self, main_bus: &SharedBus, graphics_bus: &SharedGraphicsBus);
 }
 
 pub fn mapper_map(mapper: u8, specs: MapperSpecs) -> Box<dyn Mapper> {

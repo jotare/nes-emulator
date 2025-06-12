@@ -55,7 +55,7 @@ use crate::hardware::OAMDATA;
 use crate::hardware::PALETTE_MEMORY_START;
 use crate::hardware::{OAMADDR, PPUADDR, PPUCTRL, PPUDATA, PPUMASK, PPUSCROLL, PPUSTATUS};
 use crate::interfaces::{Bus, Memory};
-use crate::types::SharedBus;
+use crate::types::SharedGraphicsBus;
 use crate::utils;
 
 // PPU background scrolling functionality is implemented using nesdev loopy
@@ -71,7 +71,7 @@ use crate::utils;
 // loopy registers are able to emulate more accurately the NES PPU. This
 // registers are implemented as [`InternalRegisters`].
 pub struct Ppu {
-    bus: SharedBus,
+    bus: SharedGraphicsBus,
     event_bus: SharedEventBus,
 
     frame: Frame,
@@ -160,7 +160,7 @@ pub struct Shifters {
 }
 
 impl Ppu {
-    pub fn new(bus: SharedBus, event_bus: SharedEventBus) -> Self {
+    pub fn new(bus: SharedGraphicsBus, event_bus: SharedEventBus) -> Self {
         Self {
             bus: bus.clone(),
             event_bus,
@@ -1020,12 +1020,12 @@ mod tests {
     use std::rc::Rc;
 
     use crate::hardware::PPU_REGISTERS_START;
-    use crate::processor::bus::Bus;
+    use crate::processor::bus::GraphicsBus;
 
     use super::*;
 
     fn test_ppu() -> Ppu {
-        let graphics_bus = Rc::new(RefCell::new(Bus::new("PPU")));
+        let graphics_bus = Rc::new(RefCell::new(GraphicsBus::new()));
         let event_bus = SharedEventBus::new();
         Ppu::new(graphics_bus, event_bus)
     }
