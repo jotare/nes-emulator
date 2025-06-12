@@ -71,7 +71,7 @@ use crate::utils;
 // loopy registers are able to emulate more accurately the NES PPU. This
 // registers are implemented as [`InternalRegisters`].
 pub struct Ppu {
-    bus: SharedGraphicsBus,
+    pub bus: SharedGraphicsBus,
     event_bus: SharedEventBus,
 
     frame: Frame,

@@ -45,7 +45,7 @@ pub enum BusError {
     },
 
     #[error("Bus '{bus_id}' doesn't have an attached device for address ${address:0>4X}")]
-    MissingBusDevice { bus_id: String, address: u16 },
+    MissingBusDevice { bus_id: &'static str, address: u16 },
 
     #[error("Bus '{bus_id}' failed while reading from device '{device_id}' on address ${address:0>4X}: {details}")]
     BusReadError {

@@ -26,27 +26,28 @@ use crate::types::SharedMemory;
 use super::memory::MirroredMemory;
 use super::memory::Ram;
 
-pub struct Bus {
-    id: &'static str,
-    devices: RefCell<HashMap<DeviceId, Device>>,
-
-    ram: MirroredMemory<Ram>,
-}
-
 struct Device {
     device: SharedMemory,
     addr_range: AddressRange,
 }
 
-impl Bus {
-    pub fn new(id: &'static str) -> Self {
+/// Main (CPU) bus
+///
+/// See https://www.nesdev.org/wiki/CPU_memory_map for further reference
+pub struct MainBus {
+    devices: RefCell<HashMap<DeviceId, Device>>,
+
+    ram: MirroredMemory<Ram>,
+}
+
+impl MainBus {
+    pub fn new() -> Self {
         let ram = MirroredMemory::new(
             Ram::new((RAM_SIZE / (RAM_MIRRORS + 1)).into()),
             RAM_MIRRORS.into(),
         );
 
         Self {
-            id,
             devices: RefCell::new(HashMap::new()),
 
             ram,
@@ -54,7 +55,7 @@ impl Bus {
     }
 }
 
-impl BusTrait for Bus {
+impl BusTrait for MainBus {
     fn attach(
         &mut self,
         id: DeviceId,
@@ -63,7 +64,7 @@ impl BusTrait for Bus {
     ) -> Result<(), BusError> {
         if self.devices.borrow().contains_key(id) {
             return Err(BusError::AlreadyAttached {
-                bus_id: self.id,
+                bus_id: "CPU",
                 device_id: id,
             });
         }
@@ -116,7 +117,7 @@ impl BusTrait for Bus {
     }
 }
 
-impl Bus {
+impl MainBus {
     fn try_read(&self, address: u16) -> Result<u8, BusError> {
         let Some((device_id, virtual_address, device)) = (match address {
             RAM_START..=RAM_END => {
@@ -132,21 +133,18 @@ impl Bus {
                     let virtual_address = address - addr_range.start;
                     let data = device.borrow().try_read(virtual_address).map_err(|error| {
                         BusError::BusReadError {
-                            bus_id: self.id,
+                            bus_id: "CPU",
                             device_id,
                             address,
                             details: error.to_string(),
                         }
                     })?;
-                    debug!(
-                        "Bus ({0}) read from: {address:0>4X} <- {data:0>2X}",
-                        self.id
-                    );
+                    debug!("Bus (CPU) read from: {address:0>4X} <- {data:0>2X}");
                     return Ok(data);
                 }
             }
             return Err(BusError::MissingBusDevice {
-                bus_id: self.id.to_string(),
+                bus_id: "CPU",
                 address,
             });
         };
@@ -164,7 +162,7 @@ impl Bus {
     }
 
     fn try_write(&mut self, address: u16, data: u8) -> Result<(), BusError> {
-        debug!("Bus ({0}) write to: {address:0>4X} <- {data:0>2X}", self.id);
+        debug!("Bus (CPU) write to: {address:0>4X} <- {data:0>2X}");
 
         let Some((device_id, virtual_address, device)) = (match address {
             RAM_START..=RAM_END => {
@@ -182,7 +180,7 @@ impl Bus {
                         .borrow_mut()
                         .try_write(virtual_address, data)
                         .map_err(|error| BusError::BusWriteError {
-                            bus_id: self.id,
+                            bus_id: "CPU",
                             device_id,
                             address,
                             details: error.to_string(),
@@ -191,7 +189,7 @@ impl Bus {
                 }
             }
             return Err(BusError::MissingBusDevice {
-                bus_id: self.id.to_string(),
+                bus_id: "CPU",
                 address,
             });
         };
@@ -199,7 +197,7 @@ impl Bus {
         device
             .try_write(virtual_address, data)
             .map_err(|error| BusError::BusWriteError {
-                bus_id: self.id,
+                bus_id: "CPU",
                 device_id,
                 address,
                 details: error.to_string(),
@@ -207,8 +205,6 @@ impl Bus {
         return Ok(());
     }
 }
-
-pub type MainBus = Bus;
 
 /// Graphics Bus
 ///
@@ -281,7 +277,7 @@ impl GraphicsBus {
                     self.pattern_tables
                         .as_ref()
                         .ok_or_else(|| BusError::MissingBusDevice {
-                            bus_id: "PPU".to_string(),
+                            bus_id: "PPU",
                             address,
                         })?;
                 (DEVICE_ID, virtual_address, device)
@@ -303,7 +299,7 @@ impl GraphicsBus {
 
             _ => {
                 return Err(BusError::MissingBusDevice {
-                    bus_id: "PPU".to_string(),
+                    bus_id: "PPU",
                     address,
                 });
             }
@@ -336,7 +332,7 @@ impl GraphicsBus {
                     self.pattern_tables
                         .as_mut()
                         .ok_or_else(|| BusError::MissingBusDevice {
-                            bus_id: "PPU".to_string(),
+                            bus_id: "PPU",
                             address,
                         })?;
                 (DEVICE_ID, virtual_address, device)
@@ -358,7 +354,7 @@ impl GraphicsBus {
 
             _ => {
                 return Err(BusError::MissingBusDevice {
-                    bus_id: "PPU".to_string(),
+                    bus_id: "PPU",
                     address,
                 })
             }
@@ -382,7 +378,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_bus_read_without_attached_devices() {
-        let bus = Bus::new("test-bus");
+        let bus = MainBus::new();
 
         bus.read(0x1234);
     }
@@ -390,7 +386,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_bus_write_without_attached_devices() {
-        let mut bus = Bus::new("test-bus");
+        let mut bus = MainBus::new();
 
         bus.write(0x1234, 0xf0);
     }

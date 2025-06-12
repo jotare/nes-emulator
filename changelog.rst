@@ -8,6 +8,7 @@ CHANGELOG
   - Replace graphics bus HashMap with fields
   - CPU RAM inside the main bus struct
   - SharedEventBus implementation with AtomicBool
+- NES access to buses through CPU and PPU
 
 0.62.1
 ------

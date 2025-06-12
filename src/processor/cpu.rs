@@ -18,7 +18,7 @@ use StatusRegisterFlag::*;
 pub struct Cpu {
     cpu: InternalCpu,
     instruction_set: InstructionSet,
-    bus: SharedBus,
+    pub bus: SharedBus,
 
     clocks_before_next_execution: u8,
     page_boundary_cross_extra_clocks: u8,
@@ -501,7 +501,7 @@ mod tests {
     use std::rc::Rc;
 
     use crate::interfaces::{AddressRange, LoadableMemory};
-    use crate::processor::bus::Bus;
+    use crate::processor::bus::MainBus;
     use crate::processor::memory::Ram;
 
     fn cpu_with_program(program: Vec<u8>) -> Cpu {
@@ -510,7 +510,7 @@ mod tests {
         //     .try_init()
         //     .unwrap_or_default();
 
-        let bus = Rc::new(RefCell::new(Bus::new("test-bus")));
+        let bus = Rc::new(RefCell::new(MainBus::new()));
         let bus_ptr = Rc::clone(&bus);
 
         let cpu = Cpu::new(bus_ptr);

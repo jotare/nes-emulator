@@ -25,13 +25,12 @@ use crate::hardware::*;
 use crate::interfaces::AddressRange;
 use crate::interfaces::Bus as BusTrait;
 use crate::metrics::Collector;
-use crate::processor::bus::Bus;
 use crate::processor::bus::GraphicsBus;
+use crate::processor::bus::MainBus;
 use crate::processor::cpu::{Cpu, Interrupt};
 use crate::processor::memory::Ram;
 use crate::settings::NesSettings;
 use crate::settings::UiKind;
-use crate::types::SharedGraphicsBus;
 use crate::types::{SharedBus, SharedPpu};
 use crate::ui::{GtkUi, Ui};
 
@@ -42,10 +41,7 @@ pub struct Nes {
     cartidge: Option<Cartidge>,
 
     pub cpu: Cpu,
-    pub main_bus: SharedBus,
-
     pub ppu: SharedPpu,
-    pub graphics_bus: SharedGraphicsBus,
 
     dma_controller: Rc<RefCell<DmaController>>,
 
@@ -71,7 +67,7 @@ impl Nes {
         let event_bus = SharedEventBus::new();
         let keyboard_channel = KeyboardChannel::default();
 
-        let main_bus = Rc::new(RefCell::new(Bus::new("CPU")));
+        let main_bus = Rc::new(RefCell::new(MainBus::new()));
         let graphics_bus = Rc::new(RefCell::new(GraphicsBus::new()));
 
         let main_bus_ptr = Rc::clone(&main_bus);
@@ -169,9 +165,7 @@ impl Nes {
             system_clock: 0,
             cartidge: None,
             cpu,
-            main_bus,
             ppu,
-            graphics_bus,
             dma_controller,
             ui: None,
             controllers,
@@ -190,9 +184,13 @@ impl Nes {
     pub fn load_cartidge(&mut self, cartidge: Cartidge) {
         info!("Cartidge inserted: {}", cartidge);
 
-        cartidge.mapper.connect(&self.main_bus, &self.graphics_bus);
+        cartidge
+            .mapper
+            .connect(&self.cpu.bus, &self.ppu.borrow().bus);
 
-        self.graphics_bus
+        self.ppu
+            .borrow()
+            .bus
             .borrow_mut()
             .nametables
             .inner_mut()
@@ -200,6 +198,14 @@ impl Nes {
 
         self.cartidge = Some(cartidge);
         self.cpu.reset();
+    }
+
+    pub fn main_bus(&self) -> &SharedBus {
+        &self.cpu.bus
+    }
+
+    pub fn graphics_bus(&self) -> GraphicsBusProxy {
+        GraphicsBusProxy { nes: &self }
     }
 
     /// Connect controller one to the NES and define its configuration
@@ -335,7 +341,7 @@ impl Nes {
             if ongoing_dma {
                 self.dma_controller
                     .borrow_mut()
-                    .oam_dma_transfer(&self.main_bus, &self.ppu);
+                    .oam_dma_transfer(&self.cpu.bus, &self.ppu);
             } else {
                 self.cpu.clock()?;
             }
@@ -364,5 +370,37 @@ impl Nes {
         if let Some(ui) = ui {
             self.ui.replace(ui);
         }
+    }
+}
+
+pub struct GraphicsBusProxy<'a> {
+    nes: &'a Nes,
+}
+
+impl<'a> BusTrait for GraphicsBusProxy<'a> {
+    fn attach(
+        &mut self,
+        id: crate::interfaces::DeviceId,
+        device: crate::types::SharedMemory,
+        addr_range: AddressRange,
+    ) -> Result<(), crate::errors::BusError> {
+        self.nes
+            .ppu
+            .borrow()
+            .bus
+            .borrow_mut()
+            .attach(id, device, addr_range)
+    }
+
+    fn detach(&mut self, id: crate::interfaces::DeviceId) {
+        self.nes.ppu.borrow().bus.borrow_mut().detach(id);
+    }
+
+    fn read(&self, address: u16) -> u8 {
+        self.nes.ppu.borrow().bus.borrow().read(address)
+    }
+
+    fn write(&mut self, address: u16, data: u8) {
+        self.nes.ppu.borrow().bus.borrow_mut().write(address, data);
     }
 }

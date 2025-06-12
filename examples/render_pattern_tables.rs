@@ -85,16 +85,15 @@ fn render_pattern_tables(nes: &Nes, palette: u8) -> Frame {
                     pattern_table_address.set(PatternTableAddress::FINE_Y_OFFSET, y as u8);
 
                     pattern_table_address.set(PatternTableAddress::BIT_PLANE, 0);
-                    let low = nes.graphics_bus.borrow().read(pattern_table_address.into());
+                    let low = nes.graphics_bus().read(pattern_table_address.into());
 
                     pattern_table_address.set(PatternTableAddress::BIT_PLANE, 1);
-                    let high = nes.graphics_bus.borrow().read(pattern_table_address.into());
+                    let high = nes.graphics_bus().read(pattern_table_address.into());
 
                     let palette_offset =
                         (palette << 2) | utils::bv(high, x as u8) << 1 | utils::bv(low, x as u8);
                     let palette_color = nes
-                        .graphics_bus
-                        .borrow()
+                        .graphics_bus()
                         .read(PALETTE_MEMORY_START + palette_offset as u16);
                     let color = Pixel::from(palette_color);
 

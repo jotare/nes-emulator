@@ -66,7 +66,7 @@ fn render_palettes(nes: &Nes) -> Frame {
 
         for palette_color_number in 0..4 {
             let address = (palette_address + palette_color_number) as u16;
-            let palette_color = nes.graphics_bus.borrow().read(address);
+            let palette_color = nes.graphics_bus().read(address);
             let color = Pixel::from(palette_color);
 
             paint(

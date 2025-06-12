@@ -1,7 +1,7 @@
 use log::trace;
 
 use crate::interfaces::Bus as _;
-use crate::processor::bus::Bus;
+use crate::processor::bus::MainBus;
 use crate::processor::instruction::{
     AddressingMode, Instruction, InstructionKind, MiscInstructionKind, Opcode,
 };
@@ -402,14 +402,14 @@ pub fn tya(cpu: &mut InternalCpu) {
 
 // Stack instructions
 
-pub fn push(cpu: &mut InternalCpu, data: u8, memory: &mut Bus) {
+pub fn push(cpu: &mut InternalCpu, data: u8, memory: &mut MainBus) {
     let address = 0x0100 + (cpu.sp as u16);
     trace!("Push to SP 0x{:X} - 0x{:X}", cpu.sp, data);
     memory.write(address, data);
     cpu.sp = cpu.sp.wrapping_sub(1); // SP wraps around if the stack underflows
 }
 
-pub fn pull(cpu: &mut InternalCpu, memory: &Bus) -> u8 {
+pub fn pull(cpu: &mut InternalCpu, memory: &MainBus) -> u8 {
     cpu.sp = cpu.sp.wrapping_add(1); // SP wraps around if the stack overflows
     let address = 0x0100 + (cpu.sp as u16);
     let data = memory.read(address);
@@ -425,7 +425,7 @@ pub fn pull(cpu: &mut InternalCpu, memory: &Bus) -> u8 {
 /// Status Register:
 /// N Z C I D V
 /// - - - - - -
-pub fn pha(cpu: &mut InternalCpu, memory: &mut Bus) {
+pub fn pha(cpu: &mut InternalCpu, memory: &mut MainBus) {
     push(cpu, cpu.acc, memory);
 }
 
@@ -440,7 +440,7 @@ pub fn pha(cpu: &mut InternalCpu, memory: &mut Bus) {
 /// Status Register:
 /// N Z C I D V
 /// - - - - - -
-pub fn php(cpu: &mut InternalCpu, memory: &mut Bus) {
+pub fn php(cpu: &mut InternalCpu, memory: &mut MainBus) {
     let sr: u8 = cpu.sr.into();
     push(cpu, sr | (1 << Break as u8) | (1 << 5), memory);
 }
@@ -453,7 +453,7 @@ pub fn php(cpu: &mut InternalCpu, memory: &mut Bus) {
 /// Status Register
 /// N Z C I D V
 /// + + - - - -
-pub fn pla(cpu: &mut InternalCpu, memory: &Bus) {
+pub fn pla(cpu: &mut InternalCpu, memory: &MainBus) {
     cpu.acc = pull(cpu, memory);
     cpu.sr.auto_set(Negative, cpu.acc);
     cpu.sr.auto_set(Zero, cpu.acc);
@@ -470,7 +470,7 @@ pub fn pla(cpu: &mut InternalCpu, memory: &Bus) {
 /// Status Register
 /// N Z C I D V
 /// + + - - - -
-pub fn plp(cpu: &mut InternalCpu, memory: &Bus) {
+pub fn plp(cpu: &mut InternalCpu, memory: &MainBus) {
     let mut sr = StatusRegister::from(pull(cpu, memory));
     sr.set_value(Break, cpu.sr.get(Break));
     // XXX bit 5 is ignored, as NES don't use it
@@ -1018,7 +1018,7 @@ pub fn jmp(cpu: &mut InternalCpu, address: u16) {
 /// Status Register:
 /// N Z C I D V
 /// - - - - - -
-pub fn jsr(cpu: &mut InternalCpu, address: u16, memory: &mut Bus) {
+pub fn jsr(cpu: &mut InternalCpu, address: u16, memory: &mut MainBus) {
     let pc = cpu.pc + 2;
     let pch = (pc >> 8) as u8;
     let pcl = (pc & 0x00FF) as u8;
@@ -1035,7 +1035,7 @@ pub fn jsr(cpu: &mut InternalCpu, address: u16, memory: &mut Bus) {
 /// Status Register:
 /// N Z C I D V
 /// - - - - - -
-pub fn rts(cpu: &mut InternalCpu, memory: &Bus) {
+pub fn rts(cpu: &mut InternalCpu, memory: &MainBus) {
     let pcl = pull(cpu, memory) as u16;
     let pch = pull(cpu, memory) as u16;
     cpu.pc = ((pch << 8) | pcl) + 1;
@@ -1062,7 +1062,7 @@ pub fn rts(cpu: &mut InternalCpu, memory: &Bus) {
 /// Status Register:
 /// N Z C I D V
 /// - - - 1 - -
-pub fn brk(cpu: &mut InternalCpu, memory: &mut Bus) {
+pub fn brk(cpu: &mut InternalCpu, memory: &mut MainBus) {
     let return_address = cpu.pc + 2;
     let pch = (return_address >> 8) as u8;
     let pcl = (return_address & 0x00FF) as u8;
@@ -1088,7 +1088,7 @@ pub fn brk(cpu: &mut InternalCpu, memory: &mut Bus) {
 /// Status Register:
 ///  N Z C I D V
 ///  from stack
-pub fn rti(cpu: &mut InternalCpu, memory: &Bus) {
+pub fn rti(cpu: &mut InternalCpu, memory: &MainBus) {
     let mut stack_sr = pull(cpu, memory);
     stack_sr &= !(1 << Break as u8);
     cpu.sr = StatusRegister::from(stack_sr);
