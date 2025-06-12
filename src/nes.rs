@@ -254,27 +254,31 @@ impl Nes {
         }
 
         loop {
-            {
-                let mut event_bus = self.event_bus.access();
-                if event_bus.emitted(Event::SwitchOff) {
+            self.clock()
+                .map_err(|error| NesError::NesInternalError(error))?;
+
+            // const EVENT_BUS_CHECK_INTERVAL: u64 = 1024 * 1024;
+            const EVENT_BUS_CHECK_INTERVAL: u64 = 1024 * 16;
+            if self.system_clock % EVENT_BUS_CHECK_INTERVAL == 0 {
+                if self.event_bus.emitted(Event::SwitchOff) {
                     println!("Switching off NES");
+                    self.event_bus.mark_as_processed(Event::SwitchOff);
                     break;
-                } else if event_bus.emitted(Event::Reset) {
+                } else if self.event_bus.emitted(Event::Reset) {
                     println!("Resetting the NES at clock {}", self.system_clock);
                     self.cpu.reset();
                     // TODO: PPU reset
-                    event_bus.mark_as_processed(Event::Reset);
+                    self.event_bus.mark_as_processed(Event::Reset);
                 }
+                // println!("{:?}", std::time::Instant::now());
             }
 
-            if self.system_clock % (2_u64.pow(25)) == 0 {
-                self.metrics.observe_system_clocks(2_u64.pow(25));
+            const OBSERVATION_TIME: u64 = 2_u64.pow(25);
+            if self.system_clock % OBSERVATION_TIME == 0 {
+                self.metrics.observe_system_clocks(OBSERVATION_TIME);
                 let metrics = self.metrics.collect();
                 println!("FPS: {}", metrics.frames_per_second);
             }
-
-            self.clock()
-                .map_err(|error| NesError::NesInternalError(error))?;
         }
 
         if let Some(ui) = self.ui.as_mut() {
@@ -305,15 +309,15 @@ impl Nes {
             let mut ppu = self.ppu.borrow_mut();
             ppu.clock();
 
-            if self.event_bus.access().emitted(Event::NMI) {
+            if self.event_bus.emitted(Event::NMI) {
                 self.cpu.interrupt(Interrupt::NonMaskableInterrupt);
-                self.event_bus.access().mark_as_processed(Event::NMI);
+                self.event_bus.mark_as_processed(Event::NMI);
             }
 
-            if self.event_bus.access().emitted(Event::FrameReady) {
+            if self.event_bus.emitted(Event::FrameReady) {
                 let frame = ppu.take_frame();
                 self.metrics.observe_frame_ready();
-                self.event_bus.access().mark_as_processed(Event::FrameReady);
+                self.event_bus.mark_as_processed(Event::FrameReady);
 
                 if let Some(ui) = self.ui.as_mut() {
                     ui.render(frame);

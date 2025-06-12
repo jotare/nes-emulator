@@ -364,7 +364,7 @@ impl Ppu {
 
             if self.scan_line > 261 {
                 self.scan_line = 0;
-                self.event_bus.access().emit(Event::FrameReady);
+                self.event_bus.emit(Event::FrameReady);
                 self.frame_parity.reverse();
             }
         }
@@ -376,7 +376,7 @@ impl Ppu {
         if !self.supress_vertical_blank.get() {
             self.registers.set_vertical_blank();
             if self.registers.nmi_enabled() {
-                self.event_bus.access().emit(Event::NMI)
+                self.event_bus.emit(Event::NMI)
             }
         }
         self.supress_vertical_blank.set(false);
@@ -814,7 +814,7 @@ impl Memory for Ppu {
                     && (self.cycle == 1 || self.cycle == (1 + 1) || self.cycle == (1 + 2))
                 {
                     // if self.scan_line == 241 && (self.cycle == 1) {
-                    self.event_bus.access().mark_as_processed(Event::NMI);
+                    self.event_bus.mark_as_processed(Event::NMI);
                     ppustatus | 0b1000_0000
                 } else {
                     ppustatus

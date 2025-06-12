@@ -1,3 +1,4 @@
+use std::sync::atomic::{AtomicBool, Ordering};
 /// Inter-component events in the NES system
 ///
 /// Some of the components in the NES are capable of communicating some events
@@ -7,10 +8,7 @@
 /// This module abstracts this events and provide an event bus so components can
 /// be notified or poll for events
 ///
-use std::{
-    collections::HashSet,
-    sync::{Arc, Mutex, MutexGuard},
-};
+use std::sync::Arc;
 
 use crossbeam_channel::{bounded, Receiver, Sender, TryRecvError, TrySendError};
 use log::warn;
@@ -35,58 +33,65 @@ pub enum Event {
     FrameReady,
 }
 
-#[derive(Debug)]
-pub struct EventBus {
-    events: HashSet<Event>,
-}
-
-impl EventBus {
-    pub fn new() -> Self {
-        Self {
-            events: HashSet::new(),
-        }
-    }
-
-    /// Emit a new event into the bus
-    pub fn emit(&mut self, event: Event) {
-        self.events.insert(event);
-    }
-
-    /// Check if an event has been emitted
-    pub fn emitted(&self, event: Event) -> bool {
-        self.events.contains(&event)
-    }
-
-    /// Clean the event bus from a specific event. After this, `emitted` will
-    /// return `false`
-    pub fn mark_as_processed(&mut self, event: Event) {
-        self.events.remove(&event);
-    }
-}
-
+/// Thread-safe shared event bus capable to efficiently get/set/clear events
+///
 #[derive(Debug)]
 pub struct SharedEventBus {
-    event_bus: Arc<Mutex<EventBus>>,
+    frame_ready: Arc<AtomicBool>,
+    nmi: Arc<AtomicBool>,
+    reset: Arc<AtomicBool>,
+    switch_off: Arc<AtomicBool>,
 }
 
 impl SharedEventBus {
     pub fn new() -> Self {
         Self {
-            event_bus: Arc::new(Mutex::new(EventBus::new())),
+            frame_ready: Arc::new(AtomicBool::new(false)),
+            nmi: Arc::new(AtomicBool::new(false)),
+            reset: Arc::new(AtomicBool::new(false)),
+            switch_off: Arc::new(AtomicBool::new(false)),
         }
     }
 
-    pub fn access(&self) -> MutexGuard<'_, EventBus> {
-        self.event_bus
-            .lock()
-            .expect("Can't obtain lock in shared event bus")
+    /// Emit a new event into the bus
+    pub fn emit(&self, event: Event) {
+        match event {
+            Event::FrameReady => self.frame_ready.store(true, Ordering::Relaxed),
+            Event::SwitchOff => self.switch_off.store(true, Ordering::Relaxed),
+            Event::Reset => self.reset.store(true, Ordering::Relaxed),
+            Event::NMI => self.nmi.store(true, Ordering::Relaxed),
+        }
+    }
+
+    /// Check if an event has been emitted
+    pub fn emitted(&self, event: Event) -> bool {
+        match event {
+            Event::FrameReady => self.frame_ready.load(Ordering::Relaxed),
+            Event::SwitchOff => self.switch_off.load(Ordering::Relaxed),
+            Event::Reset => self.reset.load(Ordering::Relaxed),
+            Event::NMI => self.nmi.load(Ordering::Relaxed),
+        }
+    }
+
+    /// Clean the event bus from a specific event. After this, `emitted` will
+    /// return `false`
+    pub fn mark_as_processed(&self, event: Event) {
+        match event {
+            Event::FrameReady => self.frame_ready.store(false, Ordering::Relaxed),
+            Event::SwitchOff => self.switch_off.store(false, Ordering::Relaxed),
+            Event::Reset => self.reset.store(false, Ordering::Relaxed),
+            Event::NMI => self.nmi.store(false, Ordering::Relaxed),
+        }
     }
 }
 
 impl Clone for SharedEventBus {
     fn clone(&self) -> Self {
         Self {
-            event_bus: Arc::clone(&self.event_bus),
+            frame_ready: Arc::clone(&self.frame_ready),
+            nmi: Arc::clone(&self.nmi),
+            reset: Arc::clone(&self.reset),
+            switch_off: Arc::clone(&self.switch_off),
         }
     }
 }
@@ -199,7 +204,7 @@ mod tests {
 
     #[test]
     fn test_events() {
-        let mut event_bus = EventBus::new();
+        let event_bus = SharedEventBus::new();
 
         assert!(!event_bus.emitted(Event::NMI));
 

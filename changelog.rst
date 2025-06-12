@@ -7,6 +7,7 @@ CHANGELOG
   - Faster instruction set lookup with match instead of a HashMap
   - Replace graphics bus HashMap with fields
   - CPU RAM inside the main bus struct
+  - SharedEventBus implementation with AtomicBool
 
 0.62.1
 ------

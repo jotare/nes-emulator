@@ -19,7 +19,7 @@ fn main() {
                 ui.render(frame);
                 std::thread::sleep(INTER_FRAME_DELAY);
 
-                if event_bus.access().emitted(Event::SwitchOff) {
+                if event_bus.emitted(Event::SwitchOff) {
                     break 'outer;
                 }
             }
